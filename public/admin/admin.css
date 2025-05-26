@@ -1,0 +1,723 @@
+/* Admin Panel CSS - admin.css */
+:root {
+    --primary-color: #4a90e2; /* Professional Blue */
+    --secondary-color: #50e3c2; /* Teal Accent */
+.critical-error-banner {
+    background-color: var(--danger-color); /* Using the variable */
+    color: white;
+    /* ... other styles ... */
+}
+    --card-background-color: #34495e; /* Slightly Lighter Slate */
+    --text-color: #ecf0f1; /* Light Gray/White */
+    --muted-text-color: #bdc3c7; /* Lighter Muted Gray */
+    --border-color: #4a627a; /* Muted Blue-Gray Border */
+    --danger-color: #e74c3c; /* Red for delete/errors */
+    --success-color: #2ecc71; /* Green for success */
+    --info-color: #3498db; /* Blue for info */
+    --warning-color: #f39c12; /* Orange for warnings */
+    --input-background: #2c3e50;
+    --input-border: #566573;
+    --input-focus-border: var(--primary-color);
+    --sidebar-width: 260px;
+    --header-height: 60px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Critical Error Banner */
+.critical-error-banner {
+    background-color: var(--danger-color);
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10000; /* Ensure it's on top of everything */
+}
+
+
+/* Loader Styles */
+.loader-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(44, 62, 80, 0.95); /* Dark Slate Blue with opacity */
+    display: flex; /* Hidden by default, shown by JS */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.loader-container.active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+.loader {
+    border: 8px solid var(--card-background-color); /* Light grey */
+    border-top: 8px solid var(--secondary-color); /* Blue */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.loader-container p {
+    font-size: 1.2em;
+    color: var(--text-color);
+}
+
+/* Login Container Styles */
+.login-container {
+    display: flex; /* Hidden by default, shown by JS */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+.login-box {
+    background-color: var(--card-background-color);
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+.login-box h2 {
+    margin-bottom: 25px;
+    color: var(--secondary-color);
+    font-size: 1.8em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.login-box h2 .fas {
+    margin-right: 10px;
+}
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--muted-text-color);
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+}
+.input-group label .fas {
+    margin-right: 8px;
+    color: var(--secondary-color);
+}
+.input-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 1em;
+    transition: border-color 0.3s ease;
+}
+.input-group input:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); /* Primary color focus glow */
+}
+
+/* Dashboard Layout */
+.dashboard-container {
+    display: flex; /* Hidden by default, shown by JS */
+    min-height: 100vh; /* Changed from height to min-height */
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--card-background-color);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    position: fixed; /* Fixed sidebar */
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 100;
+}
+.sidebar-header {
+    padding: 0 20px 20px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+.sidebar-header h3 {
+    color: var(--secondary-color);
+    margin-bottom: 5px;
+    font-size: 1.4em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sidebar-header h3 .fas {
+    margin-right: 8px;
+}
+.admin-user-email {
+    font-size: 0.8em;
+    color: var(--muted-text-color);
+    word-break: break-all;
+}
+.tabs-nav {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+}
+.tabs-nav li .tab-button {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    color: var(--muted-text-color);
+    text-decoration: none;
+    font-size: 1em;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+}
+.tabs-nav li .tab-button .fas {
+    margin-right: 12px;
+    width: 20px; /* For icon alignment */
+    text-align: center;
+}
+.tabs-nav li .tab-button:hover {
+    background-color: rgba(255,255,255,0.05);
+    color: var(--text-color);
+    padding-left: 25px;
+}
+.tabs-nav li .tab-button.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border-left: 4px solid var(--secondary-color);
+    padding-left: 16px; /* Adjust for border */
+}
+.tabs-nav li .tab-button.active .fas {
+    color: var(--secondary-color);
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    margin-left: var(--sidebar-width); /* Account for fixed sidebar */
+    overflow-y: auto; /* Scroll main content if it overflows */
+    height: 100vh; /* Ensure it can scroll independently */
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
+.tab-content.active {
+    display: block;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-section {
+    margin-bottom: 30px;
+}
+.card-style {
+    background-color: var(--card-background-color);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.dashboard-section h4 {
+    font-size: 1.5em;
+    color: var(--secondary-color);
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+.dashboard-section h4 .fas {
+    margin-right: 10px;
+}
+.dashboard-section h5 {
+    font-size: 1.2em;
+    color: var(--text-color);
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+.dashboard-section h5 .fas {
+    margin-right: 8px;
+    color: var(--secondary-color);
+}
+
+
+/* Styled Forms (general) */
+.styled-form .form-group {
+    margin-bottom: 20px;
+}
+.styled-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--muted-text-color);
+}
+.styled-form input[type="text"],
+.styled-form input[type="email"],
+.styled-form input[type="password"],
+.styled-form input[type="number"],
+.styled-form input[type="url"],
+.styled-form input[type="date"],
+.styled-form textarea,
+.styled-form select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    background-color: var(--input-background);
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.styled-form input:focus,
+.styled-form textarea:focus,
+.styled-form select:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+.styled-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+.styled-form .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px; /* row-gap column-gap */
+    align-items: center;
+}
+.styled-form .checkbox-group input[type="checkbox"] {
+    margin-right: 5px;
+    width: auto; /* Override width:100% for checkboxes */
+    accent-color: var(--primary-color); /* Modern checkbox color */
+}
+.styled-form .checkbox-group label {
+    margin-bottom: 0; /* Align with checkbox */
+    font-weight: normal;
+    color: var(--text-color);
+}
+.file-input {
+    margin-top: 5px;
+    font-size: 0.9em;
+    padding: 8px; /* Reduce padding for file input */
+}
+.image-preview {
+    max-width: 200px;
+    max-height: 150px;
+    margin-top: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    object-fit: contain;
+}
+.form-hint {
+    font-size: 0.85em;
+    color: var(--muted-text-color);
+    margin-top: 5px;
+}
+
+/* Complex Form (e.g., Add Test) specific styles */
+.complex-form .form-group-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.complex-form .form-group-row select,
+.complex-form .form-group-row input {
+    flex-grow: 1; /* Allow select and inputs to grow */
+}
+.complex-form .form-group-row .btn-sm { /* Adjust button size in rows */
+    flex-shrink: 0; /* Prevent button from shrinking too much */
+}
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+.checkbox-grid .checkbox-item {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255,255,255,0.03);
+    padding: 8px;
+    border-radius: 4px;
+}
+.checkbox-grid .checkbox-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Table Styles */
+.table-container {
+    overflow-x: auto; /* Allow horizontal scrolling for tables on small screens */
+    width: 100%;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.9em;
+}
+table th, table td {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    text-align: left;
+    vertical-align: middle;
+}
+table th {
+    background-color: rgba(255,255,255,0.05);
+    font-weight: 600;
+    color: var(--muted-text-color);
+}
+table tr:nth-child(even) {
+    background-color: rgba(0,0,0,0.05);
+}
+table tr:hover {
+    background-color: rgba(255,255,255,0.08);
+}
+table td .btn {
+    margin-right: 5px;
+}
+table td .btn:last-child {
+    margin-right: 0;
+}
+.test-image-thumbnail, .banner-image-thumbnail, .health-concern-icon-thumbnail, .prescription-image-thumbnail {
+    max-width: 100px;
+    max-height: 70px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-background); /* Background for contain images */
+}
+.prescription-image-thumbnail {
+    max-width: 150px; max-height: 100px; cursor: pointer;
+}
+table ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+table ul li {
+    font-size: 0.9em;
+    padding: 2px 0;
+}
+.compact-table th, .compact-table td {
+    padding: 6px 8px;
+    font-size: 0.85em;
+}
+.status-select { /* For booking status dropdown in table */
+    padding: 6px 8px;
+    margin-right: 5px;
+}
+
+/* Button Styles */
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none; /* For button-like links */
+}
+.btn:hover {
+    opacity: 0.9;
+}
+.btn:active {
+    transform: translateY(1px);
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #3a7bc8; /* Slightly darker primary */
+}
+.btn-secondary {
+    background-color: #6c757d; /* Bootstrap-like secondary */
+    color: white;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c82333; /* Darker red */
+}
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+.btn-info {
+    background-color: var(--info-color);
+    color: white;
+}
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+.btn-sm .fas {
+    margin-right: 5px; /* Smaller margin for icons in small buttons */
+}
+.logout-button {
+    width: 100%;
+}
+
+
+/* Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1001; /* Above sidebar */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.modal-content {
+    background-color: var(--card-background-color);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    width: 100%;
+    max-width: 600px; /* Default max-width */
+    position: relative;
+    animation: modalOpen 0.3s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-content.large-modal {
+    max-width: 800px;
+}
+@keyframes modalOpen {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.close-modal-btn {
+    color: var(--muted-text-color);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    transition: color 0.2s ease;
+}
+.close-modal-btn:hover,
+.close-modal-btn:focus {
+    color: var(--text-color);
+    text-decoration: none;
+    cursor: pointer;
+}
+.modal-content h4 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: var(--secondary-color);
+    font-size: 1.6em;
+}
+.modal-content h4 .fas {
+    margin-right: 10px;
+}
+
+
+/* Toast Notification Styles */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    color: white;
+    font-size: 1em;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 350px;
+}
+.toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-notification.success {
+    background-color: var(--success-color);
+}
+.toast-notification.error {
+    background-color: var(--danger-color);
+}
+.toast-notification.info {
+    background-color: var(--info-color);
+}
+.toast-notification.warning {
+    background-color: var(--warning-color);
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: var(--header-height); /* Becomes top bar */
+        position: fixed;
+        top: 0;
+        left: 0;
+        flex-direction: row; /* Tabs side by side */
+        justify-content: space-around;
+        align-items: center;
+        padding: 0;
+        border-bottom: 1px solid var(--border-color);
+        overflow-x: auto; /* Allow horizontal scroll for tabs if too many */
+        overflow-y: hidden;
+    }
+    .sidebar-header {
+        display: none; /* Hide header on mobile top bar */
+    }
+    .tabs-nav {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .tabs-nav li .tab-button {
+        padding: 10px 12px; /* Smaller padding for horizontal tabs */
+        height: 100%;
+        border-left: none;
+        border-bottom: 3px solid transparent; /* For active indicator */
+    }
+    .tabs-nav li .tab-button.active {
+        border-left: none;
+        border-bottom: 3px solid var(--secondary-color);
+        background-color: rgba(255,255,255,0.05);
+        color: var(--secondary-color);
+        padding-left: 12px; /* Reset padding */
+    }
+    .tabs-nav li .tab-button.active .fas {
+        color: var(--secondary-color);
+    }
+    .sidebar-footer {
+        display: none; /* Hide logout button from top bar, could be in a menu */
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding-top: calc(var(--header-height) + 20px); /* Space for fixed top bar */
+        height: calc(100vh - var(--header-height));
+    }
+    .dashboard-section h4 {
+        font-size: 1.3em;
+    }
+    .modal-content {
+        max-width: 95%;
+        padding: 20px;
+    }
+    .complex-form .form-group-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .complex-form .form-group-row .btn-sm {
+        margin-top: 10px;
+    }
+    .toast-notification {
+        right: 10px;
+        left: 10px;
+        bottom: 10px;
+        width: auto;
+    }
+}
+
+#test-search-input.form-control {
+    border-radius: 24px;
+    border: 1.5px solid #4fc3f7;
+    padding: 10px 18px;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(80,180,255,0.08);
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+    background: #f7fbff;
+    margin-bottom: 8px;
+}
+#test-search-input.form-control:focus {
+    border: 2px solid #0288d1;
+    box-shadow: 0 4px 16px rgba(80,180,255,0.15);
+    background: #fff;
+}
+
+.bouncing-down-arrow {
+    display: inline-block;
+    animation: bounceDown 1.2s infinite;
+    font-size: 2.2rem;
+    color: #4fc3f7;
+    margin-bottom: 0;
+}
+@keyframes bounceDown {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(16px); }
+}

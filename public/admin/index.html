@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Lab Price Compare</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div id="critical-error-banner" class="critical-error-banner" style="display: none;"></div>
+
+    <div id="loader-container" class="loader-container active">
+        <div class="loader"></div>
+        <p>Loading Admin Panel...</p>
+    </div>
+
+    <div id="login-container" class="login-container" style="display: none;">
+        <div class="login-box">
+            <h2><i class="fas fa-user-shield"></i> Admin Login</h2>
+            <form id="admin-login-form">
+                <div class="input-group">
+                    <label for="admin-email"><i class="fas fa-envelope"></i> Email:</label>
+                    <input type="email" id="admin-email" required>
+                </div>
+                <div class="input-group">
+                    <label for="admin-password"><i class="fas fa-lock"></i> Password:</label>
+                    <input type="password" id="admin-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-container" class="dashboard-container" style="display: none;">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h3>
+                <span id="admin-user-email" class="admin-user-email"></span>
+            </div>
+            <ul id="sidebar-tabs-nav" class="tabs-nav">
+                <li><button class="tab-button active" data-tab="manage-labs-tab"><i class="fas fa-flask"></i> Manage Labs</button></li>
+                <li><button class="tab-button" data-tab="manage-tests-tab"><i class="fas fa-vial"></i> Manage Tests</button></li>
+                <li><button class="tab-button" data-tab="manage-health-concerns-tab"><i class="fas fa-heartbeat"></i> Manage Health Concerns</button></li>
+                <li><button class="tab-button" data-tab="manage-offers-tab"><i class="fas fa-tags"></i> Manage Offers</button></li>
+                <li><button class="tab-button" data-tab="view-prescriptions-tab"><i class="fas fa-file-prescription"></i> View Prescriptions</button></li>
+                <li><button class="tab-button" data-tab="manage-users-tab"><i class="fas fa-users-cog"></i> Manage Users</button></li>
+                <li><button class="tab-button" data-tab="manage-bookings-tab"><i class="fas fa-calendar-check"></i> Manage Bookings</button></li>
+                <li><button class="tab-button" data-tab="manage-banners-tab"><i class="fas fa-images"></i> Manage Banners</button></li>
+                <li><button class="tab-button" data-tab="site-settings-tab"><i class="fas fa-cog"></i> Site Settings</button></li>
+                <li><button class="tab-button" data-tab="manage-data-tab"><i class="fas fa-database"></i> Manage Data (Excel)</button></li>
+                <li><button class="tab-button" data-tab="charts-tab"><i class="fas fa-chart-line"></i> Charts</button></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logout-button" class="btn btn-danger logout-button"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Manage Labs Tab -->
+            <div id="manage-labs-tab" class="tab-content active">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-plus-circle"></i> Add New Lab</h4>
+                    <form id="add-lab-form" class="styled-form">
+                        <div class="form-group">
+                            <label for="lab-name">Lab Name:</label>
+                            <input type="text" id="lab-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lab-location">Location (Optional):</label>
+                            <input type="text" id="lab-location">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Lab</button>
+                    </form>
+                </section>
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-flask"></i> Current Labs</h4>
+                    <div class="table-container">
+                        <table id="labs-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Location</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labs-table-body">
+                                <!-- Labs will be loaded here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Tests Tab -->
+            <div id="manage-tests-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-plus-circle"></i> Add New Test</h4>
+                    <form id="add-test-form" class="styled-form complex-form">
+                        <div class="form-group">
+                            <label for="test-name">Test Name:</label>
+                            <input type="text" id="test-name-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="test-description">Description (Optional):</label>
+                            <textarea id="test-description-input"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="test-image-url-input">Image URL (Optional):</label>
+                            <input type="text" id="test-image-url-input" placeholder="Or paste image URL here">
+                            <input type="file" id="test-image-file-input" accept="image/*" class="file-input">
+                            <button type="button" id="test-image-upload-btn" class="btn btn-secondary btn-sm">Upload Image to Cloudinary</button>
+                            <img id="test-image-preview-img" class="image-preview" alt="Test Image Preview" style="display:none;">
+                        </div>
+                        <div class="form-group">
+                            <label for="test-tags-input">Tags (Optional, comma-separated):</label>
+                            <input type="text" id="test-tags-input">
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="test-is-popular-input"> <label for="test-is-popular-input">Is Popular?</label>
+                            <input type="checkbox" id="test-is-package-input"> <label for="test-is-package-input">Is Package?</label>
+                            <input type="checkbox" id="test-is-active-input" checked> <label for="test-is-active-input">Is Active?</label>
+                        </div>
+                         <div class="form-group">
+                            <label for="test-banner-text-input">Banner Text (Optional):</label>
+                            <input type="text" id="test-banner-text-input">
+                        </div>
+
+                        <h5><i class="fas fa-pills"></i> Health Concerns for this Test:</h5>
+                        <div id="health-concerns-checkboxes-add" class="checkbox-grid">
+                            <!-- Health concern checkboxes will be loaded here -->
+                            <p>Loading health concerns...</p>
+                        </div>
+                        <!-- Bouncing Down Arrow Animation -->
+                        <div style="text-align:center; margin-bottom: 8px;">
+                            <span class="bouncing-down-arrow">
+                                <i class="fas fa-arrow-down"></i>
+                            </span>
+                        </div>
+                        <h5><i class="fas fa-dollar-sign"></i> Lab Prices:</h5>
+                        <div id="lab-prices-container-add">
+                            <!-- Lab price rows will be added here -->
+                        </div>
+                        <button type="button" id="add-lab-price-row-btn-add" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Add Lab Price</button>
+                        <hr>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Test</button>
+                    </form>
+                </section>
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-vial"></i> Current Tests & Prices</h4>
+                     <div class="form-group">
+                        <label for="import-quick-tests-btn">Quick Actions:</label>
+                        <button type="button" id="import-quick-tests-btn" class="btn btn-info btn-sm"><i class="fas fa-bolt"></i> Import Default Quick Tests</button>
+                    </div>
+                    <div class="form-group" style="max-width: 350px; margin-bottom: 16px;">
+                        <input type="text" id="test-search-input" class="form-control" placeholder="Search tests by name, description, or tag...">
+                    </div>
+                    <div class="table-container">
+                        <table id="tests-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Image</th>
+                                    <th>Tags</th>
+                                    <th>Popular</th>
+                                    <th>Package</th>
+                                    <th>Active</th>
+                                    <th>Banner Text</th>
+                                    <th>Health Concerns</th>
+                                    <th>Lab Prices</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tests-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Health Concerns Tab -->
+            <div id="manage-health-concerns-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-plus-circle"></i> Add New Health Concern</h4>
+                    <form id="add-health-concern-form" class="styled-form">
+                        <div class="form-group">
+                            <label for="hc-name-input">Concern Name:</label>
+                            <input type="text" id="hc-name-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="hc-display-order-input">Display Order:</label>
+                            <input type="number" id="hc-display-order-input" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="hc-icon-url-input">Icon URL (Optional):</label>
+                            <input type="text" id="hc-icon-url-input" placeholder="Or paste image URL here">
+                            <input type="file" id="hc-icon-file-input" accept="image/*" class="file-input">
+                            <button type="button" id="hc-icon-upload-btn" class="btn btn-secondary btn-sm">Upload Icon to Cloudinary</button>
+                            <img id="hc-icon-preview-img" class="image-preview" alt="Icon Preview" style="display:none;">
+                        </div>
+                         <div class="form-group checkbox-group">
+                            <input type="checkbox" id="hc-is-active-checkbox" checked> <label for="hc-is-active-checkbox">Is Active?</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Health Concern</button>
+                    </form>
+                </section>
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-heartbeat"></i> Current Health Concerns</h4>
+                    <div class="table-container">
+                        <table id="health-concerns-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Icon</th>
+                                    <th>Display Order</th>
+                                    <th>Is Active</th>
+                                    <th>Slug</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="health-concerns-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Offers Tab -->
+            <div id="manage-offers-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-plus-circle"></i> Add New Offer</h4>
+                    <form id="add-offer-form" class="styled-form">
+                        <div class="form-group">
+                            <label for="offer-title-input">Offer Title:</label>
+                            <input type="text" id="offer-title-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-description-input">Description (Optional):</label>
+                            <textarea id="offer-description-input"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-test-id-input">Applicable Test:</label>
+                            <select id="offer-test-id-input" required>
+                                <option value="">Loading tests...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-discount-percentage-input">Discount Percentage (%):</label>
+                            <input type="number" id="offer-discount-percentage-input" min="0" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-coupon-code-input">Coupon Code (Optional):</label>
+                            <input type="text" id="offer-coupon-code-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-start-date-input">Start Date:</label>
+                            <input type="date" id="offer-start-date-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-end-date-input">End Date:</label>
+                            <input type="date" id="offer-end-date-input" required>
+                        </div>
+                        <div class="form-group checkbox-group">
+                           <input type="checkbox" id="offer-is-active-input" checked> <label for="offer-is-active-input">Is Active?</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Offer</button>
+                    </form>
+                </section>
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-tags"></i> Current Offers</h4>
+                    <div class="table-container">
+                        <table id="offers-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Test Name</th>
+                                    <th>Discount %</th>
+                                    <th>Coupon Code</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="offers-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- View Prescriptions Tab -->
+            <div id="view-prescriptions-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-file-prescription"></i> Uploaded Prescriptions</h4>
+                    <div class="table-container">
+                        <table id="prescriptions-table">
+                            <thead>
+                                <tr>
+                                    <th>User Name</th>
+                                    <th>Phone</th>
+                                    <th>Image Preview</th>
+                                    <th>Submitted At</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prescriptions-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Users Tab -->
+            <div id="manage-users-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-users-cog"></i> Registered Users</h4>
+                    <div class="table-container">
+                        <table id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>UID</th>
+                                    <th>Email</th>
+                                    <th>Display Name</th>
+                                    <th>Phone Number</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Bookings Tab -->
+            <div id="manage-bookings-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-calendar-check"></i> All Bookings</h4>
+                    <div class="table-container">
+                        <table id="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>User Name</th>
+                                    <th>User Contact</th>
+                                    <th>Booking Date</th>
+                                    <th>Total Amount</th>
+                                    <th>Items</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookings-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manage Banners Tab -->
+            <div id="manage-banners-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-images"></i> Manage Primary Banners (Homepage Top)</h4>
+                    <form id="add-primary-banner-form" class="styled-form complex-form">
+                        <h5><i class="fas fa-plus-circle"></i> Add New Primary Banner</h5>
+                        <div class="form-group">
+                            <label for="primary-banner-title-input">Title:</label>
+                            <input type="text" id="primary-banner-title-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="primary-banner-subtitle-input">Subtitle (Optional):</label>
+                            <input type="text" id="primary-banner-subtitle-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="primary-banner-icon-name-input">Icon Name (Lucide/FontAwesome):</label>
+                            <input type="text" id="primary-banner-icon-name-input" placeholder="e.g., fa-tags or Gift">
+                        </div>
+                        <div class="form-group">
+                            <label for="primary-banner-link-url-input">Link URL (Optional):</label>
+                            <input type="url" id="primary-banner-link-url-input" placeholder="https://example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="primary-banner-image-url-input">Background Image URL (Optional):</label>
+                            <input type="text" id="primary-banner-image-url-input" placeholder="Or paste image URL here">
+                            <input type="file" id="primary-banner-image-file-input" accept="image/*" class="file-input">
+                            <button type="button" id="primary-banner-image-upload-btn" class="btn btn-secondary btn-sm">Upload Image</button>
+                            <img id="primary-banner-image-preview-img" class="image-preview" alt="Primary Banner Preview" style="display:none;">
+                        </div>
+                        <div class="form-group">
+                            <label for="primary-banner-order-input">Display Order:</label>
+                            <input type="number" id="primary-banner-order-input" value="0" required>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="primary-banner-is-active-input" checked> <label for="primary-banner-is-active-input">Is Active?</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Primary Banner</button>
+                    </form>
+                    <div class="table-container" style="margin-top: 20px;">
+                        <table id="primary-banners-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Subtitle</th>
+                                    <th>Icon</th>
+                                    <th>Link</th>
+                                    <th>Image</th>
+                                    <th>Order</th>
+                                    <th>Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="primary-banners-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+                 <hr style="margin: 20px 0;">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-images"></i> Manage Secondary Banners (Homepage Middle)</h4>
+                    <form id="add-secondary-banner-form" class="styled-form complex-form">
+                         <h5><i class="fas fa-plus-circle"></i> Add New Secondary Banner</h5>
+                        <div class="form-group">
+                            <label for="secondary-banner-title-input">Title:</label>
+                            <input type="text" id="secondary-banner-title-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="secondary-banner-subtitle-input">Subtitle (Optional):</label>
+                            <input type="text" id="secondary-banner-subtitle-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="secondary-banner-icon-name-input">Icon Name (Lucide/FontAwesome):</label>
+                            <input type="text" id="secondary-banner-icon-name-input" placeholder="e.g., fa-tags or Gift">
+                        </div>
+                        <div class="form-group">
+                            <label for="secondary-banner-link-url-input">Link URL (Optional):</label>
+                            <input type="url" id="secondary-banner-link-url-input" placeholder="https://example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="secondary-banner-image-url-input">Background Image URL (Optional):</label>
+                            <input type="text" id="secondary-banner-image-url-input" placeholder="Or paste image URL here">
+                            <input type="file" id="secondary-banner-image-file-input" accept="image/*" class="file-input">
+                            <button type="button" id="secondary-banner-image-upload-btn" class="btn btn-secondary btn-sm">Upload Image</button>
+                            <img id="secondary-banner-image-preview-img" class="image-preview" alt="Secondary Banner Preview" style="display:none;">
+                        </div>
+                        <div class="form-group">
+                            <label for="secondary-banner-order-input">Display Order:</label>
+                            <input type="number" id="secondary-banner-order-input" value="0" required>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="secondary-banner-is-active-input" checked> <label for="secondary-banner-is-active-input">Is Active?</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Secondary Banner</button>
+                    </form>
+                     <div class="table-container" style="margin-top: 20px;">
+                        <table id="secondary-banners-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Subtitle</th>
+                                    <th>Icon</th>
+                                    <th>Link</th>
+                                    <th>Image</th>
+                                    <th>Order</th>
+                                    <th>Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secondary-banners-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Site Settings Tab -->
+            <div id="site-settings-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-sitemap"></i> Site Configuration</h4>
+                    <form id="site-settings-form" class="styled-form">
+                        <div class="form-group">
+                            <label for="site-name-input">Site Name:</label>
+                            <input type="text" id="site-name-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="site-logo-url-input">Site Logo URL:</label>
+                            <input type="text" id="site-logo-url-input" placeholder="Or paste logo URL here">
+                            <input type="file" id="site-logo-file-input" accept="image/*" class="file-input">
+                            <button type="button" id="site-logo-upload-btn" class="btn btn-secondary btn-sm">Upload Logo to Cloudinary</button>
+                            <img id="site-logo-preview-img" class="image-preview" alt="Site Logo Preview" style="display:none;">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Site Settings</button>
+                    </form>
+                </section>
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-palette"></i> Theme Settings (HSL Colors)</h4>
+                    <form id="theme-settings-form" class="styled-form">
+                        <p class="form-hint">Enter HSL values like "H S% L%" (e.g., "210 40% 96%").</p>
+                        <div class="form-group">
+                            <label for="theme-background-hsl-input">Background HSL:</label>
+                            <input type="text" id="theme-background-hsl-input" placeholder="e.g., 200 20% 98%">
+                        </div>
+                        <div class="form-group">
+                            <label for="theme-foreground-hsl-input">Foreground HSL:</label>
+                            <input type="text" id="theme-foreground-hsl-input" placeholder="e.g., 220 20% 25%">
+                        </div>
+                        <div class="form-group">
+                            <label for="theme-primary-hsl-input">Primary HSL:</label>
+                            <input type="text" id="theme-primary-hsl-input" placeholder="e.g., 175 70% 40%">
+                        </div>
+                        <div class="form-group">
+                            <label for="theme-accent-hsl-input">Accent HSL:</label>
+                            <input type="text" id="theme-accent-hsl-input" placeholder="e.g., 45 90% 55%">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Theme Settings</button>
+                    </form>
+                </section>
+            </div>
+
+             <!-- Manage Data (Excel) Tab -->
+            <div id="manage-data-tab" class="tab-content">
+                <section id="test-data-management-section" class="dashboard-section card-style">
+                    <h4><i class="fas fa-file-excel"></i> Test Data Management (Excel)</h4>
+                    <div class="form-group">
+                        <button id="dashboard-export-excel-btn" class="btn btn-success"><i class="fas fa-file-export"></i> Export Tests to Excel</button>
+                        <p class="form-hint">Exports all tests and their lab prices to an .xlsx file.</p>
+                    </div>
+                    <hr>
+                    <div class="form-group">
+                        <label for="dashboard-import-excel-file">Import Tests from Excel File:</label>
+                        <input type="file" id="dashboard-import-excel-file" accept=".xlsx, .xls" class="file-input">
+                        <button id="dashboard-import-excel-submit-btn" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Selected File</button>
+                        <p class="form-hint">Expected columns: Test Name, Description, Image URL, Tags (comma-separated), Is Popular (TRUE/FALSE), Is Package (TRUE/FALSE), Is Active (TRUE/FALSE), Lab Name, Price, Original Price.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Charts Tab -->
+            <div id="charts-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-chart-line"></i> Analytics & Charts</h4>
+                    <p>Charts and analytics will be displayed here in a future update.</p>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="edit-lab-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Edit Lab</h4>
+            <form id="edit-lab-form-modal" class="styled-form">
+                <input type="hidden" id="edit-lab-id-modal-input">
+                <div class="form-group">
+                    <label for="edit-lab-name-modal-input">Lab Name:</label>
+                    <input type="text" id="edit-lab-name-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-lab-location-modal-input">Location:</label>
+                    <input type="text" id="edit-lab-location-modal-input">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Lab</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-test-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Edit Test</h4>
+            <form id="edit-test-form-modal" class="styled-form complex-form">
+                <input type="hidden" id="edit-test-id-modal-input">
+                <div class="form-group">
+                    <label for="edit-test-name-modal-input">Test Name:</label>
+                    <input type="text" id="edit-test-name-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-test-description-modal-input">Description:</label>
+                    <textarea id="edit-test-description-modal-input"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-test-image-url-modal-input">Image URL:</label>
+                    <input type="text" id="edit-test-image-url-modal-input" placeholder="Or paste image URL here">
+                     <input type="file" id="edit-test-image-file-modal-input" accept="image/*" class="file-input">
+                     <button type="button" id="edit-test-image-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Image</button>
+                    <img id="edit-test-image-preview-modal-img" class="image-preview" alt="Test Image Preview" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label for="edit-test-tags-modal-input">Tags (comma-separated):</label>
+                    <input type="text" id="edit-test-tags-modal-input">
+                </div>
+                 <div class="form-group checkbox-group">
+                    <input type="checkbox" id="edit-test-is-popular-modal-input"> <label for="edit-test-is-popular-modal-input">Is Popular?</label>
+                    <input type="checkbox" id="edit-test-is-package-modal-input"> <label for="edit-test-is-package-modal-input">Is Package?</label>
+                    <input type="checkbox" id="edit-test-is-active-modal-input"> <label for="edit-test-is-active-modal-input">Is Active?</label>
+                </div>
+                <div class="form-group">
+                    <label for="edit-test-banner-text-modal-input">Banner Text:</label>
+                    <input type="text" id="edit-test-banner-text-modal-input">
+                </div>
+                <h5><i class="fas fa-pills"></i> Health Concerns for this Test:</h5>
+                <div id="health-concerns-checkboxes-edit" class="checkbox-grid">
+                    <!-- Health concern checkboxes for edit will be loaded here -->
+                </div>
+                <h5><i class="fas fa-dollar-sign"></i> Lab Prices:</h5>
+                <div id="lab-prices-container-edit">
+                    <!-- Lab price rows for edit will be loaded here -->
+                </div>
+                <button type="button" id="add-lab-price-row-btn-edit" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Add Lab Price</button>
+                <hr>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Test</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="edit-health-concern-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Edit Health Concern</h4>
+            <form id="edit-health-concern-form-modal" class="styled-form">
+                <input type="hidden" id="edit-hc-id-modal-input">
+                <div class="form-group">
+                    <label for="edit-hc-name-modal-input">Concern Name:</label>
+                    <input type="text" id="edit-hc-name-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-hc-display-order-modal-input">Display Order:</label>
+                    <input type="number" id="edit-hc-display-order-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-hc-icon-url-modal-input">Icon URL:</label>
+                    <input type="text" id="edit-hc-icon-url-modal-input" placeholder="Or paste image URL here">
+                    <input type="file" id="edit-hc-icon-file-modal-input" accept="image/*" class="file-input">
+                    <button type="button" id="edit-hc-icon-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Icon</button>
+                    <img id="edit-hc-icon-preview-modal-img" class="image-preview" alt="Icon Preview" style="display:none;">
+                </div>
+                 <div class="form-group checkbox-group">
+                    <input type="checkbox" id="edit-hc-is-active-modal-checkbox"> <label for="edit-hc-is-active-modal-checkbox">Is Active?</label>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Health Concern</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-offer-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Edit Offer</h4>
+            <form id="edit-offer-form-modal" class="styled-form">
+                <input type="hidden" id="edit-offer-id-modal-input">
+                <div class="form-group">
+                    <label for="edit-offer-title-modal-input">Offer Title:</label>
+                    <input type="text" id="edit-offer-title-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-description-modal-input">Description:</label>
+                    <textarea id="edit-offer-description-modal-input"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-test-id-modal-input">Applicable Test:</label>
+                    <select id="edit-offer-test-id-modal-input" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-discount-percentage-modal-input">Discount Percentage (%):</label>
+                    <input type="number" id="edit-offer-discount-percentage-modal-input" min="0" max="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-coupon-code-modal-input">Coupon Code:</label>
+                    <input type="text" id="edit-offer-coupon-code-modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-start-date-modal-input">Start Date:</label>
+                    <input type="date" id="edit-offer-start-date-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-offer-end-date-modal-input">End Date:</label>
+                    <input type="date" id="edit-offer-end-date-modal-input" required>
+                </div>
+                <div class="form-group checkbox-group">
+                   <input type="checkbox" id="edit-offer-is-active-modal-input"> <label for="edit-offer-is-active-modal-input">Is Active?</label>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Offer</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="update-prescription-status-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Update Prescription Status</h4>
+            <form id="update-prescription-status-form-modal" class="styled-form">
+                <input type="hidden" id="update-prescription-id-modal-input">
+                <p>Prescription for: <strong id="prescription-user-name-modal-display"></strong></p>
+                <div class="form-group">
+                    <label for="prescription-status-modal-select">New Status:</label>
+                    <select id="prescription-status-modal-select">
+                        <option value="Pending Review">Pending Review</option>
+                        <option value="Reviewed - Contacted">Reviewed - Contacted</option>
+                        <option value="Processed">Processed</option>
+                        <option value="Requires Clarification">Requires Clarification</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <button type="submit" id="update-prescription-status-btn-modal" class="btn btn-primary"><i class="fas fa-save"></i> Update Status</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="user-bookings-modal" class="modal">
+        <div class="modal-content card-style large-modal">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-history"></i> Booking History for <span id="user-bookings-modal-username"></span></h4>
+            <div id="user-bookings-modal-content" class="table-container">
+                <p>Loading bookings...</p>
+                <!-- Bookings table will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-banner-modal" class="modal">
+        <div class="modal-content card-style">
+            <span class="close-modal-btn">&times;</span>
+            <h4><i class="fas fa-edit"></i> Edit Banner</h4>
+            <form id="edit-banner-form-modal" class="styled-form complex-form">
+                <input type="hidden" id="edit-banner-id-modal-input">
+                <input type="hidden" id="edit-banner-type-modal-input">
+                <div class="form-group">
+                    <label for="edit-banner-title-modal-input">Title:</label>
+                    <input type="text" id="edit-banner-title-modal-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-banner-subtitle-modal-input">Subtitle:</label>
+                    <input type="text" id="edit-banner-subtitle-modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-banner-icon-name-modal-input">Icon Name:</label>
+                    <input type="text" id="edit-banner-icon-name-modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-banner-link-url-modal-input">Link URL:</label>
+                    <input type="url" id="edit-banner-link-url-modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-banner-image-url-modal-input">Background Image URL:</label>
+                    <input type="text" id="edit-banner-image-url-modal-input" placeholder="Or paste image URL here">
+                    <input type="file" id="edit-banner-image-file-modal-input" accept="image/*" class="file-input">
+                    <button type="button" id="edit-banner-image-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Image</button>
+                    <img id="edit-banner-image-preview-modal-img" class="image-preview" alt="Banner Preview" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label for="edit-banner-order-modal-input">Display Order:</label>
+                    <input type="number" id="edit-banner-order-modal-input" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="edit-banner-is-active-modal-input"> <label for="edit-banner-is-active-modal-input">Is Active?</label>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Banner</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-notification" class="toast-notification"></div>
+
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="app.js" defer></script>
+</body>
+</html>

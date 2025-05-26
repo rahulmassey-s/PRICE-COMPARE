@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 200 20% 98%; /* Very light, almost white, cool gray */
+    --foreground: 220 20% 25%; /* Dark, cool gray-blue */
+
+    --card: 0 0% 100%; /* White for card backgrounds */
+    --card-foreground: 220 20% 25%; /* Same as main foreground */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 25%;
+
+    --primary: 175 70% 40%; /* Friendly Teal/Green */
+    --primary-foreground: 0 0% 100%; /* White for text on primary */
+
+    --secondary: 180 80.39% 62.22%; 
+    --secondary-foreground: 0 0% 0%; /* Black text on secondary */
+
+    --muted: 210 20% 92%; /* Light cool gray for muted elements */
+    --muted-foreground: 210 15% 55%; /* Medium cool gray for muted text */
+
+    --accent: 45 90% 55%; /* Warm Yellow/Gold */
+    --accent-foreground: 220 20% 15%; /* Darker text for contrast on yellow/gold */
+    
+    --accent-2: 180 69% 45%; /* Teal, effectively #22c3c3 - kept from previous for some UI elements */
+    --accent-2-foreground: 0 0% 100%; /* White text for Teal */
+    
+    --accent-3: 263 49% 55%; /* Rich Purple - kept from previous */
+    --accent-3-foreground: 0 0% 100%; /* White text for Purple */
+
+    --destructive: 0 75% 55%; /* Slightly softer Red */
+    --destructive-foreground: 0 0% 100%; /* White for text on destructive */
+
+    --border: 200 20% 88%; /* Light cool gray border */
+    --input: 0 0% 100%; /* Input background - white */
+    --ring: 175 70% 45%; /* Ring color on focus (matching primary Teal/Green) */
+    
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem; /* ShadCN default, slightly sharper */
+
+    /* Sidebar specific colors */
+    --sidebar-background: 175 30% 97%; 
+    --sidebar-foreground: 220 20% 30%; 
+    --sidebar-primary: 175 70% 40%;  
+    --sidebar-primary-foreground: 0 0% 100%; 
+    --sidebar-accent: 175 60% 90%; 
+    --sidebar-accent-foreground: 175 70% 35%; 
+    --sidebar-border: 175 25% 88%; 
+    --sidebar-ring: 175 70% 45%; 
+  }
+
+  .dark {
+    --background: 220 15% 10%; /* Deep Cool Blue-Gray */
+    --foreground: 210 30% 90%; /* Light gray for text */
+
+    --card: 220 15% 15%; /* Slightly lighter dark blue-gray for cards */
+    --card-foreground: 210 30% 90%;
+
+    --popover: 220 15% 10%;
+    --popover-foreground: 210 30% 90%;
+
+    --primary: 175 65% 50%; /* Slightly lighter Teal/Green for dark mode */
+    --primary-foreground: 0 0% 100%; 
+
+    --secondary: 180 50% 25%; 
+    --secondary-foreground: 180 50% 85%; 
+
+    --muted: 210 15% 20%; /* Darker muted tone */
+    --muted-foreground: 210 15% 65%; /* Lighter muted text */
+
+    --accent: 45 85% 60%; /* Brighter Yellow/Gold in dark mode */
+    --accent-foreground: 220 20% 10%; /* Very dark text on bright accent */
+
+    --accent-2: 180 69% 40%; 
+    --accent-2-foreground: 0 0% 100%; 
+
+    --accent-3: 263 49% 45%; 
+    --accent-3-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 60%; 
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 15% 25%; /* Subtle border in dark mode */
+    --input: 210 15% 18%; /* Dark input background */
+    --ring: 175 65% 55%; /* Teal/Green ring for dark mode */
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    /* Dark Sidebar specific colors */
+    --sidebar-background: 220 15% 8%; 
+    --sidebar-foreground: 210 30% 88%; 
+    --sidebar-primary: 175 65% 50%; 
+    --sidebar-primary-foreground: 0 0% 100%; 
+    --sidebar-accent: 175 50% 20%; 
+    --sidebar-accent-foreground: 175 50% 80%; 
+    --sidebar-border: 210 15% 22%;
+    --sidebar-ring: 175 65% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1; 
+  }
+}
+
+/* Custom gradient for Free Camp banner - using new primary (Teal/Green) */
+.free-camp-gradient {
+  background-image: linear-gradient(to right, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.15));
+}
+.dark .free-camp-gradient {
+  background-image: linear-gradient(to right, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.35), hsl(var(--primary) / 0.25));
+}
+
+
+/* Custom gradients for booking option cards - can be updated if accent-2/3 change significantly */
+.booking-card-upload-gradient {
+  background-image: linear-gradient(to bottom right, hsl(var(--accent-3) / 0.85), hsl(159.47deg 49% 55%)); 
+}
+.booking-card-call-gradient {
+ background-image: linear-gradient(to bottom right, hsl(var(--accent-3) / 0.85), hsl(var(--accent-3) / 1)); 
+}
+.booking-card-whatsapp-gradient {
+  background-image: linear-gradient(to bottom right, hsl(var(--accent-2) / 0.85), hsl(var(--accent-2) / 1)); 
+}
+
+.dark .booking-card-upload-gradient {
+  background-image: linear-gradient(to bottom right, hsl(var(--accent-3) / 0.6), hsl(159.47deg 49% 45% / 0.8)); 
+}
+.dark .booking-card-call-gradient {
+  background-image: linear-gradient(to bottom right, hsl(var(--accent-3) / 0.6), hsl(var(--accent-3) / 0.8)); 
+}
+.dark .booking-card-whatsapp-gradient {
+  background-image: linear-gradient(to bottom right, hsl(var(--accent-2) / 0.6), hsl(var(--accent-2) / 0.8)); 
+}
+
+/* General subtle transition for interactive elements if needed */
+.subtle-interactive {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Keyframes and class for cart icon spin */
+@keyframes cart-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-cart-spin {
+  animation: cart-spin 1s linear infinite; /* Continuous, linear spin */
+}
+
+/* Keyframes and class for app title animation */
+@keyframes appTitlePulse {
+  0%, 100% {
+    color: hsl(var(--primary));
+    text-shadow: 0 0 5px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    color: hsl(var(--accent)); /* Pulse to accent color */
+    text-shadow: 0 0 10px hsl(var(--accent) / 0.5);
+  }
+}
+
+.app-title-animated {
+  animation: appTitlePulse 3s infinite ease-in-out;
+  display: inline-block; /* Ensures transform/shadow behaves as expected */
+}
+
+/* REMOVED Animation for headerBannerScroll as it's no longer used */
+/* .animate-header-banner-scroll { ... } */
+/* .header-scrolling-banner { ... } */
+
+/* CSS for Marquee Effect */
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  width: 100%; 
+  display: flex; 
+  align-items: center; 
+}
+
+.marquee-text {
+  display: inline-block;
+  padding-left: 100%; 
+  animation: marquee-scroll 15s linear infinite; 
+  will-change: transform; 
+}
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-200%); 
+  }
+}
+
+@keyframes pricePulse {
+  0%, 100% { transform: scale(1); opacity: 1; color: hsl(var(--primary)); }
+  50% { transform: scale(1.08); opacity: 0.9; color: hsl(var(--accent)); }
+}
+.animate-price-pulse {
+  animation: pricePulse 2s infinite ease-in-out;
+}
+
+.bouncing-down-arrow {
+  display: inline-block;
+  animation: bounceDown 1.2s infinite;
+  font-size: 2.2rem;
+  color: #4fc3f7;
+  margin-bottom: 0;
+}
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(16px); }
+}
