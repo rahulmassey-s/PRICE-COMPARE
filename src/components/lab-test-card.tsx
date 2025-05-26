@@ -350,9 +350,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
                                 <span className="sr-only">{copiedStatus[labPriceId] ? "Copied" : "Copy coupon"}</span>
                               </Button>
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2">
+                            {/* <p className="text-xs text-muted-foreground mb-2">
                               Show this code at <span className="font-medium text-foreground">{priceInfo.labName}</span> or contact us:
-                            </p>
+                            </p> */}
                             <div className="space-y-1.5">
                               <Button
                                 asChild
