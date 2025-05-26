@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
+import '../i18n';
 
 const PromotionalBannerCarousel = dynamic(() => import('@/components/promotional-banner-carousel'), {
   loading: () => <Skeleton className="w-full rounded-xl h-[120px] sm:h-[160px] mb-6" />,
@@ -55,6 +57,7 @@ const healthConcernIconMap: { [key: string]: React.ElementType } = {
 
 export default function HomePage({ }: HomePageProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const [popularLabTests, setPopularLabTests] = useState<LabTest[]>([]);
@@ -81,6 +84,8 @@ export default function HomePage({ }: HomePageProps) {
   const [selectedHealthConcern, setSelectedHealthConcern] = useState<HealthConcern | null>(null);
   const [filteredTestsByConcern, setFilteredTestsByConcern] = useState<LabTest[]>([]);
   const [isLoadingFilteredTests, setIsLoadingFilteredTests] = useState(false);
+
+  const filteredTestsRef = useRef<HTMLDivElement>(null);
 
   const handleFirestoreError = useCallback((error: any, context: string) => {
     console.error(`Firestore error (${context}):`, error);
@@ -214,7 +219,7 @@ export default function HomePage({ }: HomePageProps) {
       id: testSlug,
       docId: testDocSnap.id,
       name: testData.testName,
-      imageUrl: testData.testImageUrl,
+      imageUrl: testData.imageUrl || testData.testImageUrl,
       description: testData.description,
       bannerText: testData.bannerText, // Ensure bannerText is mapped
       tags: testData.tags,
@@ -422,6 +427,11 @@ export default function HomePage({ }: HomePageProps) {
     fetchFilteredTests();
   }, [selectedHealthConcern, transformTestDocWithoutPrices, fetchAndAttachPricesToTests, handleFirestoreError]);
 
+  useEffect(() => {
+    if (selectedHealthConcern && filteredTestsRef.current) {
+      filteredTestsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedHealthConcern]);
 
   const handleQuickTestSelect = useCallback(async (testName: string, docIdToFetch?: string) => {
     setIsLoadingSingleTest(true);
@@ -650,7 +660,7 @@ export default function HomePage({ }: HomePageProps) {
           />
 
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-foreground mb-4">How would you like to book?</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">{t('how_would_you_like_to_book')}</h2>
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {bookingOptions.map((option) => (
                 <a
@@ -678,16 +688,16 @@ export default function HomePage({ }: HomePageProps) {
 
           <form onSubmit={handleSearchSubmit} className="mb-6 sticky top-[60px] sm:top-[68px] z-30 bg-background py-4 shadow-sm -mx-4 px-4">
             <h2 className="text-xl font-bold text-primary mb-2 text-center animate-fade-in-down">
-              Looking for a specific test?
+              {t('looking_for_specific_test')}
             </h2>
             <p className="text-center text-muted-foreground mb-3 text-xs sm:text-sm animate-fade-in-down animation-delay-200">
-              Type the test name below to find it quickly.
+              {t('type_test_name_below')}
             </p>
             <div ref={searchContainerRef} className="relative max-w-lg mx-auto animate-fade-in-up animation-delay-400">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 sm:h-5 w-4 sm:h-5 text-primary/70 pointer-events-none" />
               <Input
                 type="text"
-                placeholder="Search any test & package (e.g., HBA1C)"
+                placeholder={t('search_placeholder')}
                 value={localSearchTerm}
                 onChange={handleLocalSearchChange}
                 onKeyDown={handleLocalSearchKeyDown}
@@ -746,10 +756,10 @@ export default function HomePage({ }: HomePageProps) {
                 <Microscope className="h-7 w-7 sm:h-8 sm:w-8 text-primary mr-2 sm:mr-3" />
                 <div>
                   <CardTitle className="text-lg sm:text-xl font-bold text-foreground">
-                    Browse By Health Concern
+                    {t('browse_by_health_concern')}
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm text-muted-foreground">
-                    Tailor Made Packages Under One Roof
+                    {t('tailor_made_packages')}
                   </CardDescription>
                 </div>
               </div>
@@ -809,21 +819,23 @@ export default function HomePage({ }: HomePageProps) {
                   })}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-4">No health concerns found. Please check back later or add some in the admin panel.</p>
+                <p className="text-muted-foreground text-center py-4">{t('no_health_concerns_found')}</p>
               )}
             </CardContent>
           </Card>
 
           {/* Section for Filtered Tests by Health Concern */}
           {selectedHealthConcern && (
-            renderTestList(
-              filteredTestsByConcern,
-              `Tests for "${selectedHealthConcern.name}"`,
-              `No active tests found for "${selectedHealthConcern.name}". Try another category or clear the filter.`,
-              isLoadingFilteredTests,
-              ListFilter,
-              'filtered'
-            )
+            <div ref={filteredTestsRef}>
+              {renderTestList(
+                filteredTestsByConcern,
+                `${t('tests_for')} "${selectedHealthConcern.name}"`,
+                `${t('no_active_tests_for')} "${selectedHealthConcern.name}". ${t('try_another_category')}`,
+                isLoadingFilteredTests,
+                ListFilter,
+                'filtered'
+              )}
+            </div>
           )}
 
 
@@ -836,7 +848,7 @@ export default function HomePage({ }: HomePageProps) {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center">
               <FlaskConical size={22} className="mr-2 text-primary" />
-              Select Test
+              {t('select_test')}
             </h2>
             <Card className="shadow-md rounded-xl p-3 bg-secondary/20">
               <ScrollArea className="w-full whitespace-nowrap rounded-md">
@@ -858,7 +870,7 @@ export default function HomePage({ }: HomePageProps) {
                       </Button>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground px-2">No quick tests available at the moment.</p>
+                    <p className="text-sm text-muted-foreground px-2">{t('no_quick_tests_available')}</p>
                   )}
                 </div>
                 <ScrollBar orientation="horizontal" />
@@ -866,8 +878,8 @@ export default function HomePage({ }: HomePageProps) {
             </Card>
           </section>
 
-          {renderTestList(popularLabTests, 'Popular Lab Tests', 'There are currently no popular lab tests listed. More tests coming soon or try searching!', isLoadingPopular, Sparkles, 'popular')}
-          {renderTestList(packageLabTests, 'Packages', 'No special packages available at the moment. Explore our individual tests or create your own custom package!', isLoadingPackages, Package, 'package')}
+          {renderTestList(popularLabTests, t('popular_lab_tests'), t('no_popular_lab_tests'), isLoadingPopular, Sparkles, 'popular')}
+          {renderTestList(packageLabTests, t('packages'), t('no_packages_available'), isLoadingPackages, Package, 'package')}
         </div>
 
         <Dialog open={isDetailsDialogOpen} onOpenChange={handleDialogClose}>

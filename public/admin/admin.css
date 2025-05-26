@@ -410,7 +410,7 @@ table {
     font-size: 0.9em;
 }
 table th, table td {
-    padding: 10px 12px;
+    padding: 6px 8px;
     border: 1px solid var(--border-color);
     text-align: left;
     vertical-align: middle;
@@ -720,4 +720,21 @@ table ul li {
 @keyframes bounceDown {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(16px); }
+}
+
+#tests-table .test-description-cell {
+  white-space: pre-line;
+  word-break: break-word;
+  max-width: 350px;
+  max-height: 120px;
+  overflow-y: auto;
+  vertical-align: top;
+  display: block;
+}
+#tests-table {
+  table-layout: fixed;
+}
+#tests-table td, #tests-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

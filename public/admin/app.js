@@ -341,7 +341,9 @@ async function loadTests() {
 
             const row = testsTableBody.insertRow();
             row.insertCell().textContent = testData.testName || 'N/A';
-            row.insertCell().textContent = testData.description || 'N/A';
+            const descCell = row.insertCell();
+            descCell.className = 'test-description-cell';
+            descCell.innerHTML = (testData.description || 'N/A').replace(/\n/g, '<br>');
             
             const imageCell = row.insertCell();
             if (testData.imageUrl) {

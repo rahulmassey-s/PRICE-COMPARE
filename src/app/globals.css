@@ -233,3 +233,25 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(16px); }
 }
+
+@keyframes bounceX {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  50% { transform: translateX(8px); }
+  80% { transform: translateX(-8px); }
+}
+.animate-bounce-x {
+  animation: bounceX 2.2s cubic-bezier(0.4,0,0.2,1) infinite;
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-7px); }
+  40% { transform: translateY(0); }
+  60% { transform: translateY(7px); }
+  80% { transform: translateY(0); }
+}
+.app-title-wave {
+  display: inline-block;
+  animation: wave 2.8s infinite ease-in-out;
+}
