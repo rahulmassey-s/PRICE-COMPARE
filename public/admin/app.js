@@ -1221,6 +1221,13 @@ function openEditTestModal(testData, testId) {
     // Remove any previous event listener before adding
     form.onsubmit = null;
     form.addEventListener('submit', handleEditTestFormSubmit);
+
+    // Add event listener for 'Add Lab Price' button in edit modal
+    const addLabPriceBtnEdit = document.getElementById('add-lab-price-row-btn-edit');
+    if (addLabPriceBtnEdit && !addLabPriceBtnEdit._listenerAttached) {
+        addLabPriceBtnEdit.addEventListener('click', () => addLabPriceRow(document.getElementById('lab-prices-container-edit'), null, true));
+        addLabPriceBtnEdit._listenerAttached = true;
+    }
 }
 
 function openEditHealthConcernModal(hcData, hcId) {
