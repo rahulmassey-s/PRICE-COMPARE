@@ -1,5 +1,7 @@
 // Admin Panel JavaScript - app.js
 
+console.log('[DEBUG] app.js loaded');
+
 // Import Firebase services from firebase-config.js
 import {
     firebaseConfigLoaded,
@@ -2817,3 +2819,413 @@ switchTab = function(tabId) {
         }
     }
 };
+
+// --- Real-time Booking Notification Sound ---
+let bookingSoundAudio = null;
+let stopSoundBtn = null;
+let lastBookingIds = new Set();
+let soundShouldLoop = false;
+let alarmLoopTimeout = null;
+let alarmSoundIndex = 0;
+const alarmSounds = [
+  'https://soundbible.com/mp3/alarm_clock.mp3',
+  'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'
+];
+
+function isSoundEnabled() {
+  return localStorage.getItem('soundEnabledByUser') === 'true';
+}
+
+function setSoundEnabled(val) {
+  localStorage.setItem('soundEnabledByUser', val ? 'true' : 'false');
+  soundEnabledByUser = val;
+}
+
+function showEnableSoundBanner() {
+  if (isSoundEnabled()) return;
+  if (document.getElementById('enable-sound-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'enable-sound-banner';
+  banner.style.position = 'fixed';
+  banner.style.top = '0';
+  banner.style.left = '0';
+  banner.style.width = '100%';
+  banner.style.background = '#2563eb';
+  banner.style.color = '#fff';
+  banner.style.fontSize = '1.1rem';
+  banner.style.fontWeight = 'bold';
+  banner.style.padding = '16px';
+  banner.style.textAlign = 'center';
+  banner.style.zIndex = '99999';
+  banner.innerHTML = '🔊 Click here to enable sound notifications for new bookings!';
+  banner.style.cursor = 'pointer';
+  banner.onclick = function() {
+    const testAudio = new Audio(alarmSounds[0]);
+    testAudio.volume = 1.0;
+    testAudio.play().then(() => {
+      setSoundEnabled(true);
+      banner.remove();
+      showToast('Sound notifications enabled!', 'success', 3000);
+    }).catch(() => {
+      showToast('Please interact with the page to enable sound.', 'info', 3000);
+    });
+  };
+  document.body.appendChild(banner);
+}
+
+function playWebAudioBeepLoop() {
+  if (!isSoundEnabled()) {
+    showEnableSoundBanner();
+    showToast('🔔 New booking! (Sound blocked by browser, please enable sound at top)', 'info', 5000);
+    return;
+  }
+  stopBookingSound();
+  soundShouldLoop = true;
+  function beep() {
+    if (!soundShouldLoop) return;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.value = 0.2;
+    o.start();
+    setTimeout(() => {
+      o.stop();
+      ctx.close();
+      if (soundShouldLoop) {
+        alarmLoopTimeout = setTimeout(beep, 500); // 0.5s gap between beeps
+      }
+    }, 1000); // 1 second beep
+    window._currentAlarmAudio = { _stopRef: () => { o.stop(); ctx.close(); } };
+  }
+  beep();
+  showStopSoundButton();
+}
+
+function showStopSoundButton() {
+  if (stopSoundBtn) return;
+  stopSoundBtn = document.createElement('button');
+  stopSoundBtn.textContent = '🔊 Stop Sound';
+  stopSoundBtn.style.position = 'fixed';
+  stopSoundBtn.style.bottom = '24px';
+  stopSoundBtn.style.right = '24px';
+  stopSoundBtn.style.zIndex = '9999';
+  stopSoundBtn.style.background = '#e11d48';
+  stopSoundBtn.style.color = '#fff';
+  stopSoundBtn.style.fontSize = '1.2rem';
+  stopSoundBtn.style.fontWeight = 'bold';
+  stopSoundBtn.style.padding = '14px 22px';
+  stopSoundBtn.style.border = 'none';
+  stopSoundBtn.style.borderRadius = '32px';
+  stopSoundBtn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+  stopSoundBtn.style.cursor = 'pointer';
+  stopSoundBtn.onclick = stopBookingSound;
+  document.body.appendChild(stopSoundBtn);
+}
+
+function hideStopSoundButton() {
+  if (stopSoundBtn) {
+    stopSoundBtn.remove();
+    stopSoundBtn = null;
+  }
+}
+
+async function setupBookingNotificationListener() {
+  // Try v9 modular first
+  if (firebaseFirestoreFunctions && firebaseFirestoreFunctions.onSnapshot) {
+    try {
+      const { collection, query, orderBy, limit, onSnapshot } = firebaseFirestoreFunctions;
+      const bookingsRef = collection(dbInstance, 'bookings');
+      const bookingsQuery = query(bookingsRef, orderBy('bookingDate', 'desc'), limit(10));
+      onSnapshot(bookingsQuery, (snapshot) => {
+        window.latestBookingSnapshot = snapshot;
+        updateBookingsTableFromSnapshot(snapshot);
+      });
+      return;
+    } catch (e) {
+      // fallback to v8
+    }
+  }
+  // Fallback to v8
+  if (dbInstance && dbInstance.collection) {
+    const bookingsRef = dbInstance.collection('bookings').orderBy('bookingDate', 'desc').limit(10);
+    bookingsRef.onSnapshot(snapshot => {
+      window.latestBookingSnapshot = snapshot;
+      updateBookingsTableFromSnapshot(snapshot);
+    });
+  }
+}
+
+function updateBookingsTableFromSnapshot(snapshot) {
+  let newBookingDetected = false;
+  // Only update table if bookings tab is visible
+  const bookingsTab = document.getElementById('manage-bookings-tab');
+  const bookingsTableBody = document.getElementById('bookings-table-body');
+  if (bookingsTab && bookingsTab.classList.contains('active') && bookingsTableBody) {
+    bookingsTableBody.innerHTML = '';
+    if (snapshot.empty || (snapshot.docs && snapshot.docs.length === 0)) {
+      bookingsTableBody.innerHTML = '<tr><td colspan="8">No bookings found.</td></tr>';
+    } else {
+      (snapshot.docs || snapshot).forEach(docSnap => {
+        const doc = docSnap.data ? docSnap : { data: () => docSnap.data, id: docSnap.id };
+        const bookingData = doc.data();
+        const bookingId = doc.id;
+        const row = bookingsTableBody.insertRow();
+        row.insertCell().textContent = bookingId;
+        row.insertCell().textContent = bookingData.userName || 'N/A';
+        row.insertCell().textContent = `${bookingData.userEmail || 'N/A'} / ${bookingData.userPhone || 'N/A'}`;
+        row.insertCell().textContent = bookingData.bookingDate ? (bookingData.bookingDate.toDate ? bookingData.bookingDate.toDate().toLocaleString() : new Date(bookingData.bookingDate).toLocaleString()) : 'N/A';
+        row.insertCell().textContent = `₹${bookingData.totalAmount !== undefined ? bookingData.totalAmount.toFixed(2) : '0.00'}`;
+        let itemsHtml = '<ul>';
+        if (bookingData.items && bookingData.items.length > 0) {
+          bookingData.items.forEach(item => {
+            itemsHtml += `<li>${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}</li>`;
+          });
+        } else {
+          itemsHtml += '<li>No items</li>';
+        }
+        itemsHtml += '</ul>';
+        row.insertCell().innerHTML = itemsHtml;
+        const statusCell = row.insertCell();
+        statusCell.textContent = bookingData.status || 'N/A';
+        const actionsCell = row.insertCell();
+        const statusSelect = document.createElement('select');
+        statusSelect.classList.add('status-select');
+        const statuses = ["Pending Confirmation", "Confirmed", "Processing", "Sample Collected", "Report Generated", "Completed", "Cancelled", "Refunded"];
+        statuses.forEach(status => {
+          const option = document.createElement('option');
+          option.value = status;
+          option.textContent = status;
+          if (status === bookingData.status) {
+            option.selected = true;
+          }
+          statusSelect.appendChild(option);
+        });
+        actionsCell.appendChild(statusSelect);
+        const updateButton = document.createElement('button');
+        updateButton.classList.add('btn', 'btn-secondary', 'btn-sm', 'update-booking-status-btn');
+        updateButton.innerHTML = '<i class="fas fa-save"></i> Update';
+        updateButton.dataset.id = bookingId;
+        actionsCell.appendChild(updateButton);
+      });
+    }
+  }
+  // Detect new bookings for notification
+  (snapshot.docChanges ? snapshot.docChanges() : []).forEach(change => {
+    if (change.type === 'added') {
+      const bookingId = change.doc.id;
+      console.log('[BookingListener] New booking detected:', bookingId);
+      if (!lastBookingIds.has(bookingId)) {
+        newBookingDetected = true;
+        lastBookingIds.add(bookingId);
+      }
+    }
+  });
+  if (lastBookingIds.size > 20) {
+    lastBookingIds = new Set(Array.from(lastBookingIds).slice(-20));
+  }
+  if (newBookingDetected) {
+    console.log('[BookingListener] Playing sound for new booking!');
+    playWebAudioBeepLoop();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupBookingNotificationListener();
+});
+
+let soundEnabledByUser = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+  soundEnabledByUser = isSoundEnabled();
+  showEnableSoundBanner();
+  // Add Test Alarm button for admin
+  if (!document.getElementById('test-alarm-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'test-alarm-btn';
+    btn.textContent = '🔊 Test Alarm';
+    btn.style.position = 'fixed';
+    btn.style.bottom = '24px';
+    btn.style.left = '24px';
+    btn.style.zIndex = '9999';
+    btn.style.background = '#2563eb';
+    btn.style.color = '#fff';
+    btn.style.fontSize = '1.1rem';
+    btn.style.fontWeight = 'bold';
+    btn.style.padding = '12px 20px';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '32px';
+    btn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+    btn.style.cursor = 'pointer';
+    btn.onclick = triggerBookingAlert;
+    document.body.appendChild(btn);
+  }
+});
+
+let alarmAudioCtx = null;
+let alarmOscillator = null;
+let alarmGain = null;
+let alarmActive = false;
+
+function startPersistentAlarm() {
+  if (!isSoundEnabled()) {
+    showEnableSoundBanner();
+    showToast('🔔 New booking! (Sound blocked by browser, please enable sound at top)', 'info', 5000);
+    return;
+  }
+  stopPersistentAlarm();
+  alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  alarmOscillator = alarmAudioCtx.createOscillator();
+  alarmGain = alarmAudioCtx.createGain();
+  alarmOscillator.type = 'square';
+  alarmOscillator.frequency.value = 880;
+  alarmGain.gain.value = 0.2;
+  alarmOscillator.connect(alarmGain);
+  alarmGain.connect(alarmAudioCtx.destination);
+  alarmOscillator.start();
+  alarmActive = true;
+  showStopSoundButton();
+}
+
+function stopPersistentAlarm() {
+  alarmActive = false;
+  if (alarmOscillator) {
+    alarmOscillator.stop();
+    alarmOscillator.disconnect();
+    alarmOscillator = null;
+  }
+  if (alarmGain) {
+    alarmGain.disconnect();
+    alarmGain = null;
+  }
+  if (alarmAudioCtx) {
+    alarmAudioCtx.close();
+    alarmAudioCtx = null;
+  }
+  hideStopSoundButton();
+}
+
+// Replace playBookingSound and Test Alarm button to use persistent alarm
+function playBookingSound() {
+  startPersistentAlarm();
+}
+
+// Replace Stop Sound logic
+function stopBookingSound() {
+  stopPersistentAlarm();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  soundEnabledByUser = isSoundEnabled();
+  showEnableSoundBanner();
+  // Add Test Alarm button for admin
+  if (!document.getElementById('test-alarm-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'test-alarm-btn';
+    btn.textContent = '🔊 Test Alarm';
+    btn.style.position = 'fixed';
+    btn.style.bottom = '24px';
+    btn.style.left = '24px';
+    btn.style.zIndex = '9999';
+    btn.style.background = '#2563eb';
+    btn.style.color = '#fff';
+    btn.style.fontSize = '1.1rem';
+    btn.style.fontWeight = 'bold';
+    btn.style.padding = '12px 20px';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '32px';
+    btn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+    btn.style.cursor = 'pointer';
+    btn.onclick = triggerBookingAlert;
+    document.body.appendChild(btn);
+  }
+});
+
+// --- Visual Modal/Overlay for New Booking Alert ---
+function showBookingAlertModal() {
+  if (document.getElementById('booking-alert-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'booking-alert-modal';
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100vw';
+  modal.style.height = '100vh';
+  modal.style.background = 'rgba(0,0,0,0.7)';
+  modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
+  modal.style.justifyContent = 'center';
+  modal.style.alignItems = 'center';
+  modal.style.zIndex = '100000';
+  const box = document.createElement('div');
+  box.style.background = '#fff';
+  box.style.padding = '48px 32px';
+  box.style.borderRadius = '24px';
+  box.style.boxShadow = '0 4px 32px rgba(0,0,0,0.25)';
+  box.style.textAlign = 'center';
+  box.innerHTML = '<h1 style="color:#e11d48;font-size:2.5rem;margin-bottom:24px;">🚨 NEW BOOKING!</h1>';
+  const stopBtn = document.createElement('button');
+  stopBtn.textContent = 'Stop Alarm';
+  stopBtn.style.background = '#e11d48';
+  stopBtn.style.color = '#fff';
+  stopBtn.style.fontSize = '1.3rem';
+  stopBtn.style.fontWeight = 'bold';
+  stopBtn.style.padding = '18px 36px';
+  stopBtn.style.border = 'none';
+  stopBtn.style.borderRadius = '32px';
+  stopBtn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+  stopBtn.style.cursor = 'pointer';
+  stopBtn.onclick = hideBookingAlertModal;
+  box.appendChild(stopBtn);
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+
+function hideBookingAlertModal() {
+  const modal = document.getElementById('booking-alert-modal');
+  if (modal) modal.remove();
+}
+
+// --- Desktop Notification ---
+function showDesktopNotification(title, body) {
+  if (window.Notification && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  } else if (window.Notification && Notification.permission !== 'denied') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        new Notification(title, { body });
+      }
+    });
+  }
+}
+
+// --- Single Beep (Web Audio API) ---
+function playSingleBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = 880;
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.value = 0.2;
+    o.start();
+    setTimeout(() => {
+      o.stop();
+      ctx.close();
+    }, 1000); // 1 second beep
+  } catch (e) {}
+}
+
+// --- Unified Alert for New Booking ---
+function triggerBookingAlert() {
+  showBookingAlertModal();
+  playSingleBeep();
+  showDesktopNotification('New Booking!', 'A new booking has been received.');
+}
+
+// --- Use for both Test Alarm and real bookings ---

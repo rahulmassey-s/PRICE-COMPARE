@@ -33,7 +33,8 @@ import {
     orderBy,
     limit,
     serverTimestamp,
-    Timestamp
+    Timestamp,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import {
     getStorage,
@@ -101,7 +102,8 @@ try {
         orderBy,
         limit,
         serverTimestamp,
-        Timestamp
+        Timestamp,
+        onSnapshot
     };
     console.log("firebase-config.js: FirebaseFirestoreFunctions object populated.", firebaseFirestoreFunctions);
 

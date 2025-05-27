@@ -168,8 +168,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
         role="article"
         aria-labelledby={`test-name-${test.id}`}
       >
-        <div className="relative w-full h-32 sm:h-40 bg-card overflow-hidden rounded-t-xl border-b border-border">
-          {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' ? (
+        {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' && (
+          <div className="relative w-full h-32 sm:h-40 bg-card overflow-hidden rounded-t-xl border-b border-border">
             <Image
               src={effectiveImageUrl}
               alt={test.name}
@@ -181,20 +181,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
               quality={75}
               data-ai-hint="medical test"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-primary/5 p-2">
-              <Image
-                src="https://placehold.co/200x200.png"
-                alt={`${test.name} placeholder`}
-                fill
-                style={{ objectFit: "contain" }}
-                className="opacity-50"
-                data-ai-hint="medical test"
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
-              />
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div id={`test-name-${test.id}`} className={cn(
             "p-3 sm:p-4 border-b border-border text-center flex items-center justify-center overflow-hidden bg-primary/5",
