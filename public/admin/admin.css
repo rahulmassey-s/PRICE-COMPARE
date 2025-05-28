@@ -738,3 +738,94 @@ table ul li {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* CRM Dashboard Styles */
+.crm-summary-cards {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.crm-summary-card {
+  background: var(--card-background-color, #34495e);
+  color: var(--text-color, #ecf0f1);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 24px 32px;
+  min-width: 180px;
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 1.2em;
+}
+.crm-summary-card .crm-card-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.crm-summary-card .crm-card-value {
+  font-size: 2.2em;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.crm-charts-row {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.crm-chart-box {
+  background: var(--card-background-color, #34495e);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 24px 24px 8px 24px;
+  flex: 1 1 350px;
+  min-width: 320px;
+  max-width: 600px;
+  margin-bottom: 16px;
+}
+.crm-tables-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.crm-table-box {
+  background: var(--card-background-color, #34495e);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 24px 16px;
+  flex: 1 1 400px;
+  min-width: 320px;
+  max-width: 700px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.crm-table-box table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text-color, #ecf0f1);
+}
+.crm-table-box th, .crm-table-box td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #4a627a);
+}
+.crm-table-box th {
+  background: rgba(255,255,255,0.04);
+  font-weight: 600;
+}
+.crm-table-box tr:last-child td {
+  border-bottom: none;
+}
+@media (max-width: 900px) {
+  .crm-summary-cards, .crm-charts-row, .crm-tables-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .crm-summary-card, .crm-chart-box, .crm-table-box {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+}

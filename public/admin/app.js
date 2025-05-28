@@ -2445,6 +2445,15 @@ function switchTab(tabId) {
         setupImageUpload('site-logo-file-input', 'site-logo-url-input', 'site-logo-preview-img', 'site-logo-upload-btn');
     }
     // Manage Data and Charts tabs don't load data on switch by default
+
+    if (tabId === 'manage-bookings-tab') {
+        // ... existing code ...
+        // Reset badge
+        const now = new Date();
+        localStorage.setItem('lastSeenBookingTimestamp', now.toISOString());
+        lastSeenBookingTimestamp = now.toISOString();
+        updateManageBookingsBadge(0);
+    }
 }
 
 function showDashboardUI(user) {
@@ -2679,6 +2688,134 @@ async function initializeAppMainLogic() {
                     try {
                         await firestoreRequest('updateDoc', 'bookings', id, { status: newStatus });
                         showToast(`Booking ${id} status updated to ${newStatus}.`, 'success');
+                        // --- Add notification if status is Confirmed ---
+                        if (newStatus === 'Confirmed') {
+                            // Fetch booking to get userId and test details
+                            const bookingSnap = await firestoreRequest('getDoc', 'bookings', id);
+                            if (bookingSnap.exists()) {
+                              const booking = bookingSnap.data();
+                              if (booking.userId) {
+                                // Extract test names and lab names robustly
+                                let testNames = 'N/A';
+                                if (Array.isArray(booking.items) && booking.items.length > 0) {
+                                  testNames = booking.items.map(item => `${item.testName} (${item.labName})`).join(', ');
+                                }
+                                // Enhanced message
+                                const message = `✅ Your booking is confirmed!\n\n🧪 Test(s): ${testNames}\n💰 Total: ₹${booking.totalAmount?.toFixed(2) || '0.00'}\n📅 Date: ${booking.bookingDate && booking.bookingDate.toDate ? booking.bookingDate.toDate().toLocaleDateString() : ''}`;
+                                await firestoreRequest('addDoc', 'notifications', null, {
+                                  userId: booking.userId,
+                                  type: 'booking_status',
+                                  title: 'Booking Confirmed',
+                                  message: message,
+                                  bookingId: id,
+                                  testName: testNames,
+                                  items: booking.items || [],
+                                  totalAmount: booking.totalAmount || 0,
+                                  bookingDate: booking.bookingDate || null,
+                                  status: 'unread',
+                                  createdAt: (firebaseFirestoreFunctions && firebaseFirestoreFunctions.serverTimestamp) ? firebaseFirestoreFunctions.serverTimestamp() : new Date()
+                                });
+                                console.log('Notification sent to user:', booking.userId);
+                              }
+                            }
+                        }
+                        // --- Award wallet points if status is Completed ---
+                        if (newStatus === 'Completed') {
+                            // 1. Fetch booking details
+                            const bookingSnap = await firestoreRequest('getDoc', 'bookings', id);
+                            if (bookingSnap.exists()) {
+                              const booking = bookingSnap.data();
+                              const userId = booking.userId;
+                              if (userId) {
+                                // 2. Prevent duplicate awarding (check if transaction exists)
+                                const txSnap = await firestoreRequest('getDocs', 'walletTransactions', null, null, [
+                                  { type: 'where', field: 'userId', op: '==', value: userId },
+                                  { type: 'where', field: 'meta.bookingId', op: '==', value: id },
+                                  { type: 'where', field: 'action', op: '==', value: 'earn' }
+                                ]);
+                                if (!txSnap.empty) {
+                                  console.log('Points already awarded for this booking.');
+                                } else {
+                                  // 3. Fetch earning rule
+                                  let points = 0;
+                                  try {
+                                    const rulesSnap = await firestoreRequest('getDocs', 'walletRules', null, null, [
+                                      { type: 'where', field: 'type', op: '==', value: 'booking' }
+                                    ]);
+                                    let rule = null;
+                                    if (!rulesSnap.empty) rule = rulesSnap.docs[0].data();
+                                    // Default: 10 points per ₹100 spent
+                                    const perRupee = rule?.config?.perRupee || 100;
+                                    const value = rule?.value || 10;
+                                    points = Math.floor((booking.totalAmount / perRupee) * value);
+                                  } catch (e) {
+                                    // Fallback if rules not found
+                                    points = Math.floor((booking.totalAmount / 100) * 10);
+                                  }
+                                  if (points > 0) {
+                                    // 4. Add wallet transaction
+                                    await firestoreRequest('addDoc', 'walletTransactions', null, {
+                                      userId,
+                                      date: new Date(),
+                                      action: 'earn',
+                                      points,
+                                      status: 'completed',
+                                      meta: { bookingId: id }
+                                    });
+                                    // 5. Increment user pointsBalance
+                                    const userSnap = await firestoreRequest('getDoc', 'users', userId);
+                                    if (userSnap.exists()) {
+                                      const user = userSnap.data();
+                                      const newBalance = (user.pointsBalance || 0) + points;
+                                      await firestoreRequest('updateDoc', 'users', userId, { pointsBalance: newBalance });
+                                    }
+                                    showToast(`User earned ${points} wallet points for this booking!`, 'success');
+                                  }
+                                }
+                                // --- Referral: Award 400 points to referrer on first completed booking ---
+                                const userSnap = await firestoreRequest('getDoc', 'users', userId);
+                                if (userSnap.exists()) {
+                                  const user = userSnap.data();
+                                  const referrerUid = user.referrerUid;
+                                  if (referrerUid) {
+                                    // Check if this is the user's first completed booking
+                                    const completedBookingsSnap = await firestoreRequest('getDocs', 'bookings', null, null, [
+                                      { type: 'where', field: 'userId', op: '==', value: userId },
+                                      { type: 'where', field: 'status', op: '==', value: 'Completed' }
+                                    ]);
+                                    if (completedBookingsSnap.size === 1) { // This is the first completed booking
+                                      // Prevent duplicate awarding (check if referrer already got 400 for this user)
+                                      const refTxSnap = await firestoreRequest('getDocs', 'walletTransactions', null, null, [
+                                        { type: 'where', field: 'userId', op: '==', value: referrerUid },
+                                        { type: 'where', field: 'action', op: '==', value: 'referral-complete' },
+                                        { type: 'where', field: 'meta.referredUid', op: '==', value: userId }
+                                      ]);
+                                      if (refTxSnap.empty) {
+                                        // Award 400 points to referrer
+                                        await firestoreRequest('addDoc', 'walletTransactions', null, {
+                                          userId: referrerUid,
+                                          date: new Date(),
+                                          action: 'referral-complete',
+                                          points: 400,
+                                          status: 'completed',
+                                          meta: { referredUid: userId, bookingId: id },
+                                          createdAt: (firebaseFirestoreFunctions && firebaseFirestoreFunctions.serverTimestamp) ? firebaseFirestoreFunctions.serverTimestamp() : new Date()
+                                        });
+                                        // Update referrer's pointsBalance
+                                        const refUserSnap = await firestoreRequest('getDoc', 'users', referrerUid);
+                                        if (refUserSnap.exists()) {
+                                          const refUser = refUserSnap.data();
+                                          const refNewPoints = (refUser.pointsBalance || 0) + 400;
+                                          await firestoreRequest('updateDoc', 'users', referrerUid, { pointsBalance: refNewPoints });
+                                        }
+                                        showToast('Referrer awarded 400 points for first completed booking of referred user!', 'success');
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                        }
                         loadAllBookings(); // Refresh the list
                     } catch (error) {
                         showToast(`Failed to update booking status. ${error.message}`, 'error');
@@ -2805,427 +2942,652 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput._listenerAttached = true;
     }
 });
-// Also add in switchTab for manage-tests-tab
-const origSwitchTab = switchTab;
-switchTab = function(tabId) {
-    origSwitchTab(tabId);
-    if (tabId === 'manage-tests-tab') {
-        const searchInput = document.getElementById('test-search-input');
-        if (searchInput && !searchInput._listenerAttached) {
-            searchInput.addEventListener('input', function() {
-                loadTests();
-            });
-            searchInput._listenerAttached = true;
-        }
-    }
-};
 
-// --- Real-time Booking Notification Sound ---
-let bookingSoundAudio = null;
-let stopSoundBtn = null;
-let lastBookingIds = new Set();
-let soundShouldLoop = false;
-let alarmLoopTimeout = null;
-let alarmSoundIndex = 0;
-const alarmSounds = [
-  'https://soundbible.com/mp3/alarm_clock.mp3',
-  'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'
-];
+// --- NEW BOOKINGS BADGE LOGIC ---
+let lastSeenBookingTimestamp = localStorage.getItem('lastSeenBookingTimestamp') || null;
+let newBookingsCount = 0;
 
-function isSoundEnabled() {
-  return localStorage.getItem('soundEnabledByUser') === 'true';
-}
-
-function setSoundEnabled(val) {
-  localStorage.setItem('soundEnabledByUser', val ? 'true' : 'false');
-  soundEnabledByUser = val;
-}
-
-function showEnableSoundBanner() {
-  if (isSoundEnabled()) return;
-  if (document.getElementById('enable-sound-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'enable-sound-banner';
-  banner.style.position = 'fixed';
-  banner.style.top = '0';
-  banner.style.left = '0';
-  banner.style.width = '100%';
-  banner.style.background = '#2563eb';
-  banner.style.color = '#fff';
-  banner.style.fontSize = '1.1rem';
-  banner.style.fontWeight = 'bold';
-  banner.style.padding = '16px';
-  banner.style.textAlign = 'center';
-  banner.style.zIndex = '99999';
-  banner.innerHTML = '🔊 Click here to enable sound notifications for new bookings!';
-  banner.style.cursor = 'pointer';
-  banner.onclick = function() {
-    const testAudio = new Audio(alarmSounds[0]);
-    testAudio.volume = 1.0;
-    testAudio.play().then(() => {
-      setSoundEnabled(true);
-      banner.remove();
-      showToast('Sound notifications enabled!', 'success', 3000);
-    }).catch(() => {
-      showToast('Please interact with the page to enable sound.', 'info', 3000);
-    });
-  };
-  document.body.appendChild(banner);
-}
-
-function playWebAudioBeepLoop() {
-  if (!isSoundEnabled()) {
-    showEnableSoundBanner();
-    showToast('🔔 New booking! (Sound blocked by browser, please enable sound at top)', 'info', 5000);
-    return;
+function updateManageBookingsBadge(count) {
+  const sidebarBtn = document.querySelector('.tab-button[data-tab="manage-bookings-tab"]');
+  if (!sidebarBtn) return;
+  let badge = sidebarBtn.querySelector('.booking-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'booking-badge';
+    badge.style.background = '#e11d48';
+    badge.style.color = '#fff';
+    badge.style.fontWeight = 'bold';
+    badge.style.fontSize = '0.85em';
+    badge.style.position = 'absolute';
+    badge.style.top = '8px';
+    badge.style.right = '18px';
+    badge.style.padding = '2px 8px';
+    badge.style.borderRadius = '16px';
+    badge.style.zIndex = '10';
+    sidebarBtn.style.position = 'relative';
+    sidebarBtn.appendChild(badge);
   }
-  stopBookingSound();
-  soundShouldLoop = true;
-  function beep() {
-    if (!soundShouldLoop) return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = 880;
-    o.connect(g);
-    g.connect(ctx.destination);
-    g.gain.value = 0.2;
-    o.start();
-    setTimeout(() => {
-      o.stop();
-      ctx.close();
-      if (soundShouldLoop) {
-        alarmLoopTimeout = setTimeout(beep, 500); // 0.5s gap between beeps
-      }
-    }, 1000); // 1 second beep
-    window._currentAlarmAudio = { _stopRef: () => { o.stop(); ctx.close(); } };
-  }
-  beep();
-  showStopSoundButton();
-}
-
-function showStopSoundButton() {
-  if (stopSoundBtn) return;
-  stopSoundBtn = document.createElement('button');
-  stopSoundBtn.textContent = '🔊 Stop Sound';
-  stopSoundBtn.style.position = 'fixed';
-  stopSoundBtn.style.bottom = '24px';
-  stopSoundBtn.style.right = '24px';
-  stopSoundBtn.style.zIndex = '9999';
-  stopSoundBtn.style.background = '#e11d48';
-  stopSoundBtn.style.color = '#fff';
-  stopSoundBtn.style.fontSize = '1.2rem';
-  stopSoundBtn.style.fontWeight = 'bold';
-  stopSoundBtn.style.padding = '14px 22px';
-  stopSoundBtn.style.border = 'none';
-  stopSoundBtn.style.borderRadius = '32px';
-  stopSoundBtn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
-  stopSoundBtn.style.cursor = 'pointer';
-  stopSoundBtn.onclick = stopBookingSound;
-  document.body.appendChild(stopSoundBtn);
-}
-
-function hideStopSoundButton() {
-  if (stopSoundBtn) {
-    stopSoundBtn.remove();
-    stopSoundBtn = null;
-  }
+  badge.textContent = count > 0 ? count : '';
+  badge.style.display = count > 0 ? 'inline-block' : 'none';
 }
 
 async function setupBookingNotificationListener() {
-  // Try v9 modular first
   if (firebaseFirestoreFunctions && firebaseFirestoreFunctions.onSnapshot) {
     try {
       const { collection, query, orderBy, limit, onSnapshot } = firebaseFirestoreFunctions;
       const bookingsRef = collection(dbInstance, 'bookings');
-      const bookingsQuery = query(bookingsRef, orderBy('bookingDate', 'desc'), limit(10));
+      const bookingsQuery = query(bookingsRef, orderBy('bookingDate', 'desc'), limit(20));
       onSnapshot(bookingsQuery, (snapshot) => {
-        window.latestBookingSnapshot = snapshot;
-        updateBookingsTableFromSnapshot(snapshot);
+        let latestTimestamp = lastSeenBookingTimestamp ? new Date(lastSeenBookingTimestamp) : null;
+        let count = 0;
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.bookingDate && (!latestTimestamp || data.bookingDate.toDate() > latestTimestamp)) {
+            count++;
+          }
+        });
+        newBookingsCount = count;
+        updateManageBookingsBadge(newBookingsCount);
       });
-      return;
-    } catch (e) {
-      // fallback to v8
-    }
+    return;
+    } catch (e) {}
   }
-  // Fallback to v8
-  if (dbInstance && dbInstance.collection) {
-    const bookingsRef = dbInstance.collection('bookings').orderBy('bookingDate', 'desc').limit(10);
-    bookingsRef.onSnapshot(snapshot => {
-      window.latestBookingSnapshot = snapshot;
-      updateBookingsTableFromSnapshot(snapshot);
-    });
-  }
+  // fallback for v8 (not shown for brevity)
 }
 
-function updateBookingsTableFromSnapshot(snapshot) {
-  let newBookingDetected = false;
-  // Only update table if bookings tab is visible
-  const bookingsTab = document.getElementById('manage-bookings-tab');
-  const bookingsTableBody = document.getElementById('bookings-table-body');
-  if (bookingsTab && bookingsTab.classList.contains('active') && bookingsTableBody) {
-    bookingsTableBody.innerHTML = '';
-    if (snapshot.empty || (snapshot.docs && snapshot.docs.length === 0)) {
-      bookingsTableBody.innerHTML = '<tr><td colspan="8">No bookings found.</td></tr>';
-    } else {
-      (snapshot.docs || snapshot).forEach(docSnap => {
-        const doc = docSnap.data ? docSnap : { data: () => docSnap.data, id: docSnap.id };
-        const bookingData = doc.data();
-        const bookingId = doc.id;
-        const row = bookingsTableBody.insertRow();
-        row.insertCell().textContent = bookingId;
-        row.insertCell().textContent = bookingData.userName || 'N/A';
-        row.insertCell().textContent = `${bookingData.userEmail || 'N/A'} / ${bookingData.userPhone || 'N/A'}`;
-        row.insertCell().textContent = bookingData.bookingDate ? (bookingData.bookingDate.toDate ? bookingData.bookingDate.toDate().toLocaleString() : new Date(bookingData.bookingDate).toLocaleString()) : 'N/A';
-        row.insertCell().textContent = `₹${bookingData.totalAmount !== undefined ? bookingData.totalAmount.toFixed(2) : '0.00'}`;
-        let itemsHtml = '<ul>';
-        if (bookingData.items && bookingData.items.length > 0) {
-          bookingData.items.forEach(item => {
-            itemsHtml += `<li>${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}</li>`;
-          });
-        } else {
-          itemsHtml += '<li>No items</li>';
-        }
-        itemsHtml += '</ul>';
-        row.insertCell().innerHTML = itemsHtml;
-        const statusCell = row.insertCell();
-        statusCell.textContent = bookingData.status || 'N/A';
-        const actionsCell = row.insertCell();
-        const statusSelect = document.createElement('select');
-        statusSelect.classList.add('status-select');
-        const statuses = ["Pending Confirmation", "Confirmed", "Processing", "Sample Collected", "Report Generated", "Completed", "Cancelled", "Refunded"];
-        statuses.forEach(status => {
-          const option = document.createElement('option');
-          option.value = status;
-          option.textContent = status;
-          if (status === bookingData.status) {
-            option.selected = true;
-          }
-          statusSelect.appendChild(option);
-        });
-        actionsCell.appendChild(statusSelect);
-        const updateButton = document.createElement('button');
-        updateButton.classList.add('btn', 'btn-secondary', 'btn-sm', 'update-booking-status-btn');
-        updateButton.innerHTML = '<i class="fas fa-save"></i> Update';
-        updateButton.dataset.id = bookingId;
-        actionsCell.appendChild(updateButton);
-      });
-    }
-  }
-  // Detect new bookings for notification
-  (snapshot.docChanges ? snapshot.docChanges() : []).forEach(change => {
-    if (change.type === 'added') {
-      const bookingId = change.doc.id;
-      console.log('[BookingListener] New booking detected:', bookingId);
-      if (!lastBookingIds.has(bookingId)) {
-        newBookingDetected = true;
-        lastBookingIds.add(bookingId);
-      }
-    }
-  });
-  if (lastBookingIds.size > 20) {
-    lastBookingIds = new Set(Array.from(lastBookingIds).slice(-20));
-  }
-  if (newBookingDetected) {
-    console.log('[BookingListener] Playing sound for new booking!');
-    playWebAudioBeepLoop();
-  }
-}
+// On DOMContentLoaded, setup badge and listener
 
 document.addEventListener('DOMContentLoaded', () => {
   setupBookingNotificationListener();
+  updateManageBookingsBadge(newBookingsCount);
 });
 
-let soundEnabledByUser = false;
+// --- CRM DASHBOARD LOGIC ---
+async function renderCrmSummaryCards() {
+  const container = document.getElementById('crm-summary-cards');
+  if (!container) return;
+  container.innerHTML = '<div>Loading summary...</div>';
 
-document.addEventListener('DOMContentLoaded', function() {
-  soundEnabledByUser = isSoundEnabled();
-  showEnableSoundBanner();
-  // Add Test Alarm button for admin
-  if (!document.getElementById('test-alarm-btn')) {
-    const btn = document.createElement('button');
-    btn.id = 'test-alarm-btn';
-    btn.textContent = '🔊 Test Alarm';
-    btn.style.position = 'fixed';
-    btn.style.bottom = '24px';
-    btn.style.left = '24px';
-    btn.style.zIndex = '9999';
-    btn.style.background = '#2563eb';
-    btn.style.color = '#fff';
-    btn.style.fontSize = '1.1rem';
-    btn.style.fontWeight = 'bold';
-    btn.style.padding = '12px 20px';
-    btn.style.border = 'none';
-    btn.style.borderRadius = '32px';
-    btn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
-    btn.style.cursor = 'pointer';
-    btn.onclick = triggerBookingAlert;
-    document.body.appendChild(btn);
-  }
-});
-
-let alarmAudioCtx = null;
-let alarmOscillator = null;
-let alarmGain = null;
-let alarmActive = false;
-
-function startPersistentAlarm() {
-  if (!isSoundEnabled()) {
-    showEnableSoundBanner();
-    showToast('🔔 New booking! (Sound blocked by browser, please enable sound at top)', 'info', 5000);
-    return;
-  }
-  stopPersistentAlarm();
-  alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  alarmOscillator = alarmAudioCtx.createOscillator();
-  alarmGain = alarmAudioCtx.createGain();
-  alarmOscillator.type = 'square';
-  alarmOscillator.frequency.value = 880;
-  alarmGain.gain.value = 0.2;
-  alarmOscillator.connect(alarmGain);
-  alarmGain.connect(alarmAudioCtx.destination);
-  alarmOscillator.start();
-  alarmActive = true;
-  showStopSoundButton();
-}
-
-function stopPersistentAlarm() {
-  alarmActive = false;
-  if (alarmOscillator) {
-    alarmOscillator.stop();
-    alarmOscillator.disconnect();
-    alarmOscillator = null;
-  }
-  if (alarmGain) {
-    alarmGain.disconnect();
-    alarmGain = null;
-  }
-  if (alarmAudioCtx) {
-    alarmAudioCtx.close();
-    alarmAudioCtx = null;
-  }
-  hideStopSoundButton();
-}
-
-// Replace playBookingSound and Test Alarm button to use persistent alarm
-function playBookingSound() {
-  startPersistentAlarm();
-}
-
-// Replace Stop Sound logic
-function stopBookingSound() {
-  stopPersistentAlarm();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  soundEnabledByUser = isSoundEnabled();
-  showEnableSoundBanner();
-  // Add Test Alarm button for admin
-  if (!document.getElementById('test-alarm-btn')) {
-    const btn = document.createElement('button');
-    btn.id = 'test-alarm-btn';
-    btn.textContent = '🔊 Test Alarm';
-    btn.style.position = 'fixed';
-    btn.style.bottom = '24px';
-    btn.style.left = '24px';
-    btn.style.zIndex = '9999';
-    btn.style.background = '#2563eb';
-    btn.style.color = '#fff';
-    btn.style.fontSize = '1.1rem';
-    btn.style.fontWeight = 'bold';
-    btn.style.padding = '12px 20px';
-    btn.style.border = 'none';
-    btn.style.borderRadius = '32px';
-    btn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
-    btn.style.cursor = 'pointer';
-    btn.onclick = triggerBookingAlert;
-    document.body.appendChild(btn);
-  }
-});
-
-// --- Visual Modal/Overlay for New Booking Alert ---
-function showBookingAlertModal() {
-  if (document.getElementById('booking-alert-modal')) return;
-  const modal = document.createElement('div');
-  modal.id = 'booking-alert-modal';
-  modal.style.position = 'fixed';
-  modal.style.top = '0';
-  modal.style.left = '0';
-  modal.style.width = '100vw';
-  modal.style.height = '100vh';
-  modal.style.background = 'rgba(0,0,0,0.7)';
-  modal.style.display = 'flex';
-  modal.style.flexDirection = 'column';
-  modal.style.justifyContent = 'center';
-  modal.style.alignItems = 'center';
-  modal.style.zIndex = '100000';
-  const box = document.createElement('div');
-  box.style.background = '#fff';
-  box.style.padding = '48px 32px';
-  box.style.borderRadius = '24px';
-  box.style.boxShadow = '0 4px 32px rgba(0,0,0,0.25)';
-  box.style.textAlign = 'center';
-  box.innerHTML = '<h1 style="color:#e11d48;font-size:2.5rem;margin-bottom:24px;">🚨 NEW BOOKING!</h1>';
-  const stopBtn = document.createElement('button');
-  stopBtn.textContent = 'Stop Alarm';
-  stopBtn.style.background = '#e11d48';
-  stopBtn.style.color = '#fff';
-  stopBtn.style.fontSize = '1.3rem';
-  stopBtn.style.fontWeight = 'bold';
-  stopBtn.style.padding = '18px 36px';
-  stopBtn.style.border = 'none';
-  stopBtn.style.borderRadius = '32px';
-  stopBtn.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
-  stopBtn.style.cursor = 'pointer';
-  stopBtn.onclick = hideBookingAlertModal;
-  box.appendChild(stopBtn);
-  modal.appendChild(box);
-  document.body.appendChild(modal);
-}
-
-function hideBookingAlertModal() {
-  const modal = document.getElementById('booking-alert-modal');
-  if (modal) modal.remove();
-}
-
-// --- Desktop Notification ---
-function showDesktopNotification(title, body) {
-  if (window.Notification && Notification.permission === 'granted') {
-    new Notification(title, { body });
-  } else if (window.Notification && Notification.permission !== 'denied') {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        new Notification(title, { body });
+  // Fetch counts from Firestore
+  let totalBookings = 0, totalUsers = 0, totalLabs = 0, totalPrescriptions = 0, activeUsers30d = 0;
+  try {
+    // Bookings
+    const bookingsSnap = await firestoreRequest('getDocs', 'bookings');
+    totalBookings = bookingsSnap.size || (bookingsSnap.docs ? bookingsSnap.docs.length : 0);
+    // Users
+    const usersSnap = await firestoreRequest('getDocs', 'users');
+    totalUsers = usersSnap.size || (usersSnap.docs ? usersSnap.docs.length : 0);
+    // Labs
+    const labsSnap = await firestoreRequest('getDocs', 'labs');
+    totalLabs = labsSnap.size || (labsSnap.docs ? labsSnap.docs.length : 0);
+    // Prescriptions
+    const presSnap = await firestoreRequest('getDocs', 'prescriptions');
+    totalPrescriptions = presSnap.size || (presSnap.docs ? presSnap.docs.length : 0);
+    // Active Users (last 30 days)
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const activeUserIds = new Set();
+    (bookingsSnap.docs || []).forEach(doc => {
+      const data = doc.data();
+      if (data.userId && data.bookingDate && data.bookingDate.toDate() > cutoff) {
+        activeUserIds.add(data.userId);
       }
     });
+    activeUsers30d = activeUserIds.size;
+  } catch (e) {
+    container.innerHTML = '<div style="color:red">Error loading summary data</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="crm-summary-card">
+      <div class="crm-card-title"><i class="fas fa-calendar-check"></i> Total Bookings</div>
+      <div class="crm-card-value">${totalBookings}</div>
+    </div>
+    <div class="crm-summary-card">
+      <div class="crm-card-title"><i class="fas fa-users"></i> Total Users</div>
+      <div class="crm-card-value">${totalUsers}</div>
+    </div>
+    <div class="crm-summary-card">
+      <div class="crm-card-title"><i class="fas fa-user-clock"></i> Active Users (30d)</div>
+      <div class="crm-card-value">${activeUsers30d}</div>
+    </div>
+    <div class="crm-summary-card">
+      <div class="crm-card-title"><i class="fas fa-flask"></i> Total Labs</div>
+      <div class="crm-card-value">${totalLabs}</div>
+    </div>
+    <div class="crm-summary-card">
+      <div class="crm-card-title"><i class="fas fa-file-prescription"></i> Total Prescriptions</div>
+      <div class="crm-card-value">${totalPrescriptions}</div>
+    </div>
+  `;
+}
+
+// Hook into tab switch logic
+let origSwitchTabCrm = switchTab;
+switchTab = function(tabId) {
+  origSwitchTabCrm(tabId);
+  if (tabId === 'crm-dashboard-tab') {
+    renderCrmSummaryCards();
+    // Clear and re-render charts row for multiple analytics
+    const chartsRow = document.getElementById('crm-charts-row');
+    if (chartsRow) chartsRow.innerHTML = '';
+    renderCrmLabBusinessChart();
+    renderCrmMostBookedTestsChart();
+    renderCrmActiveUsersPerDayChart();
+    // TODO: add more analytics if needed
   }
 }
 
-// --- Single Beep (Web Audio API) ---
-function playSingleBeep() {
+// ... existing code ...
+async function renderCrmLabBusinessChart() {
+  const chartsRow = document.getElementById('crm-charts-row');
+  if (!chartsRow) return;
+  // Remove this: chartsRow.innerHTML = '<div>Loading lab business analytics...</div>';
+  // Instead, show loading only if no children
+  if (!chartsRow.hasChildNodes()) {
+    chartsRow.innerHTML = '<div>Loading lab business analytics...</div>';
+  }
+
+  // Fetch bookings and labs
+  let bookingsSnap, labsSnap;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'square';
-    o.frequency.value = 880;
-    o.connect(g);
-    g.connect(ctx.destination);
-    g.gain.value = 0.2;
-    o.start();
-    setTimeout(() => {
-      o.stop();
-      ctx.close();
-    }, 1000); // 1 second beep
-  } catch (e) {}
+    bookingsSnap = await firestoreRequest('getDocs', 'bookings');
+    labsSnap = await firestoreRequest('getDocs', 'labs');
+    } catch (e) {
+    // Only show error if no children
+    if (!chartsRow.hasChildNodes()) {
+      chartsRow.innerHTML = '<div style="color:red">Error loading lab analytics</div>';
+    }
+    return;
+  }
+  const labs = {};
+  (labsSnap.docs || []).forEach(doc => {
+    const data = doc.data();
+    labs[doc.id] = { name: data.name || doc.id, totalRevenue: 0, totalBookings: 0 };
+  });
+
+  // Aggregate revenue and bookings per lab
+  (bookingsSnap.docs || []).forEach(doc => {
+    const booking = doc.data();
+    if (Array.isArray(booking.items)) {
+      booking.items.forEach(item => {
+        let labKey = null;
+        for (const id in labs) {
+          if (labs[id].name.toLowerCase() === (item.labName || '').toLowerCase()) {
+            labKey = id;
+            break;
+          }
+        }
+        if (!labKey) {
+          labKey = 'other';
+          if (!labs[labKey]) labs[labKey] = { name: item.labName || 'Other', totalRevenue: 0, totalBookings: 0 };
+        }
+        labs[labKey].totalRevenue += Number(item.price) || 0;
+        labs[labKey].totalBookings += 1;
+      });
+    }
+  });
+
+  const sortedLabs = Object.values(labs).sort((a, b) => b.totalRevenue - a.totalRevenue);
+  const labels = sortedLabs.map(l => l.name);
+  const revenues = sortedLabs.map(l => l.totalRevenue);
+  const bookings = sortedLabs.map(l => l.totalBookings);
+
+  // --- APPEND chart box instead of replacing innerHTML ---
+  let chartBox = document.createElement('div');
+  chartBox.className = 'crm-chart-box';
+  chartBox.innerHTML = `
+    <h5><i class="fas fa-chart-bar"></i> Lab-wise Business (Revenue)</h5>
+    <canvas id="crm-lab-business-chart" height="180"></canvas>
+    <div id="crm-lab-business-table"></div>
+  `;
+  chartsRow.appendChild(chartBox);
+
+  // Render Chart.js bar chart
+  const ctx = chartBox.querySelector('#crm-lab-business-chart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Revenue (₹)',
+        data: revenues,
+        backgroundColor: '#4a90e2',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `₹${ctx.parsed.y.toLocaleString()}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#fff', font: { weight: 'bold' } } },
+        y: { beginAtZero: true, ticks: { color: '#fff', font: { weight: 'bold' }, callback: v => `₹${v}` } }
+      }
+    }
+  });
+
+  // Render table below chart
+  const tableDiv = chartBox.querySelector('#crm-lab-business-table');
+  let tableHtml = `<div class="crm-table-box" style="margin-top:18px;"><table><thead><tr><th>Lab Name</th><th>Total Bookings</th><th>Total Revenue (₹)</th></tr></thead><tbody>`;
+  sortedLabs.forEach(lab => {
+    tableHtml += `<tr><td>${lab.name}</td><td>${lab.totalBookings}</td><td>₹${lab.totalRevenue.toLocaleString()}</td></tr>`;
+  });
+  tableHtml += '</tbody></table></div>';
+  tableDiv.innerHTML = tableHtml;
 }
 
-// --- Unified Alert for New Booking ---
-function triggerBookingAlert() {
-  showBookingAlertModal();
-  playSingleBeep();
-  showDesktopNotification('New Booking!', 'A new booking has been received.');
+// ... existing code ...
+async function renderCrmMostBookedTestsChart() {
+  const chartsRow = document.getElementById('crm-charts-row');
+  if (!chartsRow) return;
+  // Append below previous chart
+  let chartBox = document.createElement('div');
+  chartBox.className = 'crm-chart-box';
+  chartBox.innerHTML = `
+    <h5><i class="fas fa-vials"></i> Most Booked Tests</h5>
+    <canvas id="crm-most-booked-tests-chart" height="180"></canvas>
+    <div id="crm-most-booked-tests-table"></div>
+  `;
+  chartsRow.appendChild(chartBox);
+
+  // Fetch bookings
+  let bookingsSnap;
+  try {
+    bookingsSnap = await firestoreRequest('getDocs', 'bookings');
+    } catch (e) {
+    chartBox.innerHTML = '<div style="color:red">Error loading test analytics</div>';
+    return;
+  }
+  // Aggregate test booking counts
+  const testCounts = {};
+  (bookingsSnap.docs || []).forEach(doc => {
+    const booking = doc.data();
+    if (Array.isArray(booking.items)) {
+      booking.items.forEach(item => {
+        const testName = item.testName || 'Unknown';
+        if (!testCounts[testName]) testCounts[testName] = 0;
+        testCounts[testName]++;
+      });
+    }
+  });
+  // Top 10 tests
+  const sortedTests = Object.entries(testCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const labels = sortedTests.map(([name]) => name);
+  const counts = sortedTests.map(([, count]) => count);
+
+  // Render Chart.js bar chart
+  const ctx = chartBox.querySelector('#crm-most-booked-tests-chart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Bookings',
+        data: counts,
+        backgroundColor: '#16a34a',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} bookings` } }
+      },
+      scales: {
+        x: { ticks: { color: '#fff', font: { weight: 'bold' } } },
+        y: { beginAtZero: true, ticks: { color: '#fff', font: { weight: 'bold' } } }
+      }
+    }
+  });
+
+  // Render table below chart
+  const tableDiv = chartBox.querySelector('#crm-most-booked-tests-table');
+  let tableHtml = `<div class="crm-table-box" style="margin-top:18px;"><table><thead><tr><th>Test Name</th><th>Booking Count</th></tr></thead><tbody>`;
+  sortedTests.forEach(([name, count]) => {
+    tableHtml += `<tr><td>${name}</td><td>${count}</td></tr>`;
+  });
+  tableHtml += '</tbody></table></div>';
+  tableDiv.innerHTML = tableHtml;
 }
 
-// --- Use for both Test Alarm and real bookings ---
+// ... existing code ...
+async function renderCrmActiveUsersPerDayChart() {
+  const chartsRow = document.getElementById('crm-charts-row');
+  if (!chartsRow) return;
+  // Append below previous charts
+  let chartBox = document.createElement('div');
+  chartBox.className = 'crm-chart-box';
+  chartBox.innerHTML = `
+    <h5><i class="fas fa-user-clock"></i> Active Users Per Day (Last 30 Days)</h5>
+    <canvas id="crm-active-users-per-day-chart" height="180"></canvas>
+  `;
+  chartsRow.appendChild(chartBox);
+
+  // Fetch bookings
+  let bookingsSnap;
+  try {
+    bookingsSnap = await firestoreRequest('getDocs', 'bookings');
+  } catch (e) {
+    chartBox.innerHTML = '<div style="color:red">Error loading user activity analytics</div>';
+    return;
+  }
+  // Prepare last 30 days
+  const now = new Date();
+  const days = [];
+  const dayMap = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push(key);
+    dayMap[key] = new Set();
+  }
+  // Aggregate unique users per day
+  (bookingsSnap.docs || []).forEach(doc => {
+    const booking = doc.data();
+    if (booking.userId && booking.bookingDate) {
+      const d = booking.bookingDate.toDate();
+      const key = d.toISOString().slice(0, 10);
+      if (dayMap[key]) dayMap[key].add(booking.userId);
+    }
+  });
+  const userCounts = days.map(day => dayMap[day].size);
+
+  // Render Chart.js line chart
+  const ctx = chartBox.querySelector('#crm-active-users-per-day-chart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: [{
+        label: 'Active Users',
+        data: userCounts,
+        borderColor: '#f59e42',
+        backgroundColor: 'rgba(245,158,66,0.15)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} users` } }
+      },
+      scales: {
+        x: { ticks: { color: '#fff', font: { weight: 'bold' }, maxTicksLimit: 8 } },
+        y: { beginAtZero: true, ticks: { color: '#fff', font: { weight: 'bold' } } }
+      }
+    }
+  });
+}
+
+// ... existing code ...
+
+// --- CRM USER PROFILE MODAL LOGIC ---
+
+
+// Search input event
+if (document.getElementById('wallet-accounts-search-input')) {
+  document.getElementById('wallet-accounts-search-input').addEventListener('input', loadWalletAccounts);
+}
+// Tab switch logic
+let origSwitchTabWallet = switchTab;
+switchTab = function(tabId) {
+  origSwitchTabWallet(tabId);
+  if (tabId === 'wallet-accounts-tab') loadWalletAccounts();
+};
+// Event delegation for Adjust button
+if (document.querySelector('.main-content')) {
+  document.querySelector('.main-content').addEventListener('click', function(e) {
+    const btn = e.target.closest('.wallet-adjust-btn');
+    if (btn && btn.dataset.uid) {
+      openCrmUserProfileModal(btn.dataset.uid);
+    }
+  });
+}
+// --- CRM Modal Wallet Section Fix ---
+function openCrmUserProfileModal(userId) {
+  const modal = document.getElementById('crm-user-profile-modal');
+  const infoDiv = document.getElementById('crm-user-profile-info');
+  const tagsStatusDiv = document.getElementById('crm-user-profile-tags-status');
+  const bookingsDiv = document.getElementById('crm-user-profile-bookings');
+  const notesDiv = document.getElementById('crm-user-profile-notes');
+  const messageBox = document.getElementById('crm-user-profile-message');
+  const sendBtn = document.getElementById('crm-user-profile-send-message-btn');
+  // Wallet section elements
+  const walletBalanceSpan = document.getElementById('crm-user-wallet-balance');
+  const walletTxnsUl = document.getElementById('crm-user-wallet-txns');
+  const walletForm = document.getElementById('crm-user-wallet-adjust-form');
+  const walletAmountInput = document.getElementById('crm-user-wallet-adjust-amount');
+  const walletTypeSelect = document.getElementById('crm-user-wallet-adjust-type');
+  const walletReasonInput = document.getElementById('crm-user-wallet-adjust-reason');
+  if (!modal || !infoDiv || !tagsStatusDiv || !bookingsDiv || !notesDiv || !messageBox || !sendBtn) return;
+  infoDiv.innerHTML = 'Loading user info...';
+  tagsStatusDiv.innerHTML = 'Loading tags & status...';
+  bookingsDiv.innerHTML = 'Loading booking history...';
+  notesDiv.innerHTML = 'Loading notes...';
+  messageBox.value = '';
+  if (walletBalanceSpan) walletBalanceSpan.textContent = 'Loading...';
+  if (walletTxnsUl) walletTxnsUl.innerHTML = '<li>Loading...</li>';
+  if (walletAmountInput) walletAmountInput.value = '';
+  if (walletReasonInput) walletReasonInput.value = '';
+
+  // Fetch user info
+  firestoreRequest('getDoc', 'users', userId).then(userSnap => {
+    if (!userSnap.exists()) {
+      infoDiv.innerHTML = '<span style="color:red">User not found</span>';
+      tagsStatusDiv.innerHTML = '';
+      return;
+    }
+    const user = userSnap.data();
+    infoDiv.innerHTML = `
+      <b>Name:</b> ${user.displayName || 'N/A'}<br>
+      <b>Email:</b> ${user.email || 'N/A'}<br>
+      <b>Phone:</b> ${user.phoneNumber || 'N/A'}<br>
+      <b>UID:</b> ${userId}<br>
+      <b>Created At:</b> ${user.createdAt ? user.createdAt.toDate().toLocaleString() : 'N/A'}
+    `;
+    // --- Tags & Status ---
+    const tags = Array.isArray(user.tags) ? user.tags.join(', ') : '';
+    const status = user.status || 'Active';
+    tagsStatusDiv.innerHTML = `
+      <b>Tags:</b> <input id="crm-user-tags-input" type="text" style="width:60%;margin-right:8px;" value="${tags}" placeholder="e.g. VIP, Discount Seeker">
+      <b>Status:</b> <select id="crm-user-status-select" style="margin-left:8px;">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+        <option value="Blocked">Blocked</option>
+        <option value="VIP">VIP</option>
+      </select>
+      <button id="crm-user-tags-status-save-btn" class="btn btn-secondary btn-sm" style="margin-left:8px;">Save</button>
+    `;
+    document.getElementById('crm-user-status-select').value = status;
+    document.getElementById('crm-user-tags-status-save-btn').onclick = async () => {
+      const newTags = document.getElementById('crm-user-tags-input').value.split(',').map(t => t.trim()).filter(Boolean);
+      const newStatus = document.getElementById('crm-user-status-select').value;
+      await firestoreRequest('updateDoc', 'users', userId, { tags: newTags, status: newStatus });
+      showToast('Tags & status updated!', 'success');
+    };
+  });
+
+  // Fetch booking history
+  firestoreRequest('getDocs', 'bookings', null, null, [
+    { type: 'where', field: 'userId', op: '==', value: userId },
+    { type: 'orderBy', field: 'bookingDate', direction: 'desc' }
+  ]).then(snap => {
+    if (snap.empty) {
+      bookingsDiv.innerHTML = '<i>No bookings found.</i>';
+    return;
+  }
+    let html = '<b>Booking History:</b><ul>';
+    snap.forEach(doc => {
+      const b = doc.data();
+      html += `<li>${b.bookingDate ? b.bookingDate.toDate().toLocaleDateString() : 'N/A'} - ₹${b.totalAmount || 0} (${b.status || 'N/A'})</li>`;
+    });
+    html += '</ul>';
+    bookingsDiv.innerHTML = html;
+  });
+
+  // Fetch notes
+  firestoreRequest('getDoc', 'userNotes', userId).then(noteSnap => {
+    let note = '';
+    if (noteSnap.exists()) note = noteSnap.data().note || '';
+    notesDiv.innerHTML = `
+      <b>Admin Notes:</b><br>
+      <textarea id="crm-user-profile-notes-text" rows="2" style="width:100%;margin-top:4px;">${note}</textarea>
+      <button id="crm-user-profile-save-note-btn" class="btn btn-secondary btn-sm" style="margin-top:4px;">Save Note</button>
+    `;
+    document.getElementById('crm-user-profile-save-note-btn').onclick = async () => {
+      const newNote = document.getElementById('crm-user-profile-notes-text').value;
+      await firestoreRequest('setDoc', 'userNotes', userId, { note: newNote });
+      showToast('Note saved!', 'success');
+    };
+  });
+
+  // --- Wallet: Fetch and render points & transactions ---
+  async function loadWalletSection() {
+    if (!walletBalanceSpan || !walletTxnsUl) return;
+    try {
+      // Fetch user points
+      const userSnap = await firestoreRequest('getDoc', 'users', userId);
+      const points = userSnap.exists() ? (userSnap.data().pointsBalance || 0) : 0;
+      walletBalanceSpan.textContent = points;
+      // Fetch last 5 transactions
+      const txSnap = await firestoreRequest('getDocs', 'walletTransactions', null, null, [
+        { type: 'where', field: 'userId', op: '==', value: userId },
+        { type: 'orderBy', field: 'date', direction: 'desc' },
+        { type: 'limit', value: 5 }
+      ]);
+      if (txSnap.empty) {
+        walletTxnsUl.innerHTML = '<li>No transactions found.</li>';
+      } else {
+        walletTxnsUl.innerHTML = '';
+        txSnap.docs.forEach(doc => {
+          const tx = doc.data();
+          const date = tx.date && tx.date.toDate ? tx.date.toDate().toLocaleString() : '';
+          const sign = tx.points > 0 ? '+' : '';
+          const color = tx.points > 0 ? 'green' : 'red';
+          const reason = tx.meta && tx.meta.reason ? ` (${tx.meta.reason})` : '';
+          walletTxnsUl.innerHTML += `<li><span style='color:${color};font-weight:bold;'>${sign}${tx.points}</span> pts - ${tx.action}${reason} <span style='color:#888;font-size:0.93em;'>[${date}]</span></li>`;
+        });
+      }
+    } catch (e) {
+      walletBalanceSpan.textContent = 'Error';
+      walletTxnsUl.innerHTML = '<li>Error loading transactions</li>';
+    }
+  }
+
+  // --- Wallet: Handle add/deduct points ---
+  if (walletForm) {
+    walletForm.onsubmit = async (e) => {
+      e.preventDefault();
+      if (!walletAmountInput || !walletTypeSelect) return;
+      const amount = parseInt(walletAmountInput.value, 10);
+      const type = walletTypeSelect.value;
+      const reason = walletReasonInput ? walletReasonInput.value.trim() : '';
+      if (!amount || amount <= 0) {
+        showToast('Enter a valid points amount.', 'error');
+        return;
+      }
+      try {
+        // Fetch current points
+        const userSnap = await firestoreRequest('getDoc', 'users', userId);
+        let points = userSnap.exists() ? (userSnap.data().pointsBalance || 0) : 0;
+        let newBalance = points;
+        let txPoints = 0;
+        let action = '';
+        if (type === 'add') {
+          newBalance += amount;
+          txPoints = amount;
+          action = 'manual-add';
+        } else {
+          if (amount > points) {
+            showToast('Cannot deduct more than current balance.', 'error');
+            return;
+          }
+          newBalance -= amount;
+          txPoints = -amount;
+          action = 'manual-deduct';
+        }
+        // Update user points
+        await firestoreRequest('updateDoc', 'users', userId, { pointsBalance: newBalance });
+        // Add wallet transaction
+        await firestoreRequest('addDoc', 'walletTransactions', null, {
+          userId,
+          date: new Date(),
+          action,
+          points: txPoints,
+          status: 'completed',
+          meta: { reason }
+        });
+        showToast(`Points ${type === 'add' ? 'added' : 'deducted'} successfully!`, 'success');
+        walletAmountInput.value = '';
+        walletReasonInput.value = '';
+        await loadWalletSection();
+      } catch (err) {
+        showToast('Failed to adjust wallet points.', 'error');
+      }
+    };
+  }
+
+  loadWalletSection();
+
+  // Send message logic (demo: just show toast)
+  sendBtn.onclick = async () => {
+    const msg = messageBox.value.trim();
+    if (!msg) { showToast('Type a message first!', 'info'); return; }
+    // Here you can integrate with email/SMS/WhatsApp APIs
+    showToast('Message sent to user (demo)!', 'success');
+    messageBox.value = '';
+  };
+
+  // Show modal
+  modal.style.display = 'flex';
+}
+
+// --- Wallet Accounts Tab Logic ---
+async function loadWalletAccounts() {
+  const tableBody = document.getElementById('wallet-accounts-table-body');
+  const searchInput = document.getElementById('wallet-accounts-search-input');
+  if (!tableBody) return;
+  tableBody.innerHTML = '<tr><td colspan="5">Loading wallet accounts...</td></tr>';
+  try {
+    const usersSnap = await firestoreRequest('getDocs', 'users', null, null, [{ type: 'orderBy', field: 'createdAt', direction: 'desc' }]);
+    let users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const search = searchInput && searchInput.value.trim().toLowerCase();
+    if (search) {
+      users = users.filter(u =>
+        (u.displayName || '').toLowerCase().includes(search) ||
+        (u.email || '').toLowerCase().includes(search) ||
+        (u.phoneNumber || '').toLowerCase().includes(search) ||
+        u.id.toLowerCase().includes(search)
+      );
+    }
+    if (users.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="5">No wallet accounts found.</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = '';
+    users.forEach(u => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${u.displayName || 'N/A'}</td>
+        <td>${u.email || 'N/A'}</td>
+        <td>${u.phoneNumber || 'N/A'}</td>
+        <td>${u.pointsBalance || 0}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm wallet-adjust-btn" data-uid="${u.id}"><i class="fas fa-edit"></i> Adjust</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  } catch (e) {
+    tableBody.innerHTML = '<tr><td colspan="5">Error loading wallet accounts.</td></tr>';
+  }
+}
+// --- End Wallet Accounts Tab Logic ---

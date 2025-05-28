@@ -1,4 +1,3 @@
-
 import type { User as FirebaseAuthUser } from 'firebase/auth';
 import { 
   db, 
@@ -15,15 +14,17 @@ import {
   Timestamp,
   serverTimestamp
 } from './client'; // Use client-side Firebase setup
+import { runTransaction } from 'firebase/firestore';
 import type { UserDetails, Booking, BookingItem } from '@/types';
 
 /**
  * Fetches an existing user document from Firestore or creates a new one if it doesn't exist.
  * Converts Firestore Timestamps to JS Date objects for fields like createdAt, lastUpdatedAt.
  * @param user The Firebase Auth user object.
+ * @param mobileNumber Optional: Mobile number to use when creating a new user document.
  * @returns A Promise that resolves to the UserDetails object or null if an error occurs.
  */
-export async function getOrCreateUserDocument(user: FirebaseAuthUser): Promise<UserDetails | null> {
+export async function getOrCreateUserDocument(user: FirebaseAuthUser, mobileNumber?: string): Promise<UserDetails | null> {
   if (!user) return null;
 
   const userRef = doc(db, 'users', user.uid);
@@ -39,14 +40,15 @@ export async function getOrCreateUserDocument(user: FirebaseAuthUser): Promise<U
         phoneNumber: userData.phoneNumber ?? null,
         createdAt: userData.createdAt instanceof Timestamp ? userData.createdAt.toDate() : undefined,
         lastUpdatedAt: userData.lastUpdatedAt instanceof Timestamp ? userData.lastUpdatedAt.toDate() : undefined,
-      } as UserDetails;
+        pointsBalance: userData.pointsBalance ?? 0,
+      } as UserDetails & { pointsBalance: number };
     } else {
       // Create new user document
       const newUserDetails: UserDetails = {
         uid: user.uid,
         email: user.email ?? null,
         displayName: user.displayName ?? null,
-        phoneNumber: user.phoneNumber ?? null,
+        phoneNumber: mobileNumber ?? user.phoneNumber ?? null,
         createdAt: new Date(), // Current date for new user
       };
       await setDoc(userRef, {
@@ -238,5 +240,40 @@ export async function savePrescriptionToFirestore(
     console.error("Error saving prescription to Firestore:", error);
     throw new Error(`Failed to save prescription details: ${(error as Error).message}`);
   }
+}
+
+/**
+ * Redeems wallet points for a user. Deducts points, adds a wallet transaction, and returns new balance.
+ * @param userId The user's UID
+ * @param pointsToRedeem Number of points to redeem (positive integer)
+ * @param bookingId Optional: Booking ID for reference
+ * @returns Promise<number> New points balance
+ */
+export async function redeemPoints(userId: string, pointsToRedeem: number, bookingId?: string): Promise<number> {
+  if (!userId || !pointsToRedeem || pointsToRedeem <= 0) throw new Error('Invalid redeem request');
+  // Use Firestore transaction for atomicity
+  const userRef = doc(db, 'users', userId);
+  const txRef = collection(db, 'walletTransactions');
+  return await runTransaction(db, async (transaction) => {
+    const userSnap = await transaction.get(userRef);
+    if (!userSnap.exists) throw new Error('User not found');
+    const user = userSnap.data();
+    const currentBalance = user.pointsBalance || 0;
+    if (currentBalance < pointsToRedeem) throw new Error('Insufficient points');
+    // Deduct points
+    const newBalance = currentBalance - pointsToRedeem;
+    transaction.update(userRef, { pointsBalance: newBalance });
+    // Add wallet transaction (modular syntax)
+    const newTxDocRef = doc(txRef);
+    transaction.set(newTxDocRef, {
+      userId,
+      date: new Date(),
+      action: 'redeem',
+      points: -pointsToRedeem,
+      status: 'completed',
+      meta: bookingId ? { bookingId } : {},
+    });
+    return newBalance;
+  });
 }
 

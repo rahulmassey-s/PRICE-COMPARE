@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,11 +12,17 @@ import { auth } from '@/lib/firebase/client'; // Ensure this path is correct
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus } from 'lucide-react';
 import { getOrCreateUserDocument } from '@/lib/firebase/firestoreService';
+import { collection, query, getDocs, doc, updateDoc, setDoc, getDoc, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client'; // Ensure this path is correct
+import { serverTimestamp } from 'firebase/firestore';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const router = useRouter();
@@ -37,6 +42,14 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!mobile || !/^\d{10}$/.test(mobile)) {
+      toast({
+        title: "Signup Failed",
+        description: "Please enter a valid 10-digit mobile number.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (password !== confirmPassword) {
       toast({
         title: "Signup Failed",
@@ -49,10 +62,70 @@ export default function SignupPage() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // User document will be created by getOrCreateUserDocument called by onAuthStateChanged in AccountPage or other places
-      // For signup, we can proactively create it here if needed for immediate profile setup.
       if (userCredential.user) {
-        await getOrCreateUserDocument(userCredential.user);
+        // --- Referral logic ---
+        let referrerUid = null;
+        let referrerUserDoc = null;
+        if (referralCode && referralCode.length >= 6) {
+          // Try to find user with this code (last 8 chars of UID)
+          const usersRef = collection(db, 'users');
+          const snap = await getDocs(usersRef);
+          const found = snap.docs.find(doc => doc.id.slice(-8).toUpperCase() === referralCode.trim().toUpperCase());
+          if (found) {
+            referrerUid = found.id;
+            referrerUserDoc = found;
+          }
+        }
+        // Create user doc with referrerUid if found
+        await getOrCreateUserDocument(userCredential.user, mobile);
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        await updateDoc(userDocRef, { referrerUid: referrerUid || null, displayName: name });
+        // Award 100 points to new user if referred
+        if (referrerUid) {
+          // 1. Add wallet transaction for new user
+          const txRef = doc(collection(db, 'walletTransactions'));
+          await setDoc(txRef, {
+            userId: userCredential.user.uid,
+            date: new Date(),
+            action: 'referral-signup',
+            points: 100,
+            status: 'completed',
+            meta: { referrerUid },
+            createdAt: serverTimestamp(),
+          });
+          // 2. Update new user's points
+          const userDoc = await getDoc(userDocRef);
+          const newPoints = (userDoc.data()?.pointsBalance || 0) + 100;
+          await updateDoc(userDocRef, { pointsBalance: newPoints });
+          // 3. Add wallet transaction for referrer (if not already awarded for this referred user)
+          const refTxSnap = await getDocs(
+            query(
+              collection(db, 'walletTransactions'),
+              where('userId', '==', referrerUid),
+              where('action', '==', 'referral-refer'),
+              where('meta.referredUid', '==', userCredential.user.uid)
+            )
+          );
+          if (refTxSnap.empty) {
+            const refTxRef = doc(collection(db, 'walletTransactions'));
+            await setDoc(refTxRef, {
+              userId: referrerUid,
+              date: new Date(),
+              action: 'referral-refer',
+              points: 100,
+              status: 'completed',
+              meta: { referredUid: userCredential.user.uid },
+              createdAt: serverTimestamp(),
+            });
+            // 4. Update referrer's points
+            if (referrerUserDoc) {
+              const refUserDocRef = doc(db, 'users', referrerUid);
+              const refUserDoc = await getDoc(refUserDocRef);
+              const refNewPoints = (refUserDoc.data()?.pointsBalance || 0) + 100;
+              await updateDoc(refUserDocRef, { pointsBalance: refNewPoints });
+            }
+          }
+        }
       }
 
       toast({
@@ -121,6 +194,18 @@ export default function SignupPage() {
         <CardContent className="p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Your Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="text-base py-3"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -154,6 +239,32 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="text-base py-3"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile">Mobile Number</Label>
+              <Input
+                id="mobile"
+                type="tel"
+                placeholder="Enter your 10-digit mobile number"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                required
+                className="text-base py-3"
+                pattern="\d{10}"
+                maxLength={10}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referralCode">Referral Code (optional)</Label>
+              <Input
+                id="referralCode"
+                type="text"
+                placeholder="Enter referral code (if any)"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                className="text-base py-3 tracking-widest uppercase"
+                maxLength={12}
               />
             </div>
             <Button type="submit" className="w-full py-3 text-base" disabled={isLoading}>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, User, LogOut, Languages, MapPin, Clock, Sun, Moon, Settings } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Languages, MapPin, Clock, Sun, Moon, Settings, Bell, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
 import type { User as FirebaseAuthUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,9 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
   const [dynamicSiteName, setDynamicSiteName] = useState<string>(siteConfig.name);
   const [dynamicLogoUrl, setDynamicLogoUrl] = useState<string | null>(null);
   const [theme, setTheme] = useState('light');
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -81,6 +84,36 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
       document.documentElement.classList.toggle('dark', theme === 'dark');
     }
   }, [theme]);
+
+  // Listen for notifications for the current user
+  useEffect(() => {
+    if (!firebaseUser || !db) return;
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', firebaseUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('[DEBUG] Notifications fetched from Firestore:', notifs);
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter(n => n.status === 'unread').length);
+    }, (error) => {
+      console.error('[DEBUG] Firestore notifications listener error:', error);
+    });
+    return () => unsub();
+  }, [firebaseUser]);
+
+  // Mark all as read when dropdown opens
+  useEffect(() => {
+    if (notifDropdownOpen && notifications.length > 0 && db && firebaseUser) {
+      notifications.forEach(n => {
+        if (n.status === 'unread') {
+          updateDoc(doc(db, 'notifications', n.id), { status: 'read' });
+        }
+      });
+    }
+  }, [notifDropdownOpen, notifications, db, firebaseUser]);
 
   const handleLogout = async () => {
     try {
@@ -155,30 +188,105 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
           </div>
           {/* Right: Icons */}
           <div className="flex items-center gap-4 sm:gap-5 flex-shrink-0">
+            {/* Cart Icon - Enhanced */}
             <Button
               variant="ghost"
               size="icon"
-              className="text-foreground hover:bg-primary/10 hover:text-primary relative h-9 w-9 sm:h-10 sm:w-10"
+              className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
               onClick={handleOpenCart}
               aria-label="Open cart"
             >
-              <ShoppingCart size={24} />
+              <ShoppingCart size={28} className="text-blue-600 group-hover:scale-110 group-hover:text-green-500 transition-all duration-200 drop-shadow" />
               {cartItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce shadow-md">
+                <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-red-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
                   {cartItems.length > 9 ? '9+' : cartItems.length}
                 </span>
               )}
               <span className="sr-only">View Cart</span>
             </Button>
-
-            {/* Language Switcher with Globe Icon and Tooltip */}
+            {/* Wallet Icon - Enhanced */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
+                    aria-label="My Wallet"
+                    onClick={() => router.push('/wallet')}
+                  >
+                    <Wallet size={28} className="text-green-600 group-hover:scale-110 group-hover:text-blue-500 transition-all duration-200 drop-shadow" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">My Wallet</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {/* Notification Bell - Enhanced */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
+                aria-label="Notifications"
+                onClick={() => setNotifDropdownOpen(v => !v)}
+              >
+                <Bell size={28} className="text-yellow-500 group-hover:scale-110 group-hover:text-blue-600 transition-all duration-200 drop-shadow" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-blue-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+                <span className="sr-only">Notifications</span>
+              </Button>
+              {/* Dropdown */}
+              {notifDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-80 max-w-xs bg-blue-50 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded-xl shadow-xl z-50 p-3 transition-all duration-200" style={{ minWidth: 320 }}>
+                  <div className="font-bold text-base mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200"><Bell size={18} /> Notifications</div>
+                  {notifications.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">No notifications</div>}
+                  <ul className="max-h-72 overflow-y-auto divide-y divide-blue-200 dark:divide-blue-800">
+                    {notifications.slice(0, 10).map(n => {
+                      // --- Enhanced extraction of test/lab/amount/date ---
+                      let testNames = '';
+                      let labNames = '';
+                      if (n.items && Array.isArray(n.items) && n.items.length > 0) {
+                        testNames = n.items.map(item => item.testName).join(', ');
+                        labNames = [...new Set(n.items.map(item => item.labName))].join(', ');
+                      } else if (n.testName) {
+                        testNames = n.testName;
+                      } else if (n.message) {
+                        const match = n.message.match(/Test\(s\): ([^\n]+)/);
+                        if (match) testNames = match[1];
+                      }
+                      const totalAmount = n.totalAmount || (n.message && n.message.match(/Total: ₹([\d.]+)/) ? n.message.match(/Total: ₹([\d.]+)/)[1] : '');
+                      const bookingDate = n.bookingDate?.toDate ? n.bookingDate.toDate() : (n.createdAt?.toDate ? n.createdAt.toDate() : null);
+                      return (
+                        <li key={n.id} className={`py-3 px-2 rounded-lg mb-2 ${n.status === 'unread' ? 'bg-blue-100 dark:bg-blue-800' : 'bg-transparent'} shadow-sm`} style={{ listStyle: 'none' }}>
+                          <div className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-1 flex items-center gap-2">
+                            <Bell size={14} className="text-blue-500 dark:text-blue-200" /> {n.title}
+                          </div>
+                          <div className="text-xs text-blue-800 dark:text-blue-200 mb-1">
+                            {testNames && <><span className="font-bold">Test:</span> {testNames}<br /></>}
+                            {labNames && <><span className="font-bold">Lab:</span> {labNames}<br /></>}
+                            {totalAmount && <><span className="font-bold">Amount:</span> ₹{totalAmount}<br /></>}
+                            {bookingDate && <><span className="font-bold">Date:</span> {bookingDate.toLocaleDateString()}<br /></>}
+                            {!testNames && n.message && <span>{n.message.replace(/#\w+/g, '').trim()}</span>}
+                          </div>
+                          <div className="text-[11px] text-right text-blue-700 dark:text-blue-300 mt-1">{n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString() : ''}</div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+            {/* Language Switcher - Enhanced */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-foreground hover:bg-primary/10 hover:text-primary h-9 w-9 sm:h-10 sm:w-10 border border-border rounded-full">
-                        <Languages size={22} />
+                      <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400">
+                        <Languages size={26} className="text-purple-600 group-hover:scale-110 group-hover:text-blue-600 transition-all duration-200 drop-shadow" />
                         <span className="sr-only">Change language</span>
                       </Button>
                     </DropdownMenuTrigger>
@@ -197,57 +305,12 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
                 <TooltipContent side="bottom" className="text-xs">{t('language')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
-            {/* Theme Switcher */}
-            <Button variant="ghost" size="icon" className="text-foreground hover:bg-primary/10 hover:text-primary h-9 w-9 sm:h-10 sm:w-10 border border-border rounded-full" onClick={toggleTheme} aria-label="Toggle theme">
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            {/* Theme Switcher - Enhanced */}
+            <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400" onClick={toggleTheme} aria-label="Toggle theme">
+              {theme === 'light' ? <Moon size={24} className="text-blue-700 group-hover:scale-110 group-hover:text-yellow-500 transition-all duration-200 drop-shadow" /> : <Sun size={24} className="text-yellow-400 group-hover:scale-110 group-hover:text-blue-500 transition-all duration-200 drop-shadow" />}
             </Button>
-
-            {/* Avatar Dropdown */}
-            {authLoading ? (
-              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 cursor-wait bg-muted rounded-full" />
-            ) : firebaseUser ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full p-0 border border-border">
-                    <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
-                      <AvatarImage
-                        src={firebaseUser.photoURL || `https://images.unsplash.com/photo-1633332755192-727a05c4013d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc0NzEzOTg5NHww&ixlib=rb-4.1.0&q=80&w=1080`}
-                        alt={firebaseUser.displayName || firebaseUser.email || "User"}
-                        data-ai-hint="user avatar"
-                      />
-                      <AvatarFallback className="text-sm bg-primary text-primary-foreground">
-                        {getInitials(firebaseUser)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 shadow-2xl rounded-xl mt-2" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">Hi, {firebaseUser.displayName || firebaseUser.email?.split('@')[0]}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {firebaseUser.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/account')}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>My Account</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
+            {/* Removed user avatar/profile icon to prevent overlap. User can access account from bottom nav. */}
+            {!authLoading && !firebaseUser && (
               <Button asChild variant="default" size="sm" className="text-xs sm:text-sm px-2.5 py-1 h-auto sm:px-3">
                 <Link href="/login">Login</Link>
               </Button>
