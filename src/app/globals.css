@@ -255,3 +255,65 @@
   display: inline-block;
   animation: wave 2.8s infinite ease-in-out;
 }
+
+/* --- Professional Mobile Header Fix (2024) --- */
+@media (max-width: 600px) {
+  header.sticky.top-0 {
+    min-width: 0;
+  }
+  header .container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 48px !important;
+    padding: 0 8px !important;
+    gap: 0 !important;
+  }
+  /* App name left align, horizontal */
+  header .flex.items-center.gap-3.min-w-0.flex-1 {
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 60vw;
+    margin-bottom: 0;
+    padding-right: 4px;
+    justify-content: flex-start !important;
+    flex-direction: row !important;
+  }
+  header .flex.items-center.gap-3.min-w-0.flex-1 span {
+    font-size: 1.05rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    text-align: left !important;
+    writing-mode: horizontal-tb !important;
+  }
+  .app-title-wave {
+    font-size: 1em;
+    display: inline-block !important;
+    writing-mode: horizontal-tb !important;
+  }
+  /* Icons group right align, with more gap and padding for touch */
+  header .flex.items-center.gap-4,
+  header .flex.items-center.gap-4.sm\:gap-5.flex-shrink-0 {
+    gap: 12px !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    min-width: 0;
+  }
+  header .flex.items-center.gap-4 button,
+  header .flex.items-center.gap-4.sm\:gap-5.flex-shrink-0 button {
+    height: 36px !important;
+    width: 36px !important;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 0.95rem;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
