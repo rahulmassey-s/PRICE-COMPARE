@@ -321,10 +321,10 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       <span>₹{savings.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Total MRP</span>
-                    <span>₹{originalTotal.toFixed(2)}</span>
-                  </div>
+                   <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Total MRP</span>
+                      <span>₹{originalTotal.toFixed(2)}</span>
+                    </div>
                   <Separator />
                   <div className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
                     <span>Grand Total</span>
@@ -350,7 +350,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   >
                     <Trash2 className="mr-2 h-4 w-4" /> Clear Cart
                   </Button>
-                  <div className="text-xs text-muted-foreground mt-2 text-center p-2 border border-dashed rounded-md bg-secondary/30">
+                   <div className="text-xs text-muted-foreground mt-2 text-center p-2 border border-dashed rounded-md bg-secondary/30">
                     <Info size={14} className="inline mr-1 mb-0.5" />
                     Your booking request will be saved. Click 'Book & Confirm via WhatsApp' to finalize with our team.
                   </div>

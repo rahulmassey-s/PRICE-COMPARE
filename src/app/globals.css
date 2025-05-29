@@ -317,3 +317,12 @@
     padding-bottom: 0 !important;
   }
 }
+
+@keyframes eye-blink {
+  0%, 90%, 100% { opacity: 1; transform: scaleY(1);}
+  92%, 96% { opacity: 0.2; transform: scaleY(0.1);}
+}
+.eye-blink-animate {
+  animation: eye-blink 2.5s infinite;
+  transform-origin: 50% 60%;
+}

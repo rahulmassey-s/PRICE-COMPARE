@@ -32,7 +32,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
   const [expandedLabPriceId, setExpandedLabPriceId] = useState<string | null>(null);
   const [generatedCoupons, setGeneratedCoupons] = useState<Record<string, string>>({});
   const [copiedStatus, setCopiedStatus] = useState<Record<string, boolean>>({});
-  const [isTestDetailsDialogOpen, setIsTestDetailsDialogOpen] = useState(false);
+  const [openLabDetailsIndex, setOpenLabDetailsIndex] = useState<number | null>(null);
   
   const { toast } = useToast();
   const { addToCart, items: cartItems, removeFromCart } = useCart();
@@ -202,18 +202,6 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
         <CardContent className="p-3 sm:p-4 flex-grow space-y-3 min-h-[200px]">
           <div className="flex justify-between items-center mb-2">
             <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">Available at:</h4>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="px-2 py-1 h-auto text-xs text-primary border-primary/50 hover:bg-primary/10"
-              onClick={(e) => {
-                e.stopPropagation(); 
-                setIsTestDetailsDialogOpen(true);
-              }}
-            >
-              <Eye size={14} className="mr-1.5" />
-              View Details
-            </Button>
           </div>
           {test.prices && test.prices.length > 0 ? (
             test.prices.map((priceInfo, index) => {
@@ -232,92 +220,76 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
                 <div
                   key={labPriceId}
                   className={cn(
-                    "border rounded-lg shadow-sm transition-all duration-300 ease-in-out relative bg-card",
-                    isExpanded ? "ring-2 ring-primary/70 shadow-lg" : "hover:shadow-md",
+                    "p-4 pt-12 rounded-xl shadow-lg border border-gray-200 bg-white flex flex-col gap-3 relative mb-4",
+                    isExpanded ? "ring-2 ring-primary/70 shadow-xl" : "hover:shadow-md",
                     isMarkedAsBestPrice ? "border-green-500 border-2" : "border-border"
                   )}
                 >
-                  {isMarkedAsBestPrice && (
-                    <Badge
-                      variant="default"
-                      className="absolute -top-2.5 left-3 z-10 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-1.5 py-0.5 shadow-md"
-                    >
-                      <Star className="h-3 w-3 mr-1 fill-current" /> Best Price
-                    </Badge>
-                  )}
-
-                  <div className={cn("flex justify-between items-center p-2.5 sm:p-3", isMarkedAsBestPrice && "pt-4")}>
-                    <div className="flex-1 mr-2">
-                      <span className="font-semibold text-sm sm:text-base text-foreground flex items-center">
-                        <Building size={16} className="mr-1.5 text-muted-foreground shrink-0" />
-                        {priceInfo.labName}
+                  {/* Badges Row: Best Price and Discount, no overlap */}
+                  <div className="flex justify-between items-start w-full absolute top-3 left-0 px-3 z-20 pointer-events-none">
+                    {isMarkedAsBestPrice && (
+                      <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow flex items-center gap-1 pointer-events-auto">
+                        <Star className="h-3 w-3 fill-current" /> Best Price
                       </span>
-                      <div className="flex items-baseline flex-wrap mt-1.5 space-x-2">
-                        <span className="font-bold text-primary text-lg sm:text-xl flex items-center">
-                          ₹{priceInfo.price.toFixed(2)}
-                        </span>
-                        {hasOriginalPrice && (
-                          <span className="text-xs sm:text-sm text-muted-foreground line-through flex items-center">
-                            <TagIcon size={12} className="mr-0.5 opacity-70" />
-                            MRP: ₹{priceInfo.originalPrice?.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      {hasOriginalPrice && discountPercentage > 0 && (
-                        <Badge variant="destructive" className="text-[10px] sm:text-xs font-semibold py-0.5 px-1.5 rounded-sm mt-1.5">
-                          {discountPercentage}% OFF
-                        </Badge>
-                      )}
-                      {showBestPriceSuggestion && (
-                        <div className="mt-1.5 p-1.5 rounded-md bg-yellow-100 text-yellow-800 text-xs flex items-center gap-1 border border-yellow-300">
-                          <Star className="h-3.5 w-3.5 shrink-0 text-yellow-600" />
-                          <span>
-                            Better price: <span className="font-bold">₹{minPrice.toFixed(2)}</span> at {bestPriceLabs.map(l => l.labName).join('/')}.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "rounded-md px-2.5 py-2 h-auto text-xs font-medium tracking-wide w-full sm:w-auto justify-center",
-                          "border-primary/70 text-primary/90 hover:bg-primary/10 hover:text-primary",
-                          isExpanded && "bg-primary/10 ring-1 ring-primary/50"
-                        )}
-                        aria-expanded={isExpanded}
-                        aria-controls={`coupon-details-${labPriceId}`}
-                        data-state={isExpanded ? "open" : "closed"}
-                        onClick={(e) => handleToggleDiscount(e, labPriceId, priceInfo.labName)}
-                      >
-                        {isExpanded ? <ChevronUp className="mr-1 h-3 w-3" /> : <Percent className="mr-1 h-3 w-3" />}
-                        Coupon
-                      </Button>
-
-                      <Button
-                        variant={inCart ? 'outline' : 'secondary'}
-                        size="sm"
-                        className={cn(
-                          "rounded-md px-2.5 py-2 h-auto text-xs font-medium tracking-wide w-full sm:w-auto justify-center text-secondary-foreground bg-secondary hover:bg-secondary/80",
-                          inCart ? "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" : ""
-                        )}
-                        onClick={(e) => handleCartAction(e, priceInfo, inCart)}
-                      >
-                        {inCart ? (
-                          <MinusCircle className="mr-1 h-3.5 w-3.5" />
-                        ) : (
-                          <ShoppingCart className="mr-1 h-3.5 w-3.5" />
-                        )}
-                        {inCart ? "Remove" : "Book Now"}
-                      </Button>
-                    </div>
+                    )}
+                    {discountPercentage > 0 && (
+                      <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow pointer-events-auto">
+                        {discountPercentage}% OFF
+                      </span>
+                    )}
                   </div>
-
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building className="text-gray-400" size={18} />
+                    <span className="font-bold text-lg text-gray-900">{priceInfo.labName}</span>
+                  </div>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-2xl font-extrabold text-primary">₹{priceInfo.price.toFixed(2)}</span>
+                    {hasOriginalPrice && (
+                      <span className="text-sm text-gray-400 line-through">₹{priceInfo.originalPrice?.toFixed(2)}</span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-center border-primary text-primary font-medium mb-1 bg-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenLabDetailsIndex(index);
+                    }}
+                  >
+                    <Eye size={16} className="mr-1 eye-blink-animate" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "w-full justify-center border-primary text-primary font-medium mb-1",
+                      isExpanded && "bg-primary/10 ring-1 ring-primary/50"
+                    )}
+                    aria-expanded={isExpanded}
+                    aria-controls={`coupon-details-${labPriceId}`}
+                    data-state={isExpanded ? "open" : "closed"}
+                    onClick={(e) => handleToggleDiscount(e, labPriceId, priceInfo.labName)}
+                  >
+                    <Percent className="mr-1 h-4 w-4" />
+                    Coupon
+                  </Button>
+                  <Button
+                    variant={inCart ? 'outline' : 'primary'}
+                    size="lg"
+                    className={cn(
+                      "w-full justify-center font-bold text-white bg-primary hover:bg-primary/90 transition mb-1",
+                      inCart ? "border-destructive text-destructive bg-white hover:bg-destructive/10" : ""
+                    )}
+                    onClick={(e) => handleCartAction(e, priceInfo, inCart)}
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    {inCart ? "Remove" : "Book Now"}
+                  </Button>
                   <div
                     id={`coupon-details-${labPriceId}`}
-                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-                      }`}
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                     aria-live="polite"
                   >
                     {isExpanded && (
@@ -338,9 +310,6 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
                                 <span className="sr-only">{copiedStatus[labPriceId] ? "Copied" : "Copy coupon"}</span>
                               </Button>
                             </div>
-                            {/* <p className="text-xs text-muted-foreground mb-2">
-                              Show this code at <span className="font-medium text-foreground">{priceInfo.labName}</span> or contact us:
-                            </p> */}
                             <div className="space-y-1.5">
                               <Button
                                 asChild
@@ -383,31 +352,53 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
         </CardContent>
       </Card>
 
-      <Dialog open={isTestDetailsDialogOpen} onOpenChange={setIsTestDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-xl">
-          <DialogHeader>
-            <DialogTitleComponent className="text-lg sm:text-xl text-primary flex items-center">
-              <Info size={20} className="mr-2" /> Test Details: {test.name}
-            </DialogTitleComponent>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                <XIcon className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-          <div className="py-4 text-sm text-muted-foreground max-h-[60vh] overflow-y-auto">
-            {test.description && test.description.trim() !== '' ? (
-              <p className="whitespace-pre-wrap">{test.description}</p>
-            ) : (
-              <p>No detailed description available for this test.</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTestDetailsDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {openLabDetailsIndex !== null && test.prices && (
+        <Dialog open={openLabDetailsIndex !== null} onOpenChange={() => setOpenLabDetailsIndex(null)}>
+          <DialogContent className="sm:max-w-md rounded-xl">
+            <DialogHeader>
+              <DialogTitleComponent className="text-lg sm:text-xl text-primary flex items-center">
+                <Info size={20} className="mr-2" /> Lab Details: {test.prices[openLabDetailsIndex].labName}
+              </DialogTitleComponent>
+              <DialogClose asChild>
+                <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                  <XIcon className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
+              </DialogClose>
+            </DialogHeader>
+            <div className="py-4 text-sm text-muted-foreground max-h-[60vh] overflow-y-auto">
+              <div className="mb-2">
+                <span className="font-semibold text-foreground">Lab:</span> {test.prices[openLabDetailsIndex].labName}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-foreground">Price:</span> ₹{test.prices[openLabDetailsIndex].price.toFixed(2)}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-foreground">MRP:</span> ₹{test.prices[openLabDetailsIndex].originalPrice?.toFixed(2) || '-'}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-foreground">Discount:</span> {test.prices[openLabDetailsIndex].originalPrice && test.prices[openLabDetailsIndex].originalPrice > test.prices[openLabDetailsIndex].price ? `${Math.round(((test.prices[openLabDetailsIndex].originalPrice - test.prices[openLabDetailsIndex].price) / test.prices[openLabDetailsIndex].originalPrice) * 100)}% OFF` : '-'}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-foreground">Lab Description:</span><br />
+                {test.prices[openLabDetailsIndex].labDescription
+                  ? <span className="whitespace-pre-wrap">{test.prices[openLabDetailsIndex].labDescription}</span>
+                  : test.description
+                    ? <span className="whitespace-pre-wrap">{test.description}</span>
+                    : <span className="text-muted-foreground">No description available.</span>
+                }
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpenLabDetailsIndex(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {openLabDetailsIndex !== null && test.prices && (
+        (() => { console.log('DEBUG: View Details dialog data:', test.prices[openLabDetailsIndex]); return null; })()
+      )}
     </>
   );
 }

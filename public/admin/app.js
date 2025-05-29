@@ -833,7 +833,8 @@ async function handleAddTestFormSubmit(event) {
         labPrices.push({ 
             labId, 
             price, 
-            originalPrice: isNaN(originalPrice) || originalPrice < 0 ? null : originalPrice 
+            originalPrice: isNaN(originalPrice) || originalPrice < 0 ? null : originalPrice,
+            labDescription: row.querySelector('.lab-description-input')?.value?.trim() || null
         });
     });
 
@@ -874,7 +875,8 @@ async function handleAddTestFormSubmit(event) {
                 labId: lp.labId,
                 labName: lab ? lab.name : 'Unknown Lab', // Denormalized
                 price: lp.price,
-                originalPrice: lp.originalPrice
+                originalPrice: lp.originalPrice,
+                labDescription: lp.labDescription || null
             });
         });
         await Promise.all(pricePromises);
@@ -1535,7 +1537,8 @@ async function handleEditTestFormSubmit(event) {
             labId, 
             price, 
             originalPrice: isNaN(originalPrice) || originalPrice < 0 ? null : originalPrice,
-            priceEntryId: priceEntryId || null // null if new
+            priceEntryId: priceEntryId || null, // null if new
+            labDescription: row.querySelector('.lab-description-input')?.value?.trim() || null
         });
     });
     if (!pricesValid) return;
@@ -1578,7 +1581,8 @@ async function handleEditTestFormSubmit(event) {
                 labId: lpData.labId,
                 labName: lab ? lab.name : 'Unknown Lab',
                 price: lpData.price,
-                originalPrice: lpData.originalPrice
+                originalPrice: lpData.originalPrice,
+                labDescription: lpData.labDescription || null
             };
             if (lpData.priceEntryId && existingPriceIds.includes(lpData.priceEntryId)) { // Update existing
                 newPriceIds.push(lpData.priceEntryId);
@@ -1903,13 +1907,20 @@ function addLabPriceRow(containerElement, labPriceData = null, isEdit = false, p
     priceInput.value = labPriceData && labPriceData.price !== undefined ? labPriceData.price : '';
     priceInput.min = "0"; priceInput.step = "0.01";
 
-
     const originalPriceInput = document.createElement('input');
     originalPriceInput.type = 'number';
     originalPriceInput.classList.add('original-price-input');
     originalPriceInput.placeholder = 'MRP (Optional)';
     originalPriceInput.value = labPriceData && labPriceData.originalPrice !== undefined ? labPriceData.originalPrice : '';
     originalPriceInput.min = "0"; originalPriceInput.step = "0.01";
+
+    // NEW: Lab Description textarea
+    const labDescInput = document.createElement('textarea');
+    labDescInput.classList.add('lab-description-input');
+    labDescInput.placeholder = 'Lab Description (optional)';
+    labDescInput.rows = 2;
+    labDescInput.style.resize = 'vertical';
+    labDescInput.value = labPriceData && labPriceData.labDescription ? labPriceData.labDescription : '';
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -1920,6 +1931,7 @@ function addLabPriceRow(containerElement, labPriceData = null, isEdit = false, p
     rowDiv.appendChild(labSelect);
     rowDiv.appendChild(priceInput);
     rowDiv.appendChild(originalPriceInput);
+    rowDiv.appendChild(labDescInput); // Add textarea to row
     rowDiv.appendChild(removeBtn);
     containerElement.appendChild(rowDiv);
 }

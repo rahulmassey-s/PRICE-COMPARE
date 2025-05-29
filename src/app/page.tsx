@@ -159,6 +159,7 @@ export default function HomePage({ }: HomePageProps) {
             labName: priceData.labName,
             price: priceData.price,
             originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+            labDescription: priceData.labDescription || '',
           });
           labPricesMap.set(priceData.testId, currentPrices);
         });
@@ -211,6 +212,7 @@ export default function HomePage({ }: HomePageProps) {
         labName: priceData.labName,
         price: priceData.price,
         originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+        labDescription: priceData.labDescription || '',
       });
     });
 
@@ -694,7 +696,7 @@ export default function HomePage({ }: HomePageProps) {
               {t('type_test_name_below')}
             </p>
             <div ref={searchContainerRef} className="relative max-w-lg mx-auto animate-fade-in-up animation-delay-400">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 sm:h-5 w-4 sm:h-5 text-primary/70 pointer-events-none" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/60 pointer-events-none" />
               <Input
                 type="text"
                 placeholder={t('search_placeholder')}
@@ -702,9 +704,8 @@ export default function HomePage({ }: HomePageProps) {
                 onChange={handleLocalSearchChange}
                 onKeyDown={handleLocalSearchKeyDown}
                 onFocus={() => { if (localSearchTerm.trim().length >= 2) fetchTestSuggestions(localSearchTerm); }}
-                className="w-full pl-10 pr-10 py-3 px-3 text-base rounded-full shadow-md border-border focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full pl-12 pr-10 py-3 text-base rounded-full border-2 border-primary/30 shadow-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all placeholder:text-gray-400"
                 aria-label="Search for tests and packages"
-                disabled={isLoadingSearch && activeSearchQuery !== null}
               />
               {(isLoadingSearch && activeSearchQuery !== null && localSearchTerm) && (
                 <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-spin" />
