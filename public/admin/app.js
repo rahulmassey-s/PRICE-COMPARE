@@ -19,7 +19,9 @@ const CLOUDINARY_CLOUD_NAME = "dvgilt12w";
 const CLOUDINARY_UPLOAD_PRESET = "my-preset"; // Ensure this is an UNSIGNED preset
 const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
-const allowedAdminUIDs = ["OgrmQ6O90zStYCfbrZ3isyz1cVe2"];
+// --- Admin Allowlist ---
+const allowedAdminUIDs = ["OgrmQ6O90zStYCfbrZ3isyz1cVe2"]; // Add your real admin UIDs here
+const allowedAdminEmails = ["admin@smartbharat.com"]; // Real admin email
 
 // ----- Global State Variables -----
 let labsListCache = []; // Cache for lab names and IDs
@@ -531,11 +533,11 @@ async function loadUsers() {
         console.warn("Users table body not found! Cannot load users.");
         return;
     }
-    usersTableBody.innerHTML = '<tr><td colspan="6">Loading users...</td></tr>';
+    usersTableBody.innerHTML = '<tr><td colspan="7">Loading users...</td></tr>';
     try {
         const querySnapshot = await firestoreRequest('getDocs', 'users', null, null, [{ type: 'orderBy', field: 'createdAt', direction: 'desc' }]);
         if (querySnapshot.empty) {
-            usersTableBody.innerHTML = '<tr><td colspan="6">No users found.</td></tr>';
+            usersTableBody.innerHTML = '<tr><td colspan="7">No users found.</td></tr>';
             return;
         }
         usersTableBody.innerHTML = '';
@@ -548,14 +550,35 @@ async function loadUsers() {
             row.insertCell().textContent = userData.displayName || 'N/A';
             row.insertCell().textContent = userData.phoneNumber || 'N/A';
             row.insertCell().textContent = userData.createdAt ? userData.createdAt.toDate().toLocaleDateString() : 'N/A';
-            
+            // --- Role column ---
+            const roleCell = row.insertCell();
+            const roleSelect = document.createElement('select');
+            roleSelect.className = 'user-role-select';
+            const roles = ['non-member', 'member', 'admin'];
+            roles.forEach(roleOpt => {
+                const opt = document.createElement('option');
+                opt.value = roleOpt;
+                opt.textContent = roleOpt.charAt(0).toUpperCase() + roleOpt.slice(1);
+                if ((userData.role || 'non-member') === roleOpt) opt.selected = true;
+                roleSelect.appendChild(opt);
+            });
+            roleSelect.onchange = async function() {
+                try {
+                    await firestoreRequest('updateDoc', 'users', userId, { role: this.value });
+                    showToast('Role updated!', 'success');
+                } catch (e) {
+                    showToast('Failed to update role.', 'error');
+                }
+            };
+            roleCell.appendChild(roleSelect);
+            // --- Actions ---
             const actionsCell = row.insertCell();
             actionsCell.innerHTML = `
                 <button class="btn btn-info btn-sm view-bookings-btn" data-id="${userId}" data-username="${userData.displayName || userData.email || userId}"><i class="fas fa-list-alt"></i> View Bookings</button>
             `;
         });
     } catch (error) {
-        usersTableBody.innerHTML = '<tr><td colspan="6">Error loading users. Check console.</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="7">Error loading users. Check console.</td></tr>';
         console.error("Error loading users:", error);
     }
 }
@@ -819,6 +842,9 @@ async function handleAddTestFormSubmit(event) {
         const labId = row.querySelector('.lab-select').value;
         const price = parseFloat(row.querySelector('.price-input').value);
         const originalPrice = parseFloat(row.querySelector('.original-price-input').value);
+        const memberPriceInput = row.querySelector('input.member-price-input');
+        const memberPrice = memberPriceInput ? parseFloat(memberPriceInput.value) : null;
+        console.log('Extracted memberPrice:', memberPrice, 'from input:', memberPriceInput);
 
         if (!labId) {
             showToast("Please select a lab for all price entries.", "error");
@@ -834,6 +860,7 @@ async function handleAddTestFormSubmit(event) {
             labId, 
             price, 
             originalPrice: isNaN(originalPrice) || originalPrice < 0 ? null : originalPrice,
+            memberPrice: isNaN(memberPrice) || memberPrice < 0 ? null : memberPrice,
             labDescription: row.querySelector('.lab-description-input')?.value?.trim() || null
         });
     });
@@ -869,15 +896,18 @@ async function handleAddTestFormSubmit(event) {
         // Save lab prices to testLabPrices collection
         const pricePromises = labPrices.map(lp => {
             const lab = labsListCache.find(l => l.id === lp.labId);
-            return firestoreRequest('addDoc', 'testLabPrices', null, {
+            const saveObj = {
                 testId: testId,
                 testName: testName, // Denormalized
                 labId: lp.labId,
                 labName: lab ? lab.name : 'Unknown Lab', // Denormalized
                 price: lp.price,
                 originalPrice: lp.originalPrice,
+                memberPrice: lp.memberPrice,
                 labDescription: lp.labDescription || null
-            });
+            };
+            console.log('Saving to Firestore:', saveObj);
+            return firestoreRequest('addDoc', 'testLabPrices', null, saveObj);
         });
         await Promise.all(pricePromises);
 
@@ -1523,7 +1553,10 @@ async function handleEditTestFormSubmit(event) {
         const labId = row.querySelector('.lab-select').value;
         const price = parseFloat(row.querySelector('.price-input').value);
         const originalPrice = parseFloat(row.querySelector('.original-price-input').value);
+        const memberPriceInput = row.querySelector('input.member-price-input');
+        const memberPrice = memberPriceInput ? parseFloat(memberPriceInput.value) : null;
         const priceEntryId = row.dataset.priceEntryId; // existing price ID, if any
+        console.log('Extracted memberPrice (edit):', memberPrice, 'from input:', memberPriceInput);
 
         if (!labId) {
             showToast("Please select a lab for all price entries.", "error");
@@ -1537,6 +1570,7 @@ async function handleEditTestFormSubmit(event) {
             labId, 
             price, 
             originalPrice: isNaN(originalPrice) || originalPrice < 0 ? null : originalPrice,
+            memberPrice: isNaN(memberPrice) || memberPrice < 0 ? null : memberPrice,
             priceEntryId: priceEntryId || null, // null if new
             labDescription: row.querySelector('.lab-description-input')?.value?.trim() || null
         });
@@ -1582,8 +1616,10 @@ async function handleEditTestFormSubmit(event) {
                 labName: lab ? lab.name : 'Unknown Lab',
                 price: lpData.price,
                 originalPrice: lpData.originalPrice,
+                memberPrice: lpData.memberPrice,
                 labDescription: lpData.labDescription || null
             };
+            console.log('Saving to Firestore (edit):', priceEntry);
             if (lpData.priceEntryId && existingPriceIds.includes(lpData.priceEntryId)) { // Update existing
                 newPriceIds.push(lpData.priceEntryId);
                 return firestoreRequest('updateDoc', 'testLabPrices', lpData.priceEntryId, priceEntry);
@@ -1928,12 +1964,36 @@ function addLabPriceRow(containerElement, labPriceData = null, isEdit = false, p
     removeBtn.innerHTML = '<i class="fas fa-times"></i> Remove';
     removeBtn.onclick = () => rowDiv.remove();
 
+    // Member Price input
+    const memberPriceInput = document.createElement('input');
+    memberPriceInput.type = 'number';
+    memberPriceInput.className = 'form-control member-price-input';
+    memberPriceInput.placeholder = 'Member Price';
+    memberPriceInput.min = 0;
+    memberPriceInput.step = 'any';
+    memberPriceInput.style.width = '110px';
+    if (labPriceData && labPriceData.memberPrice !== undefined) {
+        memberPriceInput.value = labPriceData.memberPrice;
+    }
+    // Add a label for clarity
+    const memberPriceLabel = document.createElement('label');
+    memberPriceLabel.textContent = 'Member Price:';
+    memberPriceLabel.style.fontSize = '12px';
+    memberPriceLabel.style.marginRight = '4px';
+    memberPriceLabel.style.marginLeft = '8px';
+    memberPriceLabel.htmlFor = '';
+
     rowDiv.appendChild(labSelect);
     rowDiv.appendChild(priceInput);
     rowDiv.appendChild(originalPriceInput);
+    rowDiv.appendChild(memberPriceLabel);
+    rowDiv.appendChild(memberPriceInput);
     rowDiv.appendChild(labDescInput); // Add textarea to row
     rowDiv.appendChild(removeBtn);
     containerElement.appendChild(rowDiv);
+
+    // Save memberPrice in rowDiv for later retrieval
+    rowDiv.memberPriceInput = memberPriceInput;
 }
 
 function populateHealthConcernsCheckboxes(containerId, existingSlugs = []) {
@@ -2469,6 +2529,17 @@ function switchTab(tabId) {
 }
 
 function showDashboardUI(user) {
+    // Debug log for troubleshooting
+    console.log('DEBUG: Logged in user:', user.uid, user.email);
+    // --- Allowlist check before rendering dashboard (case-insensitive email) ---
+    if (!allowedAdminUIDs.includes(user.uid) && !allowedAdminEmails.some(e => e.toLowerCase() === (user.email || '').toLowerCase())) {
+        showToast("You are not authorized to access the admin panel.", "error");
+        if (authInstance && firebaseAuthFunctions && firebaseAuthFunctions.signOut) {
+            firebaseAuthFunctions.signOut(authInstance);
+        }
+        showLoginScreen();
+        return;
+    }
     console.log("showDashboardUI called for user:", user.email);
     if (loaderContainer) loaderContainer.classList.remove('active');
     if (loginContainer) loginContainer.style.display = 'none';
@@ -2852,11 +2923,19 @@ async function initializeAppMainLogic() {
              showLoader(false);
              return;
         }
-        firebaseAuthFunctions.onAuthStateChanged(authInstance, (user) => {
+        firebaseAuthFunctions.onAuthStateChanged(authInstance, async (user) => {
             console.log("onAuthStateChanged listener fired.");
             if (user) {
                 console.log("User is signed in:", user.uid, user.email);
-                // Removed allowedAdminUIDs check: allow any authenticated user
+                // --- Restrict admin access ---
+                if (!allowedAdminUIDs.includes(user.uid) && !allowedAdminEmails.includes(user.email)) {
+                  showToast("You are not authorized to access the admin panel.", "error");
+                  if (authInstance && firebaseAuthFunctions && firebaseAuthFunctions.signOut) {
+                    await firebaseAuthFunctions.signOut(authInstance);
+                  }
+                  showLoginScreen();
+                  return;
+                }
                 showDashboardUI(user);
             } else {
                 console.log("No user signed in.");
@@ -2910,6 +2989,11 @@ if (document.getElementById('admin-login-form')) {
         e.preventDefault();
         const email = document.getElementById('admin-email').value.trim();
         const password = document.getElementById('admin-password').value.trim();
+        // --- Allowlist check before Firebase Auth call (case-insensitive) ---
+        if (!allowedAdminEmails.some(e => e.toLowerCase() === email.toLowerCase())) {
+            showToast("You are not authorized to access the admin panel.", "error");
+            return;
+        }
         if (!email || !password) {
             showToast("Please enter both email and password.", "error");
             return;

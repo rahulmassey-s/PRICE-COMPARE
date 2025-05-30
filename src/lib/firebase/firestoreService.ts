@@ -41,7 +41,8 @@ export async function getOrCreateUserDocument(user: FirebaseAuthUser, mobileNumb
         createdAt: userData.createdAt instanceof Timestamp ? userData.createdAt.toDate() : undefined,
         lastUpdatedAt: userData.lastUpdatedAt instanceof Timestamp ? userData.lastUpdatedAt.toDate() : undefined,
         pointsBalance: userData.pointsBalance ?? 0,
-      } as UserDetails & { pointsBalance: number };
+        role: userData.role || 'non-member',
+      } as UserDetails & { pointsBalance: number, role: string };
     } else {
       // Create new user document
       const newUserDetails: UserDetails = {

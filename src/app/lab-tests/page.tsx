@@ -108,6 +108,7 @@ export default function LabTestsPage() {
                     labName: priceData.labName,
                     price: priceData.price,
                     originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+                    memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
                 });
                 labPricesMap.set(priceData.testId, currentPrices);
             });

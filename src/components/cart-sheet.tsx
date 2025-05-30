@@ -28,6 +28,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const [userPoints, setUserPoints] = useState(0);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [redeemError, setRedeemError] = useState('');
+  const [userRole, setUserRole] = useState<'member' | 'non-member' | 'admin'>('non-member');
 
   const mounted = useRef(true); // Ref to track if component is mounted
 
@@ -38,27 +39,39 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
     };
   }, []);
 
-  // Fetch user points on open
+  // Fetch user points and role on open
   useEffect(() => {
     if (!open) return;
     const currentUser = auth.currentUser;
     if (currentUser) {
       getOrCreateUserDocument(currentUser).then(userDoc => {
         setUserPoints(userDoc?.pointsBalance || 0);
+        setUserRole(userDoc?.role || 'non-member');
       });
     } else {
       setUserPoints(0);
+      setUserRole('non-member');
     }
     setPointsToRedeem(0);
     setRedeemError('');
   }, [open]);
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Calculate subtotal and member discount using memberPrice if available
+  const subtotal = items.reduce((sum, item) => {
+    if (userRole === 'member' && typeof item.memberPrice === 'number' && item.memberPrice > 0) {
+      return sum + item.memberPrice * item.quantity;
+    }
+    return sum + (item.nonMemberPrice ?? item.price) * item.quantity;
+  }, 0);
+
   const originalTotal = items.reduce((sum, item) => {
-    const original = item.originalPrice ?? item.price;
+    const original = item.originalPrice ?? (item.nonMemberPrice ?? item.price);
     return sum + original * item.quantity;
   }, 0);
-  const savings = originalTotal - subtotal;
+
+  // Calculate member savings (total non-member price - member price)
+  const nonMemberSubtotal = items.reduce((sum, item) => sum + (item.nonMemberPrice ?? item.price) * item.quantity, 0);
+  const memberSavings = userRole === 'member' ? nonMemberSubtotal - subtotal : 0;
 
   // Calculate discount from points
   const pointsValue = 10; // 10 points = ₹1 (configurable)
@@ -122,7 +135,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
             originalPrice: item.originalPrice ?? null,
         })),
         finalTotal,
-        savings,
+        memberSavings,
         bookingUserDetails
       );
       if (!mounted.current) return; // Check mounted state after await
@@ -144,8 +157,8 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
           message += `  - ${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}\n`;
         });
         message += `\n💰 *Total Amount:* ₹${finalTotal.toFixed(2)}\n`;
-        if (savings > 0) {
-          message += `🎉 *You Saved:* ₹${savings.toFixed(2)}\n`;
+        if (memberSavings > 0) {
+          message += `🎉 *You Saved:* ₹${memberSavings.toFixed(2)}\n`;
         }
         message += `\nPlease confirm my booking and let me know the next steps.\n\nThank you!`;
 
@@ -258,6 +271,13 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
               <SheetFooter className="p-4 border-t bg-background sticky bottom-0">
                 <div className="w-full space-y-3">
+                  {/* Member Discount Banner */}
+                  {userRole === 'member' && memberSavings > 0 && (
+                    <div className="border border-yellow-400 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2 mb-2 animate-fade-in shadow animate-crown-shimmer">
+                      <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <span className="font-bold text-yellow-700 flex items-center gap-1"><span className="mr-1">Crown Member Price</span> <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer font-extrabold">You Saved ₹{memberSavings.toFixed(2)}</span></span>
+                    </div>
+                  )}
                   {/* Wallet Points Redemption UI - Modern Enhanced */}
                   {userPoints > 0 && (
                     <div className="border rounded-xl p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 shadow-md mb-2 transition-all duration-300">
@@ -310,21 +330,33 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       )}
                     </div>
                   )}
-                  {/* Subtotal, Savings, MRP, Grand Total - Modernized */}
-                  <div className="flex justify-between text-sm font-medium text-foreground">
-                    <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  {savings > 0 && (
-                    <div className="flex justify-between text-sm text-green-600 font-semibold">
-                      <span>You Save</span>
-                      <span>₹{savings.toFixed(2)}</span>
-                    </div>
-                  )}
-                   <div className="flex justify-between text-xs text-muted-foreground">
+                  {/* Modernized Savings Summary */}
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/40 p-3 mb-2 shadow-sm">
+                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
                       <span>Total MRP</span>
                       <span>₹{originalTotal.toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+                      <span>Subtotal (Non-Member Price)</span>
+                      <span>₹{nonMemberSubtotal.toFixed(2)}</span>
+                    </div>
+                    {userRole === 'member' && (
+                      <div className="flex justify-between items-center text-xs text-yellow-800 font-semibold mb-1 animate-fade-in">
+                        <span>Member Price Subtotal</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {memberSavings > 0 && userRole === 'member' && (
+                      <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
+                        <span>Total Member Savings</span>
+                        <span>-₹{memberSavings.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
+                      <span>Total Savings (MRP - Final)</span>
+                      <span>-₹{(originalTotal - finalTotal).toFixed(2)}</span>
+                    </div>
+                  </div>
                   <Separator />
                   <div className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
                     <span>Grand Total</span>
@@ -354,6 +386,28 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <Info size={14} className="inline mr-1 mb-0.5" />
                     Your booking request will be saved. Click 'Book & Confirm via WhatsApp' to finalize with our team.
                   </div>
+                  {/* Non-member: Membership Upsell Banner */}
+                  {userRole === 'non-member' && items.length > 0 && items.some(item => typeof item.memberPrice === 'number' && item.memberPrice > 0) && (
+                    <div className="border border-yellow-300 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-3 text-sm font-semibold flex flex-col items-center gap-2 mb-3 animate-fade-in shadow animate-crown-shimmer">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <span className="font-bold text-yellow-700">Become a Member & Save More!</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white font-bold shadow hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200 px-6 py-2 rounded-lg animate-bounce"
+                        onClick={() => {
+                          const msg = encodeURIComponent('I want to join membership and get extra discounts on lab tests.');
+                          window.open(`https://wa.me/${contactDetailsData.whatsapp.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                        }}
+                      >
+                        Join Membership
+                      </Button>
+                      <span className="text-xs text-yellow-800 mt-1 text-center">
+                        As a member, you would pay only <span className="font-bold text-green-700">₹{items.reduce((sum, item) => typeof item.memberPrice === 'number' && item.memberPrice > 0 ? sum + item.memberPrice * item.quantity : sum, 0).toFixed(2)}</span> for these tests!
+                      </span>
+                    </div>
+                  )}
                 </div>
               </SheetFooter>
             </>

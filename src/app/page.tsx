@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { collection, getDocs, query, orderBy, where, limit, doc, getDoc } from 'firebase/firestore';
+import { auth } from '@/lib/firebase/client';
+import { getOrCreateUserDocument } from '@/lib/firebase/firestoreService';
 
 import { contactDetailsData } from '@/data/app-data';
 import type { LabTest, FirestoreTest, FirestoreTestLabPrice, LabPrice as LabPriceType, HealthConcern } from '@/types';
@@ -87,6 +89,8 @@ export default function HomePage({ }: HomePageProps) {
 
   const filteredTestsRef = useRef<HTMLDivElement>(null);
 
+  const [userRole, setUserRole] = useState<'member' | 'non-member' | 'admin'>('non-member');
+
   const handleFirestoreError = useCallback((error: any, context: string) => {
     console.error(`Firestore error (${context}):`, error);
     let description = `Could not fetch ${context}. Please try again later.`;
@@ -159,6 +163,7 @@ export default function HomePage({ }: HomePageProps) {
             labName: priceData.labName,
             price: priceData.price,
             originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+            memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
             labDescription: priceData.labDescription || '',
           });
           labPricesMap.set(priceData.testId, currentPrices);
@@ -212,6 +217,7 @@ export default function HomePage({ }: HomePageProps) {
         labName: priceData.labName,
         price: priceData.price,
         originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+        memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
         labDescription: priceData.labDescription || '',
       });
     });
@@ -631,7 +637,7 @@ export default function HomePage({ }: HomePageProps) {
           <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar">
             {tests.map(test => (
               <div key={`${keyPrefix}-${test.docId}`} className="w-[280px] sm:w-[310px] md:w-[330px] flex-shrink-0 h-full">
-                <DynamicLabTestCard test={test} contactDetails={contactDetailsData} />
+                <DynamicLabTestCard test={test} contactDetails={contactDetailsData} userRole={userRole} onCardClick={handleOpenTestDetailsDialog} />
               </div>
             ))}
           </div>
@@ -649,6 +655,17 @@ export default function HomePage({ }: HomePageProps) {
       </section>
     )
   };
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      getOrCreateUserDocument(currentUser).then(userDoc => {
+        setUserRole(userDoc?.role || 'non-member');
+      });
+    } else {
+      setUserRole('non-member');
+    }
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -912,7 +929,7 @@ export default function HomePage({ }: HomePageProps) {
                   </DialogClose>
                 </DialogHeader>
                 <div className="flex-grow overflow-y-auto p-1">
-                  <DynamicLabTestCard test={selectedTestForDetail} contactDetails={contactDetailsData} onCardClick={() => { /* No action needed for card inside dialog */ }} />
+                  <DynamicLabTestCard test={selectedTestForDetail} contactDetails={contactDetailsData} userRole={userRole} onCardClick={handleOpenTestDetailsDialog} />
                 </div>
               </>
             ) : (

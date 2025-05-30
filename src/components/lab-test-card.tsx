@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import type { LabTest, ContactDetails, LabPrice as LabPriceType } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Phone, MessageSquare, Copy, Check, Percent, ShoppingCart, Star, Building, TagIcon, MinusCircle, Eye, Info, X as XIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Phone, MessageSquare, Copy, Check, Percent, ShoppingCart, Star, Building, TagIcon, MinusCircle, Eye, Info, X as XIcon, Crown, Smile, Lock } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +24,10 @@ interface LabTestCardProps {
   test: LabTest;
   contactDetails: ContactDetails;
   onCardClick?: (test: LabTest) => void;
+  userRole?: 'member' | 'non-member' | 'admin';
 }
 
-function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCardProps) {
+function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'non-member' }: LabTestCardProps) {
   console.log('LabTestCard received test:', test); 
 
   const [expandedLabPriceId, setExpandedLabPriceId] = useState<string | null>(null);
@@ -111,7 +112,11 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
       testImageUrl: test.imageUrl,
       labName: priceInfo.labName,
       price: priceInfo.price,
+      nonMemberPrice: priceInfo.price,
       originalPrice: priceInfo.originalPrice,
+      memberPrice: (typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0)
+        ? priceInfo.memberPrice
+        : undefined,
     };
     addToCart(itemToAdd);
     toast({
@@ -216,6 +221,10 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
               const inCart = isItemInCart(priceInfo.labName);
               const showBestPriceSuggestion = inCart && priceInfo.price > minPrice && bestPriceLabs.length > 0;
 
+              const memberPrice = (typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0)
+                ? priceInfo.memberPrice
+                : undefined;
+
               return (
                 <div
                   key={labPriceId}
@@ -248,6 +257,35 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
                       <span className="text-sm text-gray-400 line-through">₹{priceInfo.originalPrice?.toFixed(2)}</span>
                     )}
                   </div>
+                  {/* Premium Member Price Badge */}
+                  {typeof memberPrice === 'number' && memberPrice > 0 && (
+                    <div className={`relative flex flex-col items-center w-full my-2`}>
+                      <div
+                        className={`member-price-badge-glass group transition-transform duration-200 opacity-100 scale-100 hover:scale-105 active:scale-100`}
+                        tabIndex={0}
+                        title={userRole === 'member' ? 'You are getting the best member price!' : 'Unlock this price by becoming a member!'}
+                      >
+                        <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer">
+                          <Crown className="h-4 w-4 text-yellow-500 mr-0.5 animate-crown-shimmer" />
+                          For Members
+                        </span>
+                        <span className="flex items-center justify-center text-2xl font-extrabold bg-gradient-to-r from-green-400 via-yellow-300 to-green-700 text-transparent bg-clip-text animate-member-price-shimmer drop-shadow-member-price-glow">
+                          {userRole === 'member' ? (
+                            <Smile className="h-6 w-6 mr-1 text-green-500 animate-member-price-pulse" />
+                          ) : (
+                            <Lock className="h-5 w-5 mr-1 text-yellow-500 animate-member-price-pulse" />
+                          )}
+                          ₹{memberPrice.toFixed(2)}
+                        </span>
+                        {userRole !== 'member' && (
+                          <span className="block text-xs text-yellow-700 font-semibold mt-1 animate-bounce-slow">Become a Member & Save More</span>
+                        )}
+                        {userRole === 'member' && (
+                          <span className="block text-xs text-green-700 font-semibold mt-1 animate-bounce-slow">Exclusive Member Price</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -405,3 +443,58 @@ function LabTestCardComponent({ test, contactDetails, onCardClick }: LabTestCard
 
 const LabTestCard = React.memo(LabTestCardComponent);
 export default LabTestCard;
+
+/*
+.member-price-badge-glass {
+  background: rgba(255,255,255,0.85);
+  border-radius: 1.2rem;
+  box-shadow: 0 4px 24px 0 rgba(34,197,94,0.10), 0 1.5px 8px 0 rgba(255,215,0,0.10);
+  border: 2.5px solid;
+  border-image: linear-gradient(90deg, #34d399 0%, #fde68a 50%, #059669 100%) 1;
+  padding: 0.7rem 1.2rem 0.7rem 1.2rem;
+  margin-bottom: 0.2rem;
+  backdrop-filter: blur(8px) saturate(1.2);
+  min-width: 140px;
+  max-width: 90%;
+  z-index: 2;
+  position: relative;
+  transition: box-shadow 0.2s, border 0.2s, background 0.2s, transform 0.2s;
+}
+@media (max-width: 500px) {
+  .member-price-badge-glass { min-width: 110px; padding: 0.5rem 0.7rem; }
+}
+@keyframes member-price-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3) drop-shadow(0 0 12px #34d399); }
+}
+.animate-member-price-shimmer {
+  animation: member-price-shimmer 1.8s infinite;
+}
+@keyframes member-price-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+.animate-member-price-pulse {
+  animation: member-price-pulse 1.8s infinite;
+}
+.drop-shadow-member-price-glow {
+  filter: drop-shadow(0 0 8px #6ee7b7) drop-shadow(0 0 2px #facc15);
+}
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-6px); }
+  40% { transform: translateY(0); }
+  60% { transform: translateY(-3px); }
+  80% { transform: translateY(0); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2.2s infinite;
+}
+@keyframes crown-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.5) drop-shadow(0 0 6px gold); }
+}
+.animate-crown-shimmer {
+  animation: crown-shimmer 2.2s infinite;
+}
+*/
