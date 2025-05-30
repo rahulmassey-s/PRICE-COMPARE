@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LabTest, LabPrice } from '@/types';
@@ -12,6 +11,7 @@ export interface CartItem {
   price: number;
   originalPrice?: number;
   quantity: number; 
+  appointmentDateTime?: string;
 }
 
 interface CartState {
@@ -24,6 +24,7 @@ interface CartActions {
   clearCart: () => void;
   incrementQuantity: (testDocId: string, labName: string) => void; 
   decrementQuantity: (testDocId: string, labName: string) => void; 
+  updateAppointmentDateTime: (testDocId: string, labName: string, appointmentDateTime: string) => void;
 }
 
 const CartStateContext = createContext<CartState | undefined>(undefined);
@@ -34,7 +35,8 @@ type Action =
   | { type: 'REMOVE_ITEM'; testDocId: string; labName: string }
   | { type: 'CLEAR_CART' }
   | { type: 'INCREMENT_QUANTITY'; testDocId: string; labName: string }
-  | { type: 'DECREMENT_QUANTITY'; testDocId: string; labName: string };
+  | { type: 'DECREMENT_QUANTITY'; testDocId: string; labName: string }
+  | { type: 'UPDATE_APPOINTMENT_DATETIME'; testDocId: string; labName: string; appointmentDateTime: string };
 
 const cartReducer = (state: CartState, action: Action): CartState => {
   switch (action.type) {
@@ -77,6 +79,14 @@ const cartReducer = (state: CartState, action: Action): CartState => {
         .filter((item) => item.quantity > 0); 
       return { ...state, items: updatedItems };
     }
+    case 'UPDATE_APPOINTMENT_DATETIME': {
+      const updatedItems = state.items.map((item) =>
+        item.testDocId === action.testDocId && item.labName === action.labName
+          ? { ...item, appointmentDateTime: action.appointmentDateTime }
+          : item
+      );
+      return { ...state, items: updatedItems };
+    }
     default:
       return state;
   }
@@ -91,6 +101,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     clearCart: () => dispatch({ type: 'CLEAR_CART' }),
     incrementQuantity: (testDocId: string, labName: string) => dispatch({ type: 'INCREMENT_QUANTITY', testDocId, labName }),
     decrementQuantity: (testDocId: string, labName: string) => dispatch({ type: 'DECREMENT_QUANTITY', testDocId, labName }),
+    updateAppointmentDateTime: (testDocId: string, labName: string, appointmentDateTime: string) =>
+      dispatch({ type: 'UPDATE_APPOINTMENT_DATETIME', testDocId, labName, appointmentDateTime }),
   }), []);
 
   return (

@@ -1,4 +1,3 @@
-
 // No 'use client' here
 import type { Metadata, Viewport } from 'next'; // Import Viewport
 import { GeistSans } from 'geist/font/sans';
@@ -62,6 +61,7 @@ export default function RootLayout({
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ClientLayout>{children}</ClientLayout>
+        <div id="root-portal"></div>
       </body>
     </html>
   );

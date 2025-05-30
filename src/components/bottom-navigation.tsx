@@ -1,13 +1,14 @@
-
 // src/components/bottom-navigation.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Scale, ShoppingCart, BadgePercent, User } from 'lucide-react'; // Changed TestTube2 to Scale
+import { Home, Scale, ShoppingCart, BadgePercent, User, Crown } from 'lucide-react'; // Changed TestTube2 to Scale
 import { cn } from '@/lib/utils';
 import { useCartState } from '@/context/CartContext';
 import React from 'react';
+import { auth } from '@/lib/firebase/client';
+import { getOrCreateUserDocument } from '@/lib/firebase/firestoreService';
 
 interface NavItem {
   href: string;
@@ -21,10 +22,21 @@ interface BottomNavigationProps {
   onCartIconClick?: () => void;
 }
 
-
 export default function BottomNavigation({ onCartIconClick }: BottomNavigationProps) {
   const pathname = usePathname();
   const { items: cartItems } = useCartState();
+  const [userRole, setUserRole] = React.useState<'member' | 'non-member' | 'admin'>('non-member');
+
+  React.useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      getOrCreateUserDocument(currentUser).then(userDoc => {
+        setUserRole(userDoc?.role || 'non-member');
+      });
+    } else {
+      setUserRole('non-member');
+    }
+  }, []);
 
   const navItems: NavItem[] = [
     { href: '/', label: 'Home', icon: Home, exact: true },
@@ -33,7 +45,6 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
     { href: '/offers', label: 'Offers', icon: BadgePercent },
     { href: '/account', label: 'Account', icon: User },
   ];
-
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.07)] h-16 z-50 md:hidden">
@@ -63,6 +74,12 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
                   ? (isComparePriceButton ? "bg-accent scale-115 shadow-lg" : "bg-primary/15 scale-110")
                   : "group-hover:bg-primary/10 group-hover:scale-105"
               )}>
+                {/* Crown badge for member above Account icon */}
+                {item.label === 'Account' && userRole === 'member' && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 animate-crown-shimmer">
+                    <Crown className="h-5 w-5 text-yellow-400 drop-shadow" />
+                  </span>
+                )}
                 <item.icon className={cn(
                   "h-5 w-5 sm:h-[22px] sm:w-[22px] mb-0.5",
                   isActive

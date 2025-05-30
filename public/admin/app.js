@@ -1909,86 +1909,108 @@ function addLabPriceRow(containerElement, labPriceData = null, isEdit = false, p
     }
     if (labsListCache.length === 0) {
         showToast("Labs not loaded yet. Please wait or load labs first.", "info");
-        // Potentially call loadLabs here if it's safe and makes sense
         return;
     }
 
     const rowDiv = document.createElement('div');
     rowDiv.classList.add('lab-price-row', 'form-group-row');
     if (priceEntryId) {
-        rowDiv.dataset.priceEntryId = priceEntryId; // Store existing price entry ID for updates
+        rowDiv.dataset.priceEntryId = priceEntryId;
+    }
+    rowDiv.style.display = 'flex';
+    rowDiv.style.alignItems = 'flex-end';
+    rowDiv.style.gap = '12px';
+
+    // Helper to create label+input column
+    function makeCol(labelText, inputEl) {
+        const col = document.createElement('div');
+        col.style.display = 'flex';
+        col.style.flexDirection = 'column';
+        col.style.alignItems = 'flex-start';
+        col.style.minWidth = '90px';
+        col.style.maxWidth = '120px';
+        col.style.marginRight = '2px';
+        const label = document.createElement('label');
+        label.textContent = labelText;
+        label.style.fontSize = '11px';
+        label.style.fontWeight = 'bold';
+        label.style.marginBottom = '2px';
+        col.appendChild(label);
+        col.appendChild(inputEl);
+        return col;
     }
 
+    // Lab select
     const labSelect = document.createElement('select');
     labSelect.classList.add('lab-select');
+    labSelect.style.width = '90px';
     const defaultOption = document.createElement('option');
     defaultOption.value = "";
-    defaultOption.textContent = "Select Lab";
+    defaultOption.textContent = "Select";
     labSelect.appendChild(defaultOption);
-
     labsListCache.forEach(lab => {
         const option = document.createElement('option');
         option.value = lab.id;
         option.textContent = lab.name;
-        if (labPriceData && labPriceData.labId === lab.id) {
-            option.selected = true;
-        }
+        if (labPriceData && labPriceData.labId === lab.id) option.selected = true;
         labSelect.appendChild(option);
     });
 
+    // Price input
     const priceInput = document.createElement('input');
     priceInput.type = 'number';
     priceInput.classList.add('price-input');
-    priceInput.placeholder = 'Price (e.g., 150)';
+    priceInput.placeholder = 'Price';
     priceInput.value = labPriceData && labPriceData.price !== undefined ? labPriceData.price : '';
     priceInput.min = "0"; priceInput.step = "0.01";
+    priceInput.style.width = '90px';
 
+    // Original Price input
     const originalPriceInput = document.createElement('input');
     originalPriceInput.type = 'number';
     originalPriceInput.classList.add('original-price-input');
-    originalPriceInput.placeholder = 'MRP (Optional)';
+    originalPriceInput.placeholder = 'MRP';
     originalPriceInput.value = labPriceData && labPriceData.originalPrice !== undefined ? labPriceData.originalPrice : '';
     originalPriceInput.min = "0"; originalPriceInput.step = "0.01";
+    originalPriceInput.style.width = '90px';
 
-    // NEW: Lab Description textarea
+    // Member Price input
+    const memberPriceInput = document.createElement('input');
+    memberPriceInput.type = 'number';
+    memberPriceInput.className = 'form-control member-price-input';
+    memberPriceInput.placeholder = 'Member';
+    memberPriceInput.min = 0;
+    memberPriceInput.step = 'any';
+    memberPriceInput.style.width = '90px';
+    if (labPriceData && labPriceData.memberPrice !== undefined) {
+        memberPriceInput.value = labPriceData.memberPrice;
+    }
+
+    // Lab Description textarea (optional, can be hidden/collapsed for compactness)
     const labDescInput = document.createElement('textarea');
     labDescInput.classList.add('lab-description-input');
     labDescInput.placeholder = 'Lab Description (optional)';
     labDescInput.rows = 2;
     labDescInput.style.resize = 'vertical';
     labDescInput.value = labPriceData && labPriceData.labDescription ? labPriceData.labDescription : '';
+    labDescInput.style.width = '120px';
+    labDescInput.style.marginLeft = '4px';
 
+    // Remove button
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-lab-price-btn');
     removeBtn.innerHTML = '<i class="fas fa-times"></i> Remove';
     removeBtn.onclick = () => rowDiv.remove();
+    removeBtn.style.marginLeft = '8px';
+    removeBtn.style.height = '32px';
 
-    // Member Price input
-    const memberPriceInput = document.createElement('input');
-    memberPriceInput.type = 'number';
-    memberPriceInput.className = 'form-control member-price-input';
-    memberPriceInput.placeholder = 'Member Price';
-    memberPriceInput.min = 0;
-    memberPriceInput.step = 'any';
-    memberPriceInput.style.width = '110px';
-    if (labPriceData && labPriceData.memberPrice !== undefined) {
-        memberPriceInput.value = labPriceData.memberPrice;
-    }
-    // Add a label for clarity
-    const memberPriceLabel = document.createElement('label');
-    memberPriceLabel.textContent = 'Member Price:';
-    memberPriceLabel.style.fontSize = '12px';
-    memberPriceLabel.style.marginRight = '4px';
-    memberPriceLabel.style.marginLeft = '8px';
-    memberPriceLabel.htmlFor = '';
-
-    rowDiv.appendChild(labSelect);
-    rowDiv.appendChild(priceInput);
-    rowDiv.appendChild(originalPriceInput);
-    rowDiv.appendChild(memberPriceLabel);
-    rowDiv.appendChild(memberPriceInput);
-    rowDiv.appendChild(labDescInput); // Add textarea to row
+    // Add columns to row
+    rowDiv.appendChild(makeCol('Lab', labSelect));
+    rowDiv.appendChild(makeCol('Price', priceInput));
+    rowDiv.appendChild(makeCol('MRP', originalPriceInput));
+    rowDiv.appendChild(makeCol('Member', memberPriceInput));
+    // Optionally: rowDiv.appendChild(makeCol('Description', labDescInput));
     rowDiv.appendChild(removeBtn);
     containerElement.appendChild(rowDiv);
 

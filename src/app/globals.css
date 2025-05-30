@@ -326,3 +326,32 @@
   animation: eye-blink 2.5s infinite;
   transform-origin: 50% 60%;
 }
+
+@keyframes gold-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15) drop-shadow(0 0 12px #f0b030); }
+}
+.animate-gold-shimmer {
+  animation: gold-shimmer 2.5s infinite;
+}
+@keyframes crown-shimmer {
+  0%, 100% { filter: drop-shadow(0 0 6px #f0b030); }
+  50% { filter: drop-shadow(0 0 16px #ffd700) brightness(1.2); }
+}
+.animate-crown-shimmer {
+  animation: crown-shimmer 2.2s infinite;
+}
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-10px); }
+  40% { transform: translateY(0); }
+  60% { transform: translateY(-5px); }
+  80% { transform: translateY(0); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 1.8s infinite;
+}
+
+.datepicker-popper-z {
+  z-index: 99999 !important;
+}

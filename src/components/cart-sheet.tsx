@@ -13,6 +13,8 @@ import { auth } from '@/lib/firebase/client';
 import { createBooking, getOrCreateUserDocument, redeemPoints } from '@/lib/firebase/firestoreService';
 import type { UserDetails } from '@/types';
 import { useState, useEffect, useRef } from 'react'; // Added useEffect and useRef
+import { addDays, format, isToday, isTomorrow } from 'date-fns';
+import React, { forwardRef } from 'react';
 
 interface CartSheetProps {
   open: boolean;
@@ -21,8 +23,42 @@ interface CartSheetProps {
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 
+// Custom input for DatePicker to prevent auto-focus/auto-open bug
+const CustomDateInput = forwardRef<HTMLInputElement, any>(({ value, onClick, placeholder, disabled, ...props }, ref) => (
+  <input
+    ref={ref}
+    value={value || ''}
+    onClick={onClick}
+    placeholder={placeholder}
+    disabled={disabled}
+    readOnly
+    className="w-full rounded-lg border-2 border-blue-200 focus:border-blue-500 bg-white dark:bg-blue-950 text-blue-900 dark:text-blue-100 px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 cursor-pointer"
+    style={{ background: disabled ? '#f3f4f6' : undefined }}
+    {...props}
+  />
+));
+CustomDateInput.displayName = 'CustomDateInput';
+
+const TIME_SLOTS = [
+  { start: '06:00', end: '07:00' },
+  { start: '07:00', end: '08:00' },
+  { start: '08:00', end: '09:00' },
+  { start: '09:00', end: '10:00' },
+  { start: '09:30', end: '10:30' },
+  { start: '10:00', end: '11:00' },
+  { start: '10:30', end: '11:30' },
+  { start: '11:00', end: '12:00' },
+  { start: '11:30', end: '12:30' },
+  { start: '12:00', end: '13:00' },
+  { start: '12:30', end: '13:30' },
+];
+
+function getNext7Days() {
+  return Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
+}
+
 export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
-  const { items, removeFromCart, clearCart } = useCart();
+  const { items, removeFromCart, clearCart, updateAppointmentDateTime } = useCart();
   const { toast } = useToast();
   const [isBooking, setIsBooking] = useState(false);
   const [userPoints, setUserPoints] = useState(0);
@@ -155,6 +191,12 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
         message += `📝 *Booked Tests:*\n`;
         items.forEach(item => {
           message += `  - ${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}\n`;
+          if (item.appointmentDateTime) {
+            const dt = new Date(item.appointmentDateTime);
+            const dateStr = dt.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            message += `    🗓 ${dateStr} ${timeStr}\n`;
+          }
         });
         message += `\n💰 *Total Amount:* ₹${finalTotal.toFixed(2)}\n`;
         if (memberSavings > 0) {
@@ -206,214 +248,285 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
 
   return (
-    <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="flex flex-col w-full sm:max-w-md p-0">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle className="flex items-center text-lg">
-              <ShoppingCart className="mr-2 h-5 w-5" /> Your Cart
-            </SheetTitle>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="flex flex-col h-[90vh] max-h-[90vh] w-full sm:max-w-md p-0">
+        <SheetHeader className="p-4 border-b flex-shrink-0">
+          <SheetTitle className="flex items-center text-lg">
+            <ShoppingCart className="mr-2 h-5 w-5" /> Your Cart
+          </SheetTitle>
+        </SheetHeader>
 
-          {items.length === 0 ? (
-            <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
-              <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-xl font-semibold text-foreground">Your cart is empty</p>
-              <p className="text-muted-foreground">Add some tests to get started!</p>
-              <SheetClose asChild>
-                  <Button variant="link" className="mt-4 text-primary">Continue Shopping</Button>
-              </SheetClose>
-            </div>
-          ) : (
-            <>
-              <ScrollArea className="flex-grow [&>div]:p-4">
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={`${item.testDocId}-${item.labName}`} className="flex items-start gap-4 p-3 border rounded-lg shadow-sm bg-card">
-                      <div className="relative h-16 w-16 rounded-md overflow-hidden border bg-muted shrink-0">
-                        <Image
-                          src={item.testImageUrl || `https://placehold.co/80x80.png`}
-                          alt={item.testName}
-                          fill
-                          style={{ objectFit: "cover" }}
-                          data-ai-hint="medical test small"
-                        />
-                      </div>
-                      <div className="flex-grow">
-                        <h3 className="font-semibold text-sm text-foreground">{item.testName}</h3>
-                        <p className="text-xs text-muted-foreground">{item.labName}</p>
-                        <div className="flex items-center mt-1">
-                          <span className="font-bold text-primary text-sm">₹{item.price.toFixed(2)}</span>
-                          {item.originalPrice && item.originalPrice > item.price && (
-                            <span className="ml-2 text-xs text-muted-foreground line-through">
-                              ₹{item.originalPrice.toFixed(2)}
-                            </span>
-                          )}
+        {items.length === 0 ? (
+          <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
+            <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-xl font-semibold text-foreground">Your cart is empty</p>
+            <p className="text-muted-foreground">Add some tests to get started!</p>
+            <SheetClose asChild>
+                <Button variant="link" className="mt-4 text-primary">Continue Shopping</Button>
+            </SheetClose>
+          </div>
+        ) : (
+          <>
+            {/* Cart Items and Summary scroll together */}
+            <div className="flex-1 min-h-0 overflow-y-auto bg-red-100" style={{height: '100%'}}>
+              {/* Cart Items */}
+              <div className="space-y-4 p-4 border-b bg-white z-10">
+                {items.map((item) => {
+                  // Parse saved slot
+                  let selectedDate = null;
+                  let selectedSlot = null;
+                  if (item.appointmentDateTime) {
+                    try {
+                      const obj = JSON.parse(item.appointmentDateTime);
+                      selectedDate = obj.date;
+                      selectedSlot = obj.slot;
+                    } catch {
+                      selectedDate = null;
+                      selectedSlot = null;
+                    }
+                  }
+                  const days = getNext7Days();
+                  return (
+                    <div key={`${item.testDocId}-${item.labName}`} className="flex flex-col gap-2 p-3 border rounded-lg shadow-sm bg-card">
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-16 w-16 rounded-md overflow-hidden border bg-muted shrink-0">
+                          <Image
+                            src={item.testImageUrl || `https://placehold.co/80x80.png`}
+                            alt={item.testName}
+                            fill
+                            style={{ objectFit: "cover" }}
+                            data-ai-hint="medical test small"
+                          />
                         </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10 h-7 w-7 shrink-0"
-                        onClick={() => {
-                          removeFromCart(item.testDocId, item.labName);
-                          toast({ title: "Item Removed", description: `${item.testName} from ${item.labName} removed from cart.` });
-                        }}
-                        disabled={isBooking}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Remove item</span>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              <SheetFooter className="p-4 border-t bg-background sticky bottom-0">
-                <div className="w-full space-y-3">
-                  {/* Member Discount Banner */}
-                  {userRole === 'member' && memberSavings > 0 && (
-                    <div className="border border-yellow-400 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2 mb-2 animate-fade-in shadow animate-crown-shimmer">
-                      <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      <span className="font-bold text-yellow-700 flex items-center gap-1"><span className="mr-1">Crown Member Price</span> <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer font-extrabold">You Saved ₹{memberSavings.toFixed(2)}</span></span>
-                    </div>
-                  )}
-                  {/* Wallet Points Redemption UI - Modern Enhanced */}
-                  {userPoints > 0 && (
-                    <div className="border rounded-xl p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 shadow-md mb-2 transition-all duration-300">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold text-blue-900 dark:text-blue-100 text-base flex items-center gap-2">
-                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 17v.01" /></svg>
-                          Wallet Points
-                        </span>
-                        <span className="font-extrabold text-blue-800 dark:text-blue-200 text-lg">{userPoints} pts</span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
-                        <input
-                          type="number"
-                          min={0}
-                          max={maxRedeemable}
-                          step={10}
-                          value={pointsToRedeem}
-                          onChange={e => {
-                            let val = parseInt(e.target.value, 10) || 0;
-                            if (val > maxRedeemable) val = maxRedeemable;
-                            if (val < 0) val = 0;
-                            setPointsToRedeem(val);
-                            setRedeemError('');
-                          }}
-                          className="border-2 border-blue-300 focus:border-blue-500 rounded-lg px-3 py-2 w-28 text-right font-semibold text-blue-900 bg-white dark:bg-blue-950 dark:text-blue-100 transition-all duration-200 shadow-sm"
-                          disabled={isBooking}
-                        />
-                        <span className="text-xs text-blue-700 dark:text-blue-200 font-medium">(10 pts = ₹1)</span>
+                        <div className="flex-grow">
+                          <h3 className="font-semibold text-sm text-foreground">{item.testName}</h3>
+                          <p className="text-xs text-muted-foreground">{item.labName}</p>
+                          <div className="flex items-center mt-1">
+                            <span className="font-bold text-primary text-sm">₹{item.price.toFixed(2)}</span>
+                            {item.originalPrice && item.originalPrice > item.price && (
+                              <span className="ml-2 text-xs text-muted-foreground line-through">
+                                ₹{item.originalPrice.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="ml-2 border-blue-400 text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
-                          onClick={() => setPointsToRedeem(maxRedeemable)}
-                          disabled={isBooking || maxRedeemable === 0}
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10 h-7 w-7 shrink-0"
+                          onClick={() => {
+                            removeFromCart(item.testDocId, item.labName);
+                            toast({ title: "Item Removed", description: `${item.testName} from ${item.labName} removed from cart.` });
+                          }}
+                          disabled={isBooking}
                         >
-                          Max
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Remove item</span>
                         </Button>
                       </div>
-                      {redeemError && <div className="text-xs text-red-600 mt-1 animate-pulse">{redeemError}</div>}
-                      {pointsToRedeem > 0 && (
-                        <div className="mt-2 flex flex-col gap-1 animate-fade-in">
-                          <div className="text-sm font-semibold text-green-700 dark:text-green-300 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2l4 -4" /></svg>
-                            Redeem: <span className="font-bold">-₹{redeemDiscount.toFixed(2)}</span>
-                          </div>
-                          <div className="text-sm font-bold text-blue-900 dark:text-blue-100 bg-blue-200 dark:bg-blue-800 rounded-lg px-3 py-1 mt-1 flex items-center gap-2 shadow-inner animate-fade-in">
-                            New Total: <span className="text-lg text-green-700 dark:text-green-300 font-extrabold">₹{finalTotal.toFixed(2)}</span>
-                          </div>
+                      {/* Slot Picker UI */}
+                      <div className="mt-2">
+                        <div className="font-semibold text-blue-900 dark:text-blue-200 text-xs mb-1">Select date</div>
+                        <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                          {days.map((day) => {
+                            const label = isToday(day)
+                              ? 'Today'
+                              : isTomorrow(day)
+                              ? 'Tomorrow'
+                              : format(day, 'd MMM');
+                            const isSelected = selectedDate === format(day, 'yyyy-MM-dd');
+                            return (
+                              <button
+                                key={format(day, 'yyyy-MM-dd')}
+                                className={`min-w-[80px] px-3 py-2 rounded-lg border text-center font-bold text-sm transition-all duration-150 ${isSelected ? 'bg-blue-100 border-blue-500 text-blue-900 shadow' : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50'}`}
+                                onClick={() => {
+                                  updateAppointmentDateTime(item.testDocId, item.labName, JSON.stringify({ date: format(day, 'yyyy-MM-dd'), slot: null }));
+                                }}
+                                type="button"
+                              >
+                                <div>{format(day, 'd MMM')}</div>
+                                <div className="text-xs font-medium text-blue-600">{label}</div>
+                              </button>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Modernized Savings Summary */}
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/40 p-3 mb-2 shadow-sm">
-                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
-                      <span>Total MRP</span>
-                      <span>₹{originalTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
-                      <span>Subtotal (Non-Member Price)</span>
-                      <span>₹{nonMemberSubtotal.toFixed(2)}</span>
-                    </div>
-                    {userRole === 'member' && (
-                      <div className="flex justify-between items-center text-xs text-yellow-800 font-semibold mb-1 animate-fade-in">
-                        <span>Member Price Subtotal</span>
-                        <span>₹{subtotal.toFixed(2)}</span>
+                        <div className="font-semibold text-blue-900 dark:text-blue-200 text-xs mt-2 mb-1">Select time slot</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {TIME_SLOTS.map((slot) => {
+                            const slotLabel = `${format(new Date(`1970-01-01T${slot.start}:00`), 'h:mm a')} - ${format(new Date(`1970-01-01T${slot.end}:00`), 'h:mm a')}`;
+                            const isSelected = selectedDate && selectedSlot === slotLabel;
+                            return (
+                              <button
+                                key={slotLabel}
+                                className={`px-2 py-2 rounded-lg border text-center text-xs font-semibold transition-all duration-150 ${isSelected ? 'bg-green-100 border-green-500 text-green-900 shadow' : 'bg-white border-gray-200 text-gray-700 hover:bg-green-50'}`}
+                                onClick={() => {
+                                  if (!selectedDate) return;
+                                  updateAppointmentDateTime(item.testDocId, item.labName, JSON.stringify({ date: selectedDate, slot: slotLabel }));
+                                }}
+                                type="button"
+                                disabled={!selectedDate}
+                              >
+                                {slotLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-1 block">Choose your preferred date & time slot for sample collection.</span>
+                        {selectedDate && selectedSlot && (
+                          <div className="mt-2 text-xs text-green-700 font-semibold">Selected: {format(new Date(selectedDate), 'd MMM, yyyy')} | {selectedSlot}</div>
+                        )}
                       </div>
-                    )}
-                    {memberSavings > 0 && userRole === 'member' && (
-                      <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
-                        <span>Total Member Savings</span>
-                        <span>-₹{memberSavings.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
-                      <span>Total Savings (MRP - Final)</span>
-                      <span>-₹{(originalTotal - finalTotal).toFixed(2)}</span>
                     </div>
+                  );
+                })}
+              </div>
+              {/* Summary, wallet points, totals below */}
+              <div className="p-4 w-full space-y-3 bg-green-100" style={{height: '100%'}}>
+                {/* Member Discount Banner */}
+                {userRole === 'member' && memberSavings > 0 && (
+                  <div className="border border-yellow-400 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2 mb-2 animate-fade-in shadow animate-crown-shimmer">
+                    <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span className="font-bold text-yellow-700 flex items-center gap-1"><span className="mr-1">Crown Member Price</span> <span className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer font-extrabold">You Saved ₹{memberSavings.toFixed(2)}</span></span>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
-                    <span>Grand Total</span>
-                    <span className={pointsToRedeem > 0 ? "text-green-700 dark:text-green-300 animate-bounce" : ""}>₹{finalTotal.toFixed(2)}</span>
-                  </div>
-                  <Button
-                    size="lg"
-                    className="w-full mt-2 py-3 text-base bg-gradient-to-r from-blue-600 to-green-500 text-white font-bold shadow-lg hover:from-blue-700 hover:to-green-600 transition-all duration-200"
-                    onClick={handleProceedToBook}
-                    disabled={isBooking}
-                  >
-                    {isBooking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <MessageSquare size={18} className="mr-2" />}
-                    {isBooking ? 'Processing...' : 'Book & Confirm via WhatsApp'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full border-red-300 text-red-700 hover:bg-red-50 dark:hover:bg-red-900 font-semibold"
-                    onClick={() => {
-                      if (!isBooking) clearCart();
-                    }}
-                    disabled={isBooking}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Clear Cart
-                  </Button>
-                   <div className="text-xs text-muted-foreground mt-2 text-center p-2 border border-dashed rounded-md bg-secondary/30">
-                    <Info size={14} className="inline mr-1 mb-0.5" />
-                    Your booking request will be saved. Click 'Book & Confirm via WhatsApp' to finalize with our team.
-                  </div>
-                  {/* Non-member: Membership Upsell Banner */}
-                  {userRole === 'non-member' && items.length > 0 && items.some(item => typeof item.memberPrice === 'number' && item.memberPrice > 0) && (
-                    <div className="border border-yellow-300 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-3 text-sm font-semibold flex flex-col items-center gap-2 mb-3 animate-fade-in shadow animate-crown-shimmer">
-                      <div className="flex items-center gap-2 mb-1">
-                        <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        <span className="font-bold text-yellow-700">Become a Member & Save More!</span>
-                      </div>
+                )}
+                {/* Wallet Points Redemption UI - Modern Enhanced */}
+                {userPoints > 0 && (
+                  <div className="border rounded-xl p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 shadow-md mb-2 transition-all duration-300">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-blue-900 dark:text-blue-100 text-base flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 17v.01" /></svg>
+                        Wallet Points
+                      </span>
+                      <span className="font-extrabold text-blue-800 dark:text-blue-200 text-lg">{userPoints} pts</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxRedeemable}
+                        step={10}
+                        value={pointsToRedeem}
+                        onChange={e => {
+                          let val = parseInt(e.target.value, 10) || 0;
+                          if (val > maxRedeemable) val = maxRedeemable;
+                          if (val < 0) val = 0;
+                          setPointsToRedeem(val);
+                          setRedeemError('');
+                        }}
+                        className="border-2 border-blue-300 focus:border-blue-500 rounded-lg px-3 py-2 w-28 text-right font-semibold text-blue-900 bg-white dark:bg-blue-950 dark:text-blue-100 transition-all duration-200 shadow-sm"
+                        disabled={isBooking}
+                      />
+                      <span className="text-xs text-blue-700 dark:text-blue-200 font-medium">(10 pts = ₹1)</span>
                       <Button
                         size="sm"
-                        className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white font-bold shadow hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200 px-6 py-2 rounded-lg animate-bounce"
-                        onClick={() => {
-                          const msg = encodeURIComponent('I want to join membership and get extra discounts on lab tests.');
-                          window.open(`https://wa.me/${contactDetailsData.whatsapp.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                        }}
+                        variant="outline"
+                        className="ml-2 border-blue-400 text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
+                        onClick={() => setPointsToRedeem(maxRedeemable)}
+                        disabled={isBooking || maxRedeemable === 0}
                       >
-                        Join Membership
+                        Max
                       </Button>
-                      <span className="text-xs text-yellow-800 mt-1 text-center">
-                        As a member, you would pay only <span className="font-bold text-green-700">₹{items.reduce((sum, item) => typeof item.memberPrice === 'number' && item.memberPrice > 0 ? sum + item.memberPrice * item.quantity : sum, 0).toFixed(2)}</span> for these tests!
-                      </span>
+                    </div>
+                    {redeemError && <div className="text-xs text-red-600 mt-1 animate-pulse">{redeemError}</div>}
+                    {pointsToRedeem > 0 && (
+                      <div className="mt-2 flex flex-col gap-1 animate-fade-in">
+                        <div className="text-sm font-semibold text-green-700 dark:text-green-300 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2l4 -4" /></svg>
+                          Redeem: <span className="font-bold">-₹{redeemDiscount.toFixed(2)}</span>
+                        </div>
+                        <div className="text-sm font-bold text-blue-900 dark:text-blue-100 bg-blue-200 dark:bg-blue-800 rounded-lg px-3 py-1 mt-1 flex items-center gap-2 shadow-inner animate-fade-in">
+                          New Total: <span className="text-lg text-green-700 dark:text-green-300 font-extrabold">₹{finalTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Modernized Savings Summary */}
+                <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/40 p-3 mb-2 shadow-sm">
+                  <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+                    <span>Total MRP</span>
+                    <span>₹{originalTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+                    <span>Subtotal (Non-Member Price)</span>
+                    <span>₹{nonMemberSubtotal.toFixed(2)}</span>
+                  </div>
+                  {userRole === 'member' && (
+                    <div className="flex justify-between items-center text-xs text-yellow-800 font-semibold mb-1 animate-fade-in">
+                      <span>Member Price Subtotal</span>
+                      <span>₹{subtotal.toFixed(2)}</span>
                     </div>
                   )}
+                  {memberSavings > 0 && userRole === 'member' && (
+                    <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
+                      <span>Total Member Savings</span>
+                      <span>-₹{memberSavings.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-xs text-green-700 font-bold mb-1 animate-fade-in">
+                    <span>Total Savings (MRP - Final)</span>
+                    <span>-₹{(originalTotal - finalTotal).toFixed(2)}</span>
+                  </div>
                 </div>
-              </SheetFooter>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-    </>
+                <Separator />
+                <div className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
+                  <span>Grand Total</span>
+                  <span className={pointsToRedeem > 0 ? "text-green-700 dark:text-green-300 animate-bounce" : ""}>₹{finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            {/* Sticky footer for actions/buttons */}
+            <div className="flex-shrink-0 sticky bottom-0 bg-background p-4 border-t z-20">
+              <Button
+                size="lg"
+                className="w-full mt-2 py-3 text-base bg-gradient-to-r from-blue-600 to-green-500 text-white font-bold shadow-lg hover:from-blue-700 hover:to-green-600 transition-all duration-200"
+                onClick={handleProceedToBook}
+                disabled={isBooking}
+              >
+                {isBooking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <MessageSquare size={18} className="mr-2" />}
+                {isBooking ? 'Processing...' : 'Book & Confirm via WhatsApp'}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-red-300 text-red-700 hover:bg-red-50 dark:hover:bg-red-900 font-semibold"
+                onClick={() => {
+                  if (!isBooking) clearCart();
+                }}
+                disabled={isBooking}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Clear Cart
+              </Button>
+              <div className="text-xs text-muted-foreground mt-2 text-center p-2 border border-dashed rounded-md bg-secondary/30">
+                <Info size={14} className="inline mr-1 mb-0.5" />
+                Your booking request will be saved. Click 'Book & Confirm via WhatsApp' to finalize with our team.
+              </div>
+              {/* Non-member: Membership Upsell Banner */}
+              {userRole === 'non-member' && items.length > 0 && items.some(item => typeof item.memberPrice === 'number' && item.memberPrice > 0) && (
+                <div className="border border-yellow-300 bg-yellow-50 text-yellow-900 rounded-lg px-3 py-3 text-sm font-semibold flex flex-col items-center gap-2 mb-3 animate-fade-in shadow animate-crown-shimmer">
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-5 h-5 text-yellow-500 animate-crown-shimmer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span className="font-bold text-yellow-700">Become a Member & Save More!</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white font-bold shadow hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200 px-6 py-2 rounded-lg animate-bounce"
+                    onClick={() => {
+                      const msg = encodeURIComponent('I want to join membership and get extra discounts on lab tests.');
+                      window.open(`https://wa.me/${contactDetailsData.whatsapp.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                    }}
+                  >
+                    Join Membership
+                  </Button>
+                  <span className="text-xs text-yellow-800 mt-1 text-center">
+                    As a member, you would pay only <span className="font-bold text-green-700">₹{items.reduce((sum, item) => typeof item.memberPrice === 'number' && item.memberPrice > 0 ? sum + item.memberPrice * item.quantity : sum, 0).toFixed(2)}</span> for these tests!
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }

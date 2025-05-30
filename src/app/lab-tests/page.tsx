@@ -6,17 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { db } from '@/lib/firebase/client';
+import { db, auth } from '@/lib/firebase/client';
 import type { LabTest, FirestoreTest, LabPrice as LabPriceType, FirestoreTestLabPrice } from '@/types';
 import { 
   Loader2, CheckCircle, PackagePlus, Tag, XSquare, ListPlus, Calculator, ShieldCheck, 
-  Building, DollarSign, TagIcon, Info, Microscope, AlertTriangle, FlaskConical
+  Building, DollarSign, TagIcon, Info, Microscope, AlertTriangle, FlaskConical, Crown
 } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 import LabGroupedTestCard from '@/components/lab-grouped-test-card';
 import MultiLabConfirmationDialog from '@/components/multi-lab-confirmation-dialog';
+import { getOrCreateUserDocument } from '@/lib/firebase/firestoreService';
 
 export interface GroupedTestOffering {
   testDocId: string;
@@ -39,6 +40,7 @@ export default function LabTestsPage() {
   const { addToCart, items: cartItems } = useCart();
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] = useState(false);
   const [labsForConfirmation, setLabsForConfirmation] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState<'member' | 'non-member' | 'admin'>('non-member');
 
   const handleFirestoreError = useCallback((error: any, context: string) => {
     console.error(`Firestore error (${context}):`, error);
@@ -172,6 +174,19 @@ export default function LabTestsPage() {
     fetchInitialData();
   }, [handleFirestoreError, transformTestDoc, fetchAndAttachPrices]);
 
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      getOrCreateUserDocument(currentUser).then(userDoc => {
+        setUserRole(userDoc?.role || 'non-member');
+        console.log('userRole:', userDoc?.role || 'non-member');
+      });
+    } else {
+      setUserRole('non-member');
+      console.log('userRole: non-member');
+    }
+  }, []);
+
   const toggleTestSelection = (testToToggle: LabTest) => {
     setSelectedTests(prevSelected =>
       prevSelected.find(t => t.docId === testToToggle.docId)
@@ -191,11 +206,9 @@ export default function LabTestsPage() {
     if (selectedTests.length === 0) {
       return { bestPrice: 0, totalMrp: 0, totalSavings: 0, itemsForCart: [] };
     }
-
     let totalBestPrice = 0;
     let totalMrp = 0;
     const itemsForCart: Array<Omit<import('@/context/CartContext').CartItem, 'quantity'>> = [];
-
     selectedTests.forEach(test => {
       if (test.prices && test.prices.length > 0) {
         const cheapestLabPrice = test.prices.reduce((min, p) => p.price < min.price ? p : min, test.prices[0]);
@@ -208,10 +221,10 @@ export default function LabTestsPage() {
             labName: cheapestLabPrice.labName,
             price: cheapestLabPrice.price,
             originalPrice: cheapestLabPrice.originalPrice,
+            memberPrice: typeof cheapestLabPrice.memberPrice === 'number' ? cheapestLabPrice.memberPrice : undefined,
         });
       }
     });
-
     return {
       bestPrice: totalBestPrice,
       totalMrp: totalMrp,
@@ -223,7 +236,6 @@ export default function LabTestsPage() {
   const labsWithTheirSelectedTests = useMemo(() => {
     const grouped: LabsWithSelectedTests = {};
     if (selectedTests.length === 0) return grouped;
-
     selectedTests.forEach(test => {
       if (test.prices && test.prices.length > 0) {
         test.prices.forEach(labPrice => {
@@ -236,6 +248,7 @@ export default function LabTestsPage() {
             testImageUrl: test.imageUrl,
             price: labPrice.price,
             originalPrice: labPrice.originalPrice,
+            memberPrice: typeof labPrice.memberPrice === 'number' ? labPrice.memberPrice : undefined,
           });
         });
       }
@@ -362,6 +375,7 @@ export default function LabTestsPage() {
                 <ul className="space-y-2">
                   {packageDetails.itemsForCart.map(item => {
                     const originalTest = selectedTests.find(st => st.docId === item.testDocId);
+                    console.log('item.memberPrice', item.memberPrice, 'for', item.testName, item.labName);
                     return (
                       <li key={item.testDocId} className="p-2.5 border rounded-md bg-card/80 shadow-sm">
                         <div className="flex justify-between items-start">
@@ -380,10 +394,19 @@ export default function LabTestsPage() {
                           </button>
                         </div>
                         <div className="flex justify-between items-center mt-1 text-xs">
-                           <span className="text-primary font-medium flex items-center">
-                             {/* <DollarSign className="mr-0.5 h-3 w-3" /> */}
-                             Selling Price: ₹{item.price.toFixed(2)}
-                           </span>
+                          {userRole === 'member' && typeof item.memberPrice === 'number' && item.memberPrice > 0 ? (
+                            <span className="text-green-700 font-bold flex items-center">
+                              <Crown className="h-4 w-4 text-yellow-500 mr-1" />
+                              Member Price: ₹{item.memberPrice.toFixed(2)}
+                              <span className="ml-2 text-xs text-muted-foreground line-through">
+                                Non-Member: ₹{item.price.toFixed(2)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-primary font-medium flex items-center">
+                              Selling Price: ₹{item.price.toFixed(2)}
+                            </span>
+                          )}
                           {item.originalPrice && item.originalPrice > item.price && (
                             <span className="text-muted-foreground line-through flex items-center">
                               <TagIcon className="mr-0.5 h-3 w-3" /> MRP: ₹{item.originalPrice.toFixed(2)}
@@ -452,6 +475,7 @@ export default function LabTestsPage() {
                     key={labName}
                     labName={labName}
                     testsOffered={offeredTests}
+                    userRole={userRole}
                   />
                 ))}
               </div>

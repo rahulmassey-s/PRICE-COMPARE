@@ -15,11 +15,13 @@ import React from 'react';
 interface LabGroupedTestCardProps {
   labName: string;
   testsOffered: GroupedTestOffering[];
+  userRole: 'member' | 'non-member' | 'admin';
 }
 
 export default function LabGroupedTestCard({
   labName,
   testsOffered,
+  userRole,
 }: LabGroupedTestCardProps) {
   const { addToCart, removeFromCart, items: cartItems } = useCart();
   const { toast } = useToast();
@@ -108,6 +110,8 @@ export default function LabGroupedTestCard({
         <ScrollArea className="max-h-[300px] h-full"> 
           <ul className="divide-y divide-border">
             {testsOffered.map((test) => {
+              console.log('LabGroupedTestCard test:', test);
+              console.log('LabGroupedTestCard test.memberPrice:', test.memberPrice, 'for', test.testName, labName);
               const isInCart = cartItems.some(
                 (item) => item.testDocId === test.testDocId && item.labName === labName
               );
@@ -116,6 +120,7 @@ export default function LabGroupedTestCard({
                 hasOriginalPrice && test.originalPrice && test.originalPrice > 0
                   ? Math.round(((test.originalPrice - test.price) / test.originalPrice) * 100)
                   : 0;
+              const hasMemberPrice = userRole === 'member' && typeof test.memberPrice === 'number' && test.memberPrice > 0;
 
               return (
                 <li key={test.testDocId} className="p-3 hover:bg-muted/30 transition-colors">
@@ -134,9 +139,17 @@ export default function LabGroupedTestCard({
                     <div className="flex-grow">
                       <h4 className="font-medium text-sm text-foreground">{test.testName}</h4>
                       <div className="flex items-baseline space-x-1.5 mt-0.5">
-                        <span className="font-bold text-primary text-base">
-                          ₹{test.price.toFixed(2)}
-                        </span>
+                        {hasMemberPrice ? (
+                          <span className="font-bold text-green-700 text-base flex items-center">
+                            <svg className="h-4 w-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ₹{test.memberPrice.toFixed(2)}
+                            <span className="ml-2 text-xs text-muted-foreground line-through">₹{test.price.toFixed(2)}</span>
+                          </span>
+                        ) : (
+                          <span className="font-bold text-primary text-base">
+                            ₹{test.price.toFixed(2)}
+                          </span>
+                        )}
                         {hasOriginalPrice && (
                           <span className="text-xs text-muted-foreground line-through">
                             ₹{test.originalPrice!.toFixed(2)}

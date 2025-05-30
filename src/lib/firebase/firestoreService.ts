@@ -171,6 +171,7 @@ export async function createBooking(
       labName: item.labName,
       price: item.price,
       originalPrice: item.originalPrice ?? null,
+      appointmentDateTime: item.appointmentDateTime ?? null,
     })),
     totalAmount: totalAmount,
     totalSavings: totalSavings,

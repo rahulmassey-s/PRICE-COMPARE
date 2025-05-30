@@ -165,230 +165,253 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     ? (test.imageUrl || test.testImageUrl)
     : `https://placehold.co/200x200.png`;
 
-
   return (
-    <>
-      <Card
-        className="border text-card-foreground shadow-xl rounded-xl overflow-hidden flex flex-col h-full bg-card transition-all duration-300 ease-out group hover:shadow-2xl"
-        role="article"
-        aria-labelledby={`test-name-${test.id}`}
-      >
-        {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' && (
-          <div className="relative w-full h-32 sm:h-40 bg-card overflow-hidden rounded-t-xl border-b border-border">
-            <Image
-              src={effectiveImageUrl}
-              alt={test.name}
-              fill
-              style={{ objectFit: "contain" }}
-              className="bg-card group-hover:opacity-90 transition-opacity duration-300"
-              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
-              priority={false}
-              quality={75}
-              data-ai-hint="medical test"
-            />
-          </div>
-        )}
-
-        <div id={`test-name-${test.id}`} className={cn(
-            "p-3 sm:p-4 border-b border-border text-center flex items-center justify-center overflow-hidden bg-primary/5",
-            "h-14 sm:h-16" 
-        )}>
-          {test.bannerText && test.bannerText.trim() !== '' ? (
-            <div className="marquee-container h-full w-full text-sm sm:text-base font-semibold text-primary flex items-center">
-              <span className="marquee-text">{test.bannerText}</span>
-            </div>
-          ) : (
-            <h3 className="font-bold text-base sm:text-lg text-primary truncate" title={test.name}>
-              {test.name}
-            </h3>
-          )}
+    <Card
+      className="border text-card-foreground shadow-xl rounded-xl overflow-hidden flex flex-col h-full bg-card transition-all duration-300 ease-out group hover:shadow-2xl"
+      role="article"
+      aria-labelledby={`test-name-${test.id}`}
+    >
+      {/* Test Image (once at top) */}
+      {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' && (
+        <div className="relative w-full h-32 sm:h-40 bg-card overflow-hidden rounded-t-xl border-b border-border mb-2">
+          <Image
+            src={effectiveImageUrl}
+            alt={test.name}
+            fill
+            style={{ objectFit: "contain" }}
+            className="bg-card group-hover:opacity-90 transition-opacity duration-300"
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
+            priority={false}
+            quality={75}
+            data-ai-hint="medical test"
+          />
         </div>
-
-        <CardContent className="p-3 sm:p-4 flex-grow space-y-3 min-h-[200px]">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-xs sm:text-sm font-medium text-muted-foreground">Available at:</h4>
+      )}
+      {/* Test Name / Banner (once at top) */}
+      <div id={`test-name-${test.id}`} className={cn(
+          "p-3 sm:p-4 border-b border-border text-center flex items-center justify-center overflow-hidden bg-primary/5",
+          "h-14 sm:h-16"
+      )}>
+        {test.bannerText && test.bannerText.trim() !== '' ? (
+          <div className="marquee-container h-full w-full text-sm sm:text-base font-semibold text-primary flex items-center">
+            <span className="marquee-text">{test.bannerText}</span>
           </div>
-          {test.prices && test.prices.length > 0 ? (
-            test.prices.map((priceInfo, index) => {
-              const labPriceId = `${test.docId}_${priceInfo.labName.replace(/\s+/g, '-')}_${index}`;
-              const currentCoupon = generatedCoupons[labPriceId];
-              const isExpanded = expandedLabPriceId === labPriceId;
-              const hasOriginalPrice = typeof priceInfo.originalPrice === 'number' && priceInfo.originalPrice > priceInfo.price;
-              const discountPercentage = hasOriginalPrice && priceInfo.originalPrice && priceInfo.originalPrice > 0
-                ? Math.round(((priceInfo.originalPrice - priceInfo.price) / priceInfo.originalPrice) * 100)
-                : 0;
-              const isMarkedAsBestPrice = priceInfo.price === minPrice && test.prices.length > 0 && bestPriceLabs.some(l => l.labName === priceInfo.labName);
-              const inCart = isItemInCart(priceInfo.labName);
-              const showBestPriceSuggestion = inCart && priceInfo.price > minPrice && bestPriceLabs.length > 0;
+        ) : (
+          <h3 className="font-bold text-base sm:text-lg text-primary truncate" title={test.name}>
+            {test.name}
+          </h3>
+        )}
+      </div>
+      <CardContent className="p-4 flex-grow space-y-3 min-h-[200px]">
+        {test.prices && test.prices.length > 0 ? (
+          test.prices.map((priceInfo, index) => {
+            const labPriceId = `${test.docId}_${priceInfo.labName.replace(/\s+/g, '-')}_${index}`;
+            const currentCoupon = generatedCoupons[labPriceId];
+            const isExpanded = expandedLabPriceId === labPriceId;
+            const hasOriginalPrice = typeof priceInfo.originalPrice === 'number' && priceInfo.originalPrice > priceInfo.price;
+            const discountPercentage = hasOriginalPrice && priceInfo.originalPrice && priceInfo.originalPrice > 0
+              ? Math.round(((priceInfo.originalPrice - priceInfo.price) / priceInfo.originalPrice) * 100)
+              : 0;
+            const isMarkedAsBestPrice = priceInfo.price === minPrice && test.prices.length > 0 && bestPriceLabs.some(l => l.labName === priceInfo.labName);
+            const inCart = isItemInCart(priceInfo.labName);
+            const showBestPriceSuggestion = inCart && priceInfo.price > minPrice && bestPriceLabs.length > 0;
 
-              const memberPrice = (typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0)
-                ? priceInfo.memberPrice
-                : undefined;
+            const memberPrice = (typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0)
+              ? priceInfo.memberPrice
+              : undefined;
 
-              return (
-                <div
-                  key={labPriceId}
-                  className={cn(
-                    "p-4 pt-12 rounded-xl shadow-lg border border-gray-200 bg-white flex flex-col gap-3 relative mb-4",
-                    isExpanded ? "ring-2 ring-primary/70 shadow-xl" : "hover:shadow-md",
-                    isMarkedAsBestPrice ? "border-green-500 border-2" : "border-border"
-                  )}
-                >
-                  {/* Badges Row: Best Price and Discount, no overlap */}
-                  <div className="flex justify-between items-start w-full absolute top-3 left-0 px-3 z-20 pointer-events-none">
-                    {isMarkedAsBestPrice && (
-                      <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow flex items-center gap-1 pointer-events-auto">
-                        <Star className="h-3 w-3 fill-current" /> Best Price
-                      </span>
-                    )}
-                    {discountPercentage > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow pointer-events-auto">
-                        {discountPercentage}% OFF
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Building className="text-gray-400" size={18} />
-                    <span className="font-bold text-lg text-gray-900">{priceInfo.labName}</span>
-                  </div>
-                  <div className="flex items-end gap-2 mb-2">
-                    <span className="text-2xl font-extrabold text-primary">₹{priceInfo.price.toFixed(2)}</span>
-                    {hasOriginalPrice && (
-                      <span className="text-sm text-gray-400 line-through">₹{priceInfo.originalPrice?.toFixed(2)}</span>
-                    )}
-                  </div>
-                  {/* Premium Member Price Badge */}
-                  {typeof memberPrice === 'number' && memberPrice > 0 && (
-                    <div className={`relative flex flex-col items-center w-full my-2`}>
-                      <div
-                        className={`member-price-badge-glass group transition-transform duration-200 opacity-100 scale-100 hover:scale-105 active:scale-100`}
-                        tabIndex={0}
-                        title={userRole === 'member' ? 'You are getting the best member price!' : 'Unlock this price by becoming a member!'}
-                      >
-                        <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer">
-                          <Crown className="h-4 w-4 text-yellow-500 mr-0.5 animate-crown-shimmer" />
-                          For Members
-                        </span>
-                        <span className="flex items-center justify-center text-2xl font-extrabold bg-gradient-to-r from-green-400 via-yellow-300 to-green-700 text-transparent bg-clip-text animate-member-price-shimmer drop-shadow-member-price-glow">
-                          {userRole === 'member' ? (
-                            <Smile className="h-6 w-6 mr-1 text-green-500 animate-member-price-pulse" />
-                          ) : (
-                            <Lock className="h-5 w-5 mr-1 text-yellow-500 animate-member-price-pulse" />
-                          )}
-                          ₹{memberPrice.toFixed(2)}
-                        </span>
-                        {userRole !== 'member' && (
-                          <span className="block text-xs text-yellow-700 font-semibold mt-1 animate-bounce-slow">Become a Member & Save More</span>
-                        )}
-                        {userRole === 'member' && (
-                          <span className="block text-xs text-green-700 font-semibold mt-1 animate-bounce-slow">Exclusive Member Price</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-center border-primary text-primary font-medium mb-1 bg-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenLabDetailsIndex(index);
+            const originalPrice = (typeof priceInfo.originalPrice === 'number' && priceInfo.originalPrice > 0)
+              ? priceInfo.originalPrice
+              : priceInfo.price;
+            // Calculate member discount percent for badge (based on original price)
+            const showMemberDiscountBadge = typeof memberPrice === 'number' && memberPrice > 0 && originalPrice > memberPrice;
+            const memberDiscountPercent = showMemberDiscountBadge ? Math.round(((originalPrice - memberPrice) / originalPrice) * 100) : 0;
+
+            // BADGE ROW: Render above the card content for this lab
+            const badgeRow = (
+              <div className="flex gap-2 mb-2 flex-wrap items-center">
+                {isMarkedAsBestPrice && (
+                  <span className="inline-flex bg-green-600 text-white text-xs md:text-sm font-bold px-2 py-1 rounded-full shadow items-center gap-1 pointer-events-auto">
+                    <Star className="h-3 w-3 fill-current" /> Best Price
+                  </span>
+                )}
+                {discountPercentage > 0 && (
+                  <span className="inline-flex bg-red-500 text-white text-xs md:text-sm font-bold px-2 py-1 rounded-full shadow items-center pointer-events-auto" style={{lineHeight: '1.1'}}>
+                    {discountPercentage}% OFF
+                  </span>
+                )}
+                {showMemberDiscountBadge && memberDiscountPercent > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center gap-1 px-5 py-1.5 rounded-full border-2 border-[#b8860b] font-black text-[#7c5700] text-base text-center pointer-events-auto animate-bounce-slow shadow-[0_0_16px_#f0b03099]"
+                    style={{
+                      background: 'linear-gradient(90deg, #f7c873 0%, #f0b030 60%, #b8860b 100%)',
+                      lineHeight: '1.1',
+                      textShadow: '0 1px 4px #fff8, 0 0px 2px #b8860b88',
+                      maxWidth: '100%',
                     }}
                   >
-                    <Eye size={16} className="mr-1 eye-blink-animate" />
-                    View Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "w-full justify-center border-primary text-primary font-medium mb-1",
-                      isExpanded && "bg-primary/10 ring-1 ring-primary/50"
-                    )}
-                    aria-expanded={isExpanded}
-                    aria-controls={`coupon-details-${labPriceId}`}
-                    data-state={isExpanded ? "open" : "closed"}
-                    onClick={(e) => handleToggleDiscount(e, labPriceId, priceInfo.labName)}
-                  >
-                    <Percent className="mr-1 h-4 w-4" />
-                    Coupon
-                  </Button>
-                  <Button
-                    variant={inCart ? 'outline' : 'primary'}
-                    size="lg"
-                    className={cn(
-                      "w-full justify-center font-bold text-white bg-primary hover:bg-primary/90 transition mb-1",
-                      inCart ? "border-destructive text-destructive bg-white hover:bg-destructive/10" : ""
-                    )}
-                    onClick={(e) => handleCartAction(e, priceInfo, inCart)}
-                  >
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    {inCart ? "Remove" : "Book Now"}
-                  </Button>
-                  <div
-                    id={`coupon-details-${labPriceId}`}
-                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
-                    aria-live="polite"
-                  >
-                    {isExpanded && (
-                      <div className="p-2.5 sm:p-3 border-t border-border bg-muted/30 rounded-b-lg">
-                        {currentCoupon ? (
-                          <>
-                            <p className="text-xs font-semibold text-foreground mb-1">Your Exclusive Coupon Code:</p>
-                            <div className="flex items-center gap-2 mb-2.5 p-2 border-2 border-dashed border-primary/70 rounded-lg bg-primary/5">
-                              <Percent className="h-4 w-4 text-primary shrink-0" />
-                              <span className="text-sm sm:text-md font-mono text-primary tracking-wider flex-grow">{currentCoupon}</span>
-                              <Button
-                                onClick={(e) => handleCopyCoupon(e, currentCoupon, labPriceId)}
-                                variant="ghost"
-                                size="icon"
-                                className="text-primary hover:bg-primary/20 h-7 w-7"
-                              >
-                                {copiedStatus[labPriceId] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                <span className="sr-only">{copiedStatus[labPriceId] ? "Copied" : "Copy coupon"}</span>
-                              </Button>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <a href={`tel:${contactDetails.phone}`}>
-                                  <Phone size={14} className="mr-1.5 shrink-0" /> Call: {contactDetails.phone}
-                                </a>
-                              </Button>
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <a href={generateWhatsappUrl(priceInfo.labName, currentCoupon)} target="_blank" rel="noopener noreferrer">
-                                  <MessageSquare size={14} className="mr-1.5 shrink-0" /> WhatsApp Us
-                                </a>
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center justify-center py-3">
-                            <p className="text-xs text-muted-foreground">Generating your coupon...</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    <Crown className="h-5 w-5 mr-1" style={{ color: '#b8860b', filter: 'drop-shadow(0 0 4px #f0b030)' }} />
+                    {memberDiscountPercent}% OFF FOR MEMBER
+                  </span>
+                )}
+              </div>
+            );
+
+            return (
+              <div
+                key={labPriceId}
+                className={cn(
+                  "rounded-xl shadow-lg border border-gray-200 bg-white flex flex-col gap-3 relative mb-4",
+                  isExpanded ? "ring-2 ring-primary/70 shadow-xl" : "hover:shadow-md",
+                  isMarkedAsBestPrice ? "border-green-500 border-2" : "border-border"
+                )}
+              >
+                {badgeRow}
+                {/* Centered Lab Name Row */}
+                <div className="flex flex-col items-center justify-center mb-2">
+                  <span className="flex items-center gap-2 text-center">
+                    <Building className="text-gray-400" size={18} />
+                    <span className="font-bold text-lg text-gray-900">{priceInfo.labName}</span>
+                  </span>
                 </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">No pricing information available for this test.</p>
-          )}
-        </CardContent>
-      </Card>
+                {/* Centered Price Row */}
+                <div className="flex flex-col items-center justify-center mb-2">
+                  <span className="text-2xl font-extrabold text-primary text-center">₹{priceInfo.price.toFixed(2)}</span>
+                  {hasOriginalPrice && (
+                    <span className="text-sm text-gray-400 line-through text-center">₹{priceInfo.originalPrice?.toFixed(2)}</span>
+                  )}
+                </div>
+                {/* Premium Member Price Badge */}
+                {typeof memberPrice === 'number' && memberPrice > 0 && (
+                  <div className={`relative flex flex-col items-center w-full my-2`}>
+                    <div
+                      className={`member-price-badge-glass group transition-transform duration-200 opacity-100 scale-100 hover:scale-105 active:scale-100`}
+                      tabIndex={0}
+                      title={userRole === 'member' ? 'You are getting the best member price!' : 'Unlock this price by becoming a member!'}
+                    >
+                      <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer">
+                        <Crown className="h-4 w-4 text-yellow-500 mr-0.5 animate-crown-shimmer" />
+                        For Members
+                      </span>
+                      <span className="flex items-center justify-center text-2xl font-extrabold bg-gradient-to-r from-green-400 via-yellow-300 to-green-700 text-transparent bg-clip-text animate-member-price-shimmer drop-shadow-member-price-glow">
+                        {userRole === 'member' ? (
+                          <Smile className="h-6 w-6 mr-1 text-green-500 animate-member-price-pulse" />
+                        ) : (
+                          <Lock className="h-5 w-5 mr-1 text-yellow-500 animate-member-price-pulse" />
+                        )}
+                        ₹{memberPrice.toFixed(2)}
+                      </span>
+                      {userRole !== 'member' && (
+                        <span className="block text-xs text-yellow-700 font-semibold mt-1 animate-bounce-slow">Become a Member & Save More</span>
+                      )}
+                      {userRole === 'member' && (
+                        <span className="block text-xs text-green-700 font-semibold mt-1 animate-bounce-slow">Exclusive Member Price</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-center border-primary text-primary font-medium mb-1 bg-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenLabDetailsIndex(index);
+                  }}
+                >
+                  <Eye size={16} className="mr-1 eye-blink-animate" />
+                  View Details
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "w-full justify-center border-primary text-primary font-medium mb-1",
+                    isExpanded && "bg-primary/10 ring-1 ring-primary/50"
+                  )}
+                  aria-expanded={isExpanded}
+                  aria-controls={`coupon-details-${labPriceId}`}
+                  data-state={isExpanded ? "open" : "closed"}
+                  onClick={(e) => handleToggleDiscount(e, labPriceId, priceInfo.labName)}
+                >
+                  <Percent className="mr-1 h-4 w-4" />
+                  Coupon
+                </Button>
+                <Button
+                  variant={inCart ? 'outline' : 'primary'}
+                  size="lg"
+                  className={cn(
+                    "w-full justify-center font-bold text-white bg-primary hover:bg-primary/90 transition mb-1",
+                    inCart ? "border-destructive text-destructive bg-white hover:bg-destructive/10" : ""
+                  )}
+                  onClick={(e) => handleCartAction(e, priceInfo, inCart)}
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  {inCart ? "Remove" : "Book Now"}
+                </Button>
+                <div
+                  id={`coupon-details-${labPriceId}`}
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+                  aria-live="polite"
+                >
+                  {isExpanded && (
+                    <div className="p-2.5 sm:p-3 border-t border-border bg-muted/30 rounded-b-lg">
+                      {currentCoupon ? (
+                        <>
+                          <p className="text-xs font-semibold text-foreground mb-1">Your Exclusive Coupon Code:</p>
+                          <div className="flex items-center gap-2 mb-2.5 p-2 border-2 border-dashed border-primary/70 rounded-lg bg-primary/5">
+                            <Percent className="h-4 w-4 text-primary shrink-0" />
+                            <span className="text-sm sm:text-md font-mono text-primary tracking-wider flex-grow">{currentCoupon}</span>
+                            <Button
+                              onClick={(e) => handleCopyCoupon(e, currentCoupon, labPriceId)}
+                              variant="ghost"
+                              size="icon"
+                              className="text-primary hover:bg-primary/20 h-7 w-7"
+                            >
+                              {copiedStatus[labPriceId] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                              <span className="sr-only">{copiedStatus[labPriceId] ? "Copied" : "Copy coupon"}</span>
+                            </Button>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <a href={`tel:${contactDetails.phone}`}>
+                                <Phone size={14} className="mr-1.5 shrink-0" /> Call: {contactDetails.phone}
+                              </a>
+                            </Button>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <a href={generateWhatsappUrl(priceInfo.labName, currentCoupon)} target="_blank" rel="noopener noreferrer">
+                                <MessageSquare size={14} className="mr-1.5 shrink-0" /> WhatsApp Us
+                              </a>
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-center py-3">
+                          <p className="text-xs text-muted-foreground">Generating your coupon...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">No pricing information available for this test.</p>
+        )}
+      </CardContent>
 
       {openLabDetailsIndex !== null && test.prices && (
         <Dialog open={openLabDetailsIndex !== null} onOpenChange={() => setOpenLabDetailsIndex(null)}>
@@ -437,7 +460,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       {openLabDetailsIndex !== null && test.prices && (
         (() => { console.log('DEBUG: View Details dialog data:', test.prices[openLabDetailsIndex]); return null; })()
       )}
-    </>
+    </Card>
   );
 }
 
@@ -482,19 +505,12 @@ export default LabTestCard;
 }
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(0); }
-  20% { transform: translateY(-6px); }
+  20% { transform: translateY(-10px); }
   40% { transform: translateY(0); }
-  60% { transform: translateY(-3px); }
+  60% { transform: translateY(-5px); }
   80% { transform: translateY(0); }
 }
 .animate-bounce-slow {
   animation: bounce-slow 2.2s infinite;
-}
-@keyframes crown-shimmer {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.5) drop-shadow(0 0 6px gold); }
-}
-.animate-crown-shimmer {
-  animation: crown-shimmer 2.2s infinite;
 }
 */

@@ -41,6 +41,7 @@ export interface BookingItem {
   labName: string;
   price: number;
   originalPrice: number | null; // Explicitly number | null
+  appointmentDateTime?: string; // ISO string for selected date and time
 }
 
 export interface Booking {
@@ -105,4 +106,5 @@ export interface CartItem {
   price: number;
   originalPrice?: number;
   quantity: number;
+  appointmentDateTime?: string; // ISO string for selected date and time
 }
