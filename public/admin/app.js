@@ -1579,6 +1579,11 @@ function openEditLabModal(labData, labId) {
   // Remove any previous event listener before adding
   form.onsubmit = null;
   form.addEventListener("submit", handleEditLabFormSubmit);
+
+  if (modal) {
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark');
+  }
 }
 
 // ... other modal opening functions to be fully implemented ...
@@ -1723,6 +1728,11 @@ function openEditTestModal(testData, testId) {
     );
     addLabPriceBtnEdit._listenerAttached = true;
   }
+
+  if (modal) {
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark');
+  }
 }
 
 function openEditHealthConcernModal(hcData, hcId) {
@@ -1779,6 +1789,11 @@ function openEditHealthConcernModal(hcData, hcId) {
   // Remove any previous event listener before adding
   form.onsubmit = null;
   form.addEventListener("submit", handleEditHealthConcernFormSubmit);
+
+  if (modal) {
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark');
+  }
 }
 
 function openEditOfferModal(offerData, offerId) {
@@ -1839,6 +1854,11 @@ function openEditOfferModal(offerData, offerId) {
 
   loadTestsForOfferForm(testSelect, offerData.testId); // Populate and select
   openModal("edit-offer-modal");
+
+  if (modal) {
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark');
+  }
 }
 
 function openUpdatePrescriptionStatusModal(prescriptionData, prescriptionId) {
@@ -2063,6 +2083,11 @@ function openEditBannerModal(bannerData, bannerId, bannerType) {
   // Remove any previous event listener before adding
   form.onsubmit = null;
   form.addEventListener("submit", handleEditBannerFormSubmit);
+
+  if (modal) {
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark');
+  }
 }
 
 // ----- Edit Form Submission Handlers -----

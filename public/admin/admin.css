@@ -940,3 +940,8 @@ table ul li {
     background-size: cover !important;
   }
 }
+
+/* Fix: For dark modals, force text to white */
+.modal-content.dark, .modal-content.dark * {
+  color: #fff !important;
+}

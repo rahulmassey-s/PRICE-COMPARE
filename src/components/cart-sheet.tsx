@@ -456,10 +456,14 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
             {/* Summary, wallet points, totals below */}
             <div className="p-4 w-full space-y-3 bg-green-100">
               {/* Member Discount Banner */}
-              {userRole === 'member' && memberSavings > 0 && (
+              {userRole === 'member' && totalSavings > 0 && (
                 <div className="border rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2 mb-2 shadow" style={{ borderColor: '#bfa100', background: '#fffbe6', color: '#bfa100' }}>
                   <svg className="w-5 h-5" style={{ color: '#bfa100' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                  <span className="font-bold flex items-center gap-1" style={{ color: '#bfa100' }}><span className="mr-1">Crown Member Price</span> <span style={{ color: '#bfa100', fontWeight: 800 }}>You Saved ₹{memberSavings.toFixed(2)}</span></span>
+                  <span className="font-bold flex items-center gap-1" style={{ color: '#bfa100' }}>
+                    Crown Member Price
+                    <span style={{ color: '#bfa100', fontWeight: 800 }}>You Saved ₹{totalSavings.toFixed(2)}</span>
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground" title="Includes member discount and wallet points">(Total savings from MRP)</span>
                 </div>
               )}
               {/* Wallet Points Redemption UI - Modern Enhanced */}
