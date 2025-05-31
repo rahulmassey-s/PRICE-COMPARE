@@ -701,7 +701,7 @@ async function loadUsers() {
     console.warn("Users table body not found! Cannot load users.");
     return;
   }
-  usersTableBody.innerHTML = '<tr><td colspan="7">Loading users...</td></tr>';
+  usersTableBody.innerHTML = '<tr><td colspan="10">Loading users...</td></tr>';
   try {
     const querySnapshot = await firestoreRequest(
       "getDocs",
@@ -712,7 +712,7 @@ async function loadUsers() {
     );
     if (querySnapshot.empty) {
       usersTableBody.innerHTML =
-        '<tr><td colspan="7">No users found.</td></tr>';
+        '<tr><td colspan="10">No users found.</td></tr>';
       return;
     }
     usersTableBody.innerHTML = "";
@@ -725,8 +725,26 @@ async function loadUsers() {
       row.insertCell().textContent = userData.displayName || "N/A";
       row.insertCell().textContent = userData.phoneNumber || "N/A";
       row.insertCell().textContent = userData.createdAt
-        ? userData.createdAt.toDate().toLocaleDateString()
+        ? (userData.createdAt.toDate ? userData.createdAt.toDate().toLocaleDateString() : new Date(userData.createdAt).toLocaleDateString())
         : "N/A";
+      // --- Online Status column ---
+      const onlineCell = row.insertCell();
+      if (userData.online) {
+        onlineCell.innerHTML = '<span style="color:green;font-weight:bold;">● Online</span>';
+      } else {
+        onlineCell.innerHTML = '<span style="color:#888;">Offline</span>';
+      }
+      // --- Last Active column ---
+      const lastActiveCell = row.insertCell();
+      if (userData.lastActiveAt) {
+        const d = userData.lastActiveAt.toDate ? userData.lastActiveAt.toDate() : new Date(userData.lastActiveAt);
+        lastActiveCell.textContent = d.toLocaleString();
+      } else {
+        lastActiveCell.textContent = "N/A";
+      }
+      // --- Login Count column ---
+      const loginCountCell = row.insertCell();
+      loginCountCell.textContent = typeof userData.loginCount === 'number' ? userData.loginCount : '0';
       // --- Role column ---
       const roleCell = row.insertCell();
       const roleSelect = document.createElement("select");
@@ -758,7 +776,7 @@ async function loadUsers() {
     });
   } catch (error) {
     usersTableBody.innerHTML =
-      '<tr><td colspan="7">Error loading users. Check console.</td></tr>';
+      '<tr><td colspan="10">Error loading users. Check console.</td></tr>';
     console.error("Error loading users:", error);
   }
 }
@@ -5106,3 +5124,60 @@ async function loadWalletAccounts() {
   }
 }
 // --- End Wallet Accounts Tab Logic ---
+
+// ... existing code ...
+async function loadUserActivity() {
+  const tableBody = document.getElementById("user-activity-table-body");
+  if (!tableBody) return;
+  tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+  try {
+    const snap = await firestoreRequest("getDocs", "userActivity", null, null, [
+      { type: "orderBy", field: "timestamp", direction: "desc" },
+      { type: "limit", value: 200 }
+    ]);
+    if (snap.empty) {
+      tableBody.innerHTML = '<tr><td colspan="5">No activity found.</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = "";
+    snap.forEach(doc => {
+      const d = doc.data();
+      const user = d.userName ? `${d.userName} (${d.userEmail || d.userId || 'N/A'})` : (d.userEmail ? d.userEmail : (d.userId || 'N/A'));
+      let testOrPage = '-';
+      if (d.activityType === 'test_view') {
+        testOrPage = d.testName ? d.testName : (d.testId || '-');
+      } else if (d.activityType === 'page_view') {
+        testOrPage = d.page || '-';
+      }
+      let details = '-';
+      if (d.activityType === 'test_view') {
+        details = `Lab: ${d.labName || '-'} | TestId: ${d.testId || '-'}`;
+      } else if (d.activityType === 'page_view') {
+        details = `Page: ${d.page || '-'}`;
+      } else if (d.activityType === 'booking_attempt') {
+        details = `Total: ₹${d.totalAmount || 0}`;
+      }
+      const ts = d.timestamp && d.timestamp.toDate ? d.timestamp.toDate() : (d.timestamp && d.timestamp.seconds ? new Date(d.timestamp.seconds * 1000) : null);
+      const tsStr = ts ? ts.toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+      tableBody.innerHTML += `<tr>
+        <td>${user}</td>
+        <td>${d.activityType || '-'}</td>
+        <td>${testOrPage}</td>
+        <td>${details}</td>
+        <td>${tsStr}</td>
+      </tr>`;
+    });
+  } catch (e) {
+    tableBody.innerHTML = `<tr><td colspan="5">Failed to load activity: ${e && e.message ? e.message : 'Unknown error'}</td></tr>`;
+  }
+}
+// ... existing code ...
+// Hook into tab switch logic
+let origSwitchTabUserActivity = switchTab;
+switchTab = function (tabId) {
+  origSwitchTabUserActivity(tabId);
+  if (tabId === "user-activity-tab") {
+    loadUserActivity();
+  }
+};
+// ... existing code ...

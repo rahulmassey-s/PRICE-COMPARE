@@ -10,7 +10,7 @@ import { Trash2, ShoppingCart, Info, MessageSquare, Loader2 } from 'lucide-react
 import { useToast } from "@/hooks/use-toast";
 import { contactDetailsData } from '@/data/app-data';
 import { auth } from '@/lib/firebase/client';
-import { createBooking, getOrCreateUserDocument, redeemPoints } from '@/lib/firebase/firestoreService';
+import { createBooking, getOrCreateUserDocument, redeemPoints, logUserActivity } from '@/lib/firebase/firestoreService';
 import type { UserDetails } from '@/types';
 import { useState, useEffect, useRef } from 'react'; // Added useEffect and useRef
 import { addDays, format, isToday, isTomorrow } from 'date-fns';
@@ -119,6 +119,24 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const totalSavings = originalTotal - finalTotal;
 
   const handleProceedToBook = async () => {
+    try {
+      const user = auth.currentUser;
+      const userId = user?.uid || '';
+      const userName = user?.displayName || null;
+      const userEmail = user?.email || null;
+      if (userId) {
+        logUserActivity(userId, 'booking_attempt', {
+          cartItems: items.map(i => ({
+            testId: i.testDocId || '',
+            testName: i.testName || '',
+            labName: i.labName || '',
+            price: i.price || 0
+          })),
+          totalAmount: subtotal || 0
+        }, userName, userEmail);
+      }
+    } catch (e) {}
+
     if (items.length === 0) {
       toast({
         title: "Empty Cart",

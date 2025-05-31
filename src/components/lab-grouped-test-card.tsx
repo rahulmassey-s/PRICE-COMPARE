@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import type { GroupedTestOffering } from '@/app/lab-tests/page'; 
 import { ScrollArea } from './ui/scroll-area';
 import React from 'react';
+import { logUserActivity } from '@/lib/firebase/firestoreService';
+import { auth } from '@/lib/firebase/client';
 
 interface LabGroupedTestCardProps {
   labName: string;
@@ -97,6 +99,22 @@ export default function LabGroupedTestCard({
     }
   };
 
+  const handleGroupedTestCardClick = (test) => {
+    try {
+      const user = auth.currentUser;
+      const userId = user && user.uid ? user.uid : '';
+      const userName = user && user.displayName ? user.displayName : null;
+      const userEmail = user && user.email ? user.email : null;
+      const testId = test.testDocId || test.id || '';
+      const testName = test.testName || '';
+      const labName = test.labName || '';
+      if (userId && testId) {
+        logUserActivity(userId, 'test_view', { testId, testName, labName }, userName, userEmail);
+      }
+    } catch (e) {}
+    // ...existing click logic...
+  };
+
   return (
     <Card className="shadow-xl rounded-xl overflow-hidden flex flex-col h-full transition-all duration-300 ease-out hover:shadow-2xl">
       <CardHeader className="p-4 bg-primary/10 border-b">
@@ -170,7 +188,10 @@ export default function LabGroupedTestCard({
                       )}
                     </div>
                     <Button
-                      onClick={() => handleCartAction(test, isInCart)}
+                      onClick={() => {
+                        handleCartAction(test, isInCart);
+                        handleGroupedTestCardClick(test);
+                      }}
                       variant={isInCart ? 'outline' : 'default'}
                       size="sm"
                       className={cn(

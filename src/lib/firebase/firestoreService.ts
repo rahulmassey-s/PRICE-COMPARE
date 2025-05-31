@@ -279,3 +279,79 @@ export async function redeemPoints(userId: string, pointsToRedeem: number, booki
   });
 }
 
+/**
+ * Sets the user's online status to true and updates lastActiveAt in Firestore.
+ * @param userId The UID of the user.
+ */
+export async function setUserOnlineStatus(userId: string): Promise<void> {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    online: true,
+    lastActiveAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Sets the user's online status to false in Firestore.
+ * @param userId The UID of the user.
+ */
+export async function setUserOfflineStatus(userId: string): Promise<void> {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    online: false,
+    lastActiveAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Updates the user's last activity timestamp in Firestore.
+ * @param userId The UID of the user.
+ */
+export async function updateUserActivity(userId: string): Promise<void> {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    lastActiveAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Increments the user's login count in Firestore.
+ * @param userId The UID of the user.
+ */
+export async function incrementUserLoginCount(userId: string): Promise<void> {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    loginCount: (await getDoc(userRef)).data()?.loginCount ? (await getDoc(userRef)).data().loginCount + 1 : 1,
+    lastLoginAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Logs a user activity event in Firestore.
+ * @param userId The UID of the user.
+ * @param activityType 'page_view' | 'test_view' | 'booking_attempt' | etc.
+ * @param details Object with extra info (testId, page, etc.)
+ * @param userName Optional: User's display name
+ * @param userEmail Optional: User's email
+ */
+export async function logUserActivity(userId: string, activityType: string, details: Record<string, any> = {}, userName?: string, userEmail?: string) {
+  try {
+    if (!userId || !activityType) return;
+    const activityRef = collection(db, 'userActivity');
+    const data: any = {
+      userId: userId || 'unknown',
+      userName: userName || null,
+      userEmail: userEmail || null,
+      activityType: activityType || 'unknown',
+      ...details,
+      timestamp: serverTimestamp(),
+    };
+    // Ensure all fields are defined (no undefined)
+    Object.keys(data).forEach(k => { if (data[k] === undefined) data[k] = null; });
+    await addDoc(activityRef, data);
+  } catch (e) {
+    // Never throw, just log
+    console.error('Failed to log user activity:', e);
+  }
+}
+

@@ -19,6 +19,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { logUserActivity } from '@/lib/firebase/firestoreService';
+import { auth } from '@/lib/firebase/client';
 
 interface LabTestCardProps {
   test: LabTest;
@@ -165,11 +167,27 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     ? (test.imageUrl || test.testImageUrl)
     : `https://placehold.co/200x200.png`;
 
+  const handleTestCardClick = () => {
+    try {
+      const user = auth.currentUser;
+      const userId = user && user.uid ? user.uid : '';
+      const userName = user && user.displayName ? user.displayName : null;
+      const userEmail = user && user.email ? user.email : null;
+      const testId = test.docId || test.id || '';
+      const testName = test.name || '';
+      const labName = (test.prices && test.prices[0] && test.prices[0].labName) || '';
+      if (userId && testId) {
+        logUserActivity(userId, 'test_view', { testId, testName, labName }, userName, userEmail);
+      }
+    } catch (e) {}
+  };
+
   return (
     <Card
       className="border text-card-foreground shadow-xl rounded-xl overflow-hidden flex flex-col h-full bg-card transition-all duration-300 ease-out group hover:shadow-2xl"
       role="article"
       aria-labelledby={`test-name-${test.id}`}
+      onClick={handleTestCardClick}
     >
       {/* Test Image (once at top) */}
       {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' && (

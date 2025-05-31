@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -11,6 +10,15 @@ import { Loader2, PartyPopper } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation'; // Import usePathname
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase/client';
+import {
+  setUserOnlineStatus,
+  setUserOfflineStatus,
+  updateUserActivity,
+  incrementUserLoginCount,
+  logUserActivity
+} from '@/lib/firebase/firestoreService';
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -88,6 +96,114 @@ export default function ClientLayout({
     };
   }, [introAnimationFinished, checkPendingSuccessMessage]);
 
+  // --- USER PRESENCE & ACTIVITY TRACKING ---
+  useEffect(() => {
+    let userId: string | null = null;
+    let activityTimeout: NodeJS.Timeout | null = null;
+    let isOnline = false;
+
+    // Throttle activity updates to once every 30 seconds
+    const ACTIVITY_THROTTLE_MS = 30000;
+    const safeUpdateUserActivity = () => {
+      if (!userId) return;
+      if (activityTimeout) return;
+      updateUserActivity(userId).catch(() => {});
+      activityTimeout = setTimeout(() => {
+        activityTimeout = null;
+      }, ACTIVITY_THROTTLE_MS);
+    };
+
+    const handleOnline = () => {
+      if (userId && !isOnline) {
+        setUserOnlineStatus(userId).catch(() => {});
+        isOnline = true;
+      }
+    };
+    const handleOffline = () => {
+      if (userId && isOnline) {
+        setUserOfflineStatus(userId).catch(() => {});
+        isOnline = false;
+      }
+    };
+
+    const setupActivityListeners = () => {
+      window.addEventListener('mousemove', safeUpdateUserActivity);
+      window.addEventListener('keydown', safeUpdateUserActivity);
+      window.addEventListener('scroll', safeUpdateUserActivity);
+      window.addEventListener('click', safeUpdateUserActivity);
+    };
+    const removeActivityListeners = () => {
+      window.removeEventListener('mousemove', safeUpdateUserActivity);
+      window.removeEventListener('keydown', safeUpdateUserActivity);
+      window.removeEventListener('scroll', safeUpdateUserActivity);
+      window.removeEventListener('click', safeUpdateUserActivity);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') handleOffline();
+      if (document.visibilityState === 'visible') handleOnline();
+    };
+
+    const handleBeforeUnload = () => {
+      handleOffline();
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.uid) {
+        userId = user.uid;
+        try {
+          await setUserOnlineStatus(userId);
+          isOnline = true;
+          await incrementUserLoginCount(userId);
+        } catch (e) {}
+        setupActivityListeners();
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      } else {
+        if (userId) {
+          setUserOfflineStatus(userId).catch(() => {});
+        }
+        userId = null;
+        isOnline = false;
+        removeActivityListeners();
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    });
+
+    return () => {
+      if (userId) setUserOfflineStatus(userId).catch(() => {});
+      removeActivityListeners();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (activityTimeout) clearTimeout(activityTimeout);
+      unsubscribe();
+    };
+  }, []);
+
+  // --- PAGE VIEW LOGGING ---
+  useEffect(() => {
+    let ignore = false;
+    if (typeof window !== 'undefined') {
+      // Get userId from Firebase Auth
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        try {
+          const userId = user && user.uid ? user.uid : null;
+          const userName = user && user.displayName ? user.displayName : null;
+          const userEmail = user && user.email ? user.email : null;
+          if (userId && pathname && !ignore) {
+            logUserActivity(userId, 'page_view', { page: pathname }, userName, userEmail);
+          }
+        } catch (e) {
+          // Never throw
+        }
+      });
+      return () => {
+        ignore = true;
+        unsubscribe();
+      };
+    }
+  }, [pathname]);
 
   if (isLoadingIntroState || (showIntroAnimation && !introAnimationFinished)) {
     return (

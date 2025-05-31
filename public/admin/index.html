@@ -54,6 +54,7 @@
                 <li><button class="tab-button" data-tab="site-settings-tab"><i class="fas fa-cog"></i> Site Settings</button></li>
                 <li><button class="tab-button" data-tab="manage-data-tab"><i class="fas fa-database"></i> Manage Data (Excel)</button></li>
                 <li><button class="tab-button" data-tab="charts-tab"><i class="fas fa-chart-line"></i> Charts</button></li>
+                <li><button class="tab-button" data-tab="user-activity-tab"><i class="fas fa-user-clock"></i> User Activity</button></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logout-button" class="btn btn-danger logout-button"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -336,6 +337,11 @@
                                     <th>Display Name</th>
                                     <th>Phone Number</th>
                                     <th>Created At</th>
+                                    <th>Online Status</th>
+                                    <th>Last Active</th>
+                                    <th>Login Count</th>
+                                    <th>Last Login</th>
+                                    <th>Role</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -573,6 +579,27 @@
                 <section class="dashboard-section card-style">
                     <h4><i class="fas fa-chart-line"></i> Analytics & Charts</h4>
                     <p>Charts and analytics will be displayed here in a future update.</p>
+                </section>
+            </div>
+
+            <!-- User Activity Tab -->
+            <div id="user-activity-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-user-clock"></i> User Activity Analytics</h4>
+                    <div class="table-container">
+                        <table id="user-activity-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Activity</th>
+                                    <th>Test/Page</th>
+                                    <th>Details</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-activity-table-body"></tbody>
+                        </table>
+                    </div>
                 </section>
             </div>
         </main>
