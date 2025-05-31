@@ -212,7 +212,7 @@ export default function LabTestsPage() {
     selectedTests.forEach(test => {
       if (test.prices && test.prices.length > 0) {
         const cheapestLabPrice = test.prices.reduce((min, p) => p.price < min.price ? p : min, test.prices[0]);
-        totalBestPrice += cheapestLabPrice.price;
+        const memberPrice = typeof cheapestLabPrice.memberPrice === 'number' ? cheapestLabPrice.memberPrice : undefined;
         totalMrp += cheapestLabPrice.originalPrice || cheapestLabPrice.price;
         itemsForCart.push({
             testDocId: test.docId,
@@ -221,8 +221,13 @@ export default function LabTestsPage() {
             labName: cheapestLabPrice.labName,
             price: cheapestLabPrice.price,
             originalPrice: cheapestLabPrice.originalPrice,
-            memberPrice: typeof cheapestLabPrice.memberPrice === 'number' ? cheapestLabPrice.memberPrice : undefined,
+            memberPrice,
         });
+        if (userRole === 'member' && typeof memberPrice === 'number' && memberPrice > 0) {
+          totalBestPrice += memberPrice;
+        } else {
+          totalBestPrice += cheapestLabPrice.price;
+        }
       }
     });
     return {
@@ -231,7 +236,7 @@ export default function LabTestsPage() {
       totalSavings: totalMrp - totalBestPrice,
       itemsForCart
     };
-  }, [selectedTests]);
+  }, [selectedTests, userRole]);
   
   const labsWithTheirSelectedTests = useMemo(() => {
     const grouped: LabsWithSelectedTests = {};
@@ -256,6 +261,27 @@ export default function LabTestsPage() {
     return grouped;
   }, [selectedTests]);
 
+  // --- Add member extra discount calculation ---
+  const memberDiscountDetails = useMemo(() => {
+    if (userRole !== 'member' || !packageDetails.itemsForCart.length) return null;
+    let nonMemberTotal = 0;
+    let memberTotal = 0;
+    let hasMemberPrice = false;
+    packageDetails.itemsForCart.forEach(item => {
+      if (typeof item.memberPrice === 'number' && item.memberPrice > 0) {
+        memberTotal += item.memberPrice;
+        nonMemberTotal += item.price;
+        hasMemberPrice = true;
+      } else {
+        // If no member price, treat as non-member
+        memberTotal += item.price;
+        nonMemberTotal += item.price;
+      }
+    });
+    if (!hasMemberPrice) return null;
+    const extraDiscount = nonMemberTotal - memberTotal;
+    return extraDiscount > 0 ? { extraDiscount, nonMemberTotal, memberTotal } : null;
+  }, [userRole, packageDetails.itemsForCart]);
 
   const proceedWithAddToCart = () => {
     packageDetails.itemsForCart.forEach(item => addToCart(item));
@@ -371,7 +397,7 @@ export default function LabTestsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-5 space-y-3">
-              <ScrollArea className="max-h-[240px] mb-2"> 
+              <ScrollArea className="max-h-[320px] mb-2"> 
                 <ul className="space-y-2">
                   {packageDetails.itemsForCart.map(item => {
                     const originalTest = selectedTests.find(st => st.docId === item.testDocId);
@@ -440,6 +466,13 @@ export default function LabTestsPage() {
                   <div className="flex justify-between items-center text-green-600">
                     <span className="font-semibold flex items-center"><ShieldCheck className="mr-1.5 h-4 w-4"/>You Save:</span>
                     <span className="font-bold">₹{packageDetails.totalSavings.toFixed(2)}</span>
+                  </div>
+                )}
+                {/* Member Extra Discount Row */}
+                {memberDiscountDetails && (
+                  <div className="flex justify-between items-center text-green-700">
+                    <span className="font-semibold flex items-center"><Crown className="mr-1.5 h-4 w-4 text-yellow-500"/>Member Extra Discount:</span>
+                    <span className="font-bold">₹{memberDiscountDetails.extraDiscount.toFixed(2)}</span>
                   </div>
                 )}
               </div>

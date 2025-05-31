@@ -829,3 +829,114 @@ table ul li {
     width: 100%;
   }
 }
+
+#user-bookings-modal-content, #user-bookings-modal-content *,
+.modal-content, .modal-content * {
+  color: #222 !important;
+  opacity: 1 !important;
+}
+
+/* Improved Booking Detail Card Styles */
+.booking-detail-card {
+  border: 1.5px solid #222;
+  border-radius: 14px;
+  margin-bottom: 32px;
+  background: #fff;
+  padding: 28px 28px 18px 28px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+  font-size: 1.09em;
+  color: #222;
+  transition: box-shadow 0.2s;
+}
+.booking-detail-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.13);
+}
+.booking-detail-card h5 {
+  font-size: 1.13em;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1565c0;
+}
+.booking-detail-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.booking-detail-card li {
+  margin-bottom: 10px;
+  font-size: 1em;
+}
+.booking-detail-card .test-mrp {
+  color: #607d8b;
+  font-weight: 500;
+  font-size: 0.98em;
+}
+.booking-detail-card .test-datetime {
+  color: #1a237e;
+  font-weight: 600;
+  font-size: 0.97em;
+}
+.booking-detail-card .test-datetime-missing {
+  color: #b71c1c;
+  font-weight: 600;
+  font-size: 0.97em;
+}
+.booking-detail-card .summary-row {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px dashed #bbb;
+  font-size: 1em;
+}
+.booking-detail-card .summary-row span {
+  display: inline-block;
+  min-width: 120px;
+}
+.booking-detail-card .summary-mrp {
+  color: #607d8b;
+  font-weight: 600;
+}
+.booking-detail-card .summary-subtotal {
+  color: #222;
+  font-weight: 600;
+}
+.booking-detail-card .summary-amount {
+  color: #1565c0;
+  font-weight: 700;
+}
+.booking-detail-card .summary-savings {
+  color: #388e3c;
+  font-weight: 700;
+}
+.booking-detail-card .thanks {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+}
+
+/* Modal improvements */
+#user-bookings-modal-content {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 18px 0;
+}
+.modal-content.large-modal {
+  background: #f4f8fb;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+}
+
+.letterhead-bg {
+  background: url('/letterhead-bg.png') no-repeat top left;
+  background-size: cover;
+  min-height: 1100px; /* A4 size approx */
+  padding: 60px 40px 40px 40px;
+  position: relative;
+}
+@media print {
+  .letterhead-bg {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: url('/letterhead-bg.png') no-repeat top left !important;
+    background-size: cover !important;
+  }
+}

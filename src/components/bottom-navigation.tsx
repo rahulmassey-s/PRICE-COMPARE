@@ -77,7 +77,7 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
                 {/* Crown badge for member above Account icon */}
                 {item.label === 'Account' && userRole === 'member' && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 animate-crown-shimmer">
-                    <Crown className="h-5 w-5 text-yellow-400 drop-shadow" />
+                    <Crown className="h-5 w-5 text-yellow-600 drop-shadow" style={{ color: '#bfa100' }} />
                   </span>
                 )}
                 <item.icon className={cn(

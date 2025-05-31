@@ -16,6 +16,7 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
+  cartAppointmentDateTime?: string | null;
 }
 
 interface CartActions {
@@ -25,6 +26,7 @@ interface CartActions {
   incrementQuantity: (testDocId: string, labName: string) => void; 
   decrementQuantity: (testDocId: string, labName: string) => void; 
   updateAppointmentDateTime: (testDocId: string, labName: string, appointmentDateTime: string) => void;
+  setCartAppointmentDateTime: (appointmentDateTime: string | null) => void;
 }
 
 const CartStateContext = createContext<CartState | undefined>(undefined);
@@ -36,7 +38,13 @@ type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'INCREMENT_QUANTITY'; testDocId: string; labName: string }
   | { type: 'DECREMENT_QUANTITY'; testDocId: string; labName: string }
-  | { type: 'UPDATE_APPOINTMENT_DATETIME'; testDocId: string; labName: string; appointmentDateTime: string };
+  | { type: 'UPDATE_APPOINTMENT_DATETIME'; testDocId: string; labName: string; appointmentDateTime: string }
+  | { type: 'SET_CART_APPOINTMENT_DATETIME'; appointmentDateTime: string | null };
+
+const initialCartState: CartState = {
+  items: [],
+  cartAppointmentDateTime: null,
+};
 
 const cartReducer = (state: CartState, action: Action): CartState => {
   switch (action.type) {
@@ -87,13 +95,15 @@ const cartReducer = (state: CartState, action: Action): CartState => {
       );
       return { ...state, items: updatedItems };
     }
+    case 'SET_CART_APPOINTMENT_DATETIME':
+      return { ...state, cartAppointmentDateTime: action.appointmentDateTime };
     default:
       return state;
   }
 };
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(cartReducer, { items: [] });
+  const [state, dispatch] = useReducer(cartReducer, initialCartState);
 
   const actions = useMemo(() => ({
     addToCart: (item: Omit<CartItem, 'quantity'>) => dispatch({ type: 'ADD_ITEM', item }),
@@ -103,6 +113,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     decrementQuantity: (testDocId: string, labName: string) => dispatch({ type: 'DECREMENT_QUANTITY', testDocId, labName }),
     updateAppointmentDateTime: (testDocId: string, labName: string, appointmentDateTime: string) =>
       dispatch({ type: 'UPDATE_APPOINTMENT_DATETIME', testDocId, labName, appointmentDateTime }),
+    setCartAppointmentDateTime: (appointmentDateTime: string | null) => dispatch({ type: 'SET_CART_APPOINTMENT_DATETIME', appointmentDateTime }),
   }), []);
 
   return (

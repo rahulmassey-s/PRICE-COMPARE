@@ -744,6 +744,10 @@
         <div class="modal-content card-style large-modal">
             <span class="close-modal-btn">&times;</span>
             <h4><i class="fas fa-history"></i> Booking History for <span id="user-bookings-modal-username"></span></h4>
+            <div style="margin-bottom: 12px;">
+              <button id="download-booking-pdf-btn" class="btn btn-secondary btn-sm"><i class="fas fa-file-pdf"></i> Download PDF</button>
+              <button id="print-booking-btn" class="btn btn-secondary btn-sm"><i class="fas fa-print"></i> Print</button>
+            </div>
             <div id="user-bookings-modal-content" class="table-container">
                 <p>Loading bookings...</p>
                 <!-- Bookings table will be inserted here -->
@@ -831,6 +835,37 @@
         </div>
       </div>
     </div>
+
+    <!-- Add print stylesheet and html2pdf.js before </body> -->
+    <style>
+    @media print {
+      body, html {
+        background: #fff !important;
+        color: #222 !important;
+      }
+      .booking-detail-card {
+        background: #fff !important;
+        color: #222 !important;
+        box-shadow: none !important;
+        border: 1.5px solid #222 !important;
+        margin: 0 auto 18px auto !important;
+        page-break-inside: avoid;
+      }
+      .booking-detail-card .booking-logo {
+        display: block !important;
+        margin-bottom: 12px;
+      }
+      .modal, .modal-content, .close-modal-btn, .btn, .sidebar, .sidebar-footer, .main-content > :not(.booking-detail-card) {
+        display: none !important;
+      }
+    }
+    .booking-detail-card .booking-logo {
+      display: block;
+      max-width: 180px;
+      margin: 0 auto 12px auto;
+    }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="app.js" defer></script>

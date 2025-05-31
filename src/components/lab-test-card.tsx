@@ -289,9 +289,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                       tabIndex={0}
                       title={userRole === 'member' ? 'You are getting the best member price!' : 'Unlock this price by becoming a member!'}
                     >
-                      <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-transparent bg-clip-text animate-crown-shimmer">
-                        <Crown className="h-4 w-4 text-yellow-500 mr-0.5 animate-crown-shimmer" />
-                        For Members
+                      <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5" style={{ color: '#bfa100' }}>
+                        <Crown className="h-4 w-4" style={{ color: '#bfa100' }} />
+                        FOR MEMBERS
                       </span>
                       <span className="flex items-center justify-center text-2xl font-extrabold bg-gradient-to-r from-green-400 via-yellow-300 to-green-700 text-transparent bg-clip-text animate-member-price-shimmer drop-shadow-member-price-glow">
                         {userRole === 'member' ? (

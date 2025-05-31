@@ -34,6 +34,7 @@ export default function LabGroupedTestCard({
       labName, 
       price: test.price,
       originalPrice: test.originalPrice,
+      memberPrice: test.memberPrice,
     };
     if (isInCart) {
       removeFromCart(test.testDocId, labName);
@@ -54,7 +55,12 @@ export default function LabGroupedTestCard({
     return null; 
   }
 
-  const labTotalPrice = testsOffered.reduce((sum, test) => sum + test.price, 0);
+  const labTotalPrice = testsOffered.reduce((sum, test) => {
+    if (userRole === 'member' && typeof test.memberPrice === 'number' && test.memberPrice > 0) {
+      return sum + test.memberPrice;
+    }
+    return sum + test.price;
+  }, 0);
   const labTotalOriginalPrice = testsOffered.reduce((sum, test) => sum + (test.originalPrice || test.price), 0);
   const labTotalSavings = labTotalOriginalPrice - labTotalPrice;
 
@@ -72,6 +78,7 @@ export default function LabGroupedTestCard({
           labName,
           price: test.price,
           originalPrice: test.originalPrice,
+          memberPrice: test.memberPrice,
         };
         addToCart(cartItemPayload);
         itemsAddedCount++;
