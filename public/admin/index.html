@@ -429,6 +429,13 @@
                             <img id="primary-banner-image-preview-img" class="image-preview" alt="Primary Banner Preview" style="display:none;">
                         </div>
                         <div class="form-group">
+                            <label for="primary-banner-video-url-input">Video URL (Optional):</label>
+                            <input type="text" id="primary-banner-video-url-input" placeholder="Or paste video URL here">
+                            <input type="file" id="primary-banner-video-file-input" accept="video/*" class="file-input">
+                            <button type="button" id="primary-banner-video-upload-btn" class="btn btn-secondary btn-sm">Upload Video</button>
+                            <video id="primary-banner-video-preview" class="video-preview" style="display:none; margin-top: 8px;" controls width="200"></video>
+                        </div>
+                        <div class="form-group">
                             <label for="primary-banner-order-input">Display Order:</label>
                             <input type="number" id="primary-banner-order-input" value="0" required>
                         </div>

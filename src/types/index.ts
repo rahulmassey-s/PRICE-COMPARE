@@ -64,6 +64,7 @@ export interface PromotionalBanner {
   iconName: string; // Name of the lucide-react icon
   linkUrl?: string; // Optional URL for the banner to link to
   imageUrl?: string; // Optional image URL for the banner background
+  videoUrl?: string; // Optional video URL for the banner background
   isActive: boolean;
   order: number; // For sequencing banners
   createdAt?: Date | Timestamp; // Allow both Date and Timestamp

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -107,40 +106,67 @@ export default function PromotionalBannerCarousel({
   const currentBanner = banners[currentIndex];
   if (!currentBanner) return null;
 
-  const IconComponent = (Icons as any)[currentBanner.iconName || 'Gift'] || Icons.Gift;
+  // Only set IconComponent if iconName is provided and non-empty
+  const IconComponent = currentBanner.iconName && currentBanner.iconName.trim() !== ''
+    ? (Icons as any)[currentBanner.iconName] || Icons.Gift
+    : null;
 
   const defaultCardHeight = "h-[70px]";
+
+  // Determine object-fit class based on collectionName
+  const objectFitClass = collectionName === 'promotionalBanners' ? 'object-cover' : 'object-contain';
 
   const BannerContent = () => (
     <Card 
         className={cn(
             "shadow-lg rounded-xl overflow-hidden text-primary-foreground w-full transition-all duration-500 ease-in-out relative",
-            currentBanner.imageUrl ? 'bg-cover bg-center' : 'bg-primary/10',
             cardClassName || defaultCardHeight 
         )}
-        style={currentBanner.imageUrl ? { backgroundImage: `url(${currentBanner.imageUrl})` } : {}}
         data-ai-hint="promotional event"
     >
+      {/* Video background if videoUrl exists */}
+      {currentBanner.videoUrl && (
+        <video
+          src={currentBanner.videoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className={cn("absolute inset-0 w-full h-full z-0", objectFitClass)}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+      {/* Image background if imageUrl exists and no video */}
+      {currentBanner.imageUrl && !currentBanner.videoUrl && (
+        <img
+          src={currentBanner.imageUrl}
+          alt={currentBanner.title}
+          className={cn("absolute inset-0 w-full h-full z-0", objectFitClass)}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
       <CardContent className={cn(
-          "p-3 flex items-center justify-between h-full",
-          currentBanner.imageUrl && "bg-black/30" 
+          "p-3 flex items-center justify-between h-full relative z-20"
       )}>
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "rounded-full p-2 shadow",
-            currentBanner.imageUrl ? "bg-background/70" : "bg-background/70"
-          )}>
-            <IconComponent className="h-6 w-6 text-primary" />
-          </div>
+          {/* Only render icon if IconComponent is not null */}
+          {IconComponent && (
+            <div className={cn(
+              "rounded-full p-2 shadow",
+              currentBanner.imageUrl || currentBanner.videoUrl ? "bg-background/70" : "bg-background/70"
+            )}>
+              <IconComponent className="h-6 w-6 text-primary" />
+            </div>
+          )}
           <div>
             <h3 className={cn(
                 "text-base font-bold",
-                currentBanner.imageUrl ? "text-white" : "text-primary"
+                currentBanner.imageUrl || currentBanner.videoUrl ? "text-white" : "text-primary"
             )}>{currentBanner.title}</h3>
             {currentBanner.subtitle && (
               <p className={cn(
                   "text-xs font-medium",
-                  currentBanner.imageUrl ? "text-gray-200" : "text-primary/80"
+                  currentBanner.imageUrl || currentBanner.videoUrl ? "text-gray-200" : "text-primary/80"
               )}>{currentBanner.subtitle}</p>
             )}
           </div>
@@ -157,7 +183,7 @@ export default function PromotionalBannerCarousel({
                     <Dot
                         className={cn(
                         "h-4 w-4",
-                        currentIndex === index ? (currentBanner.imageUrl ? 'text-white' : 'text-primary') : (currentBanner.imageUrl ? 'text-white/50' : 'text-primary/30'),
+                        currentIndex === index ? (currentBanner.imageUrl || currentBanner.videoUrl ? 'text-white' : 'text-primary') : (currentBanner.imageUrl || currentBanner.videoUrl ? 'text-white/50' : 'text-primary/30'),
                         "transition-colors duration-300"
                         )}
                     />
@@ -171,12 +197,13 @@ export default function PromotionalBannerCarousel({
 
   return (
     <div className={cn("mb-6 relative group", containerClassName)}>
+      {/* Make the entire banner clickable if linkUrl is present */}
       {currentBanner.linkUrl ? (
         <Link href={currentBanner.linkUrl} passHref legacyBehavior>
-          <a className="block"><BannerContent /></a>
+          <a className="block" style={{ textDecoration: 'none' }}>{BannerContent()}</a>
         </Link>
       ) : (
-        <BannerContent />
+        BannerContent()
       )}
 
       {banners.length > 1 && (

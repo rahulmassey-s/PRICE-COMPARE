@@ -1415,6 +1415,7 @@ async function handleAddBannerFormSubmit(event, bannerType) {
   const iconNameInput = document.getElementById(`${prefix}icon-name-input`);
   const linkUrlInput = document.getElementById(`${prefix}link-url-input`);
   const imageUrlInput = document.getElementById(`${prefix}image-url-input`);
+  const videoUrlInput = document.getElementById(`${prefix}video-url-input`);
   const orderInput = document.getElementById(`${prefix}order-input`);
   const isActiveInput = document.getElementById(`${prefix}is-active-input`);
 
@@ -1424,6 +1425,7 @@ async function handleAddBannerFormSubmit(event, bannerType) {
     !iconNameInput ||
     !linkUrlInput ||
     !imageUrlInput ||
+    !videoUrlInput ||
     !orderInput ||
     !isActiveInput
   ) {
@@ -1439,6 +1441,7 @@ async function handleAddBannerFormSubmit(event, bannerType) {
   const iconName = iconNameInput.value.trim();
   const linkUrl = linkUrlInput.value.trim();
   const imageUrl = imageUrlInput.value.trim();
+  const videoUrl = videoUrlInput.value.trim();
   const order = parseInt(orderInput.value, 10);
   const isActive = isActiveInput.checked;
 
@@ -1457,6 +1460,7 @@ async function handleAddBannerFormSubmit(event, bannerType) {
     iconName: iconName || null,
     linkUrl: linkUrl || null,
     imageUrl: imageUrl || null,
+    videoUrl: videoUrl || null,
     order,
     isActive,
     // createdAt, lastUpdatedAt by firestoreRequest
@@ -5206,3 +5210,82 @@ switchTab = function (tabId) {
   }
 };
 // ... existing code ...
+
+function setupVideoUpload(fileInputId, urlInputId, previewVideoId, uploadBtnId) {
+  const fileInput = document.getElementById(fileInputId);
+  const urlInput = document.getElementById(urlInputId);
+  const previewVideo = document.getElementById(previewVideoId);
+  const uploadBtn = document.getElementById(uploadBtnId);
+
+  if (!fileInput || !urlInput || !previewVideo || !uploadBtn) return;
+
+  // Preview when URL is manually changed
+  urlInput.addEventListener("input", () => {
+    if (urlInput.value) {
+      previewVideo.src = urlInput.value;
+      previewVideo.style.display = "block";
+    } else {
+      previewVideo.style.display = "none";
+      previewVideo.src = "";
+    }
+  });
+
+  // Preview when file is selected (before upload)
+  fileInput.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      previewVideo.src = url;
+      previewVideo.style.display = "block";
+      urlInput.value = ""; // Clear URL if a file is chosen
+    }
+  });
+
+  // Upload to Cloudinary when button is clicked
+  uploadBtn.onclick = async () => {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showToast("Please select a video file first.", "error");
+      return;
+    }
+    const file = fileInput.files[0];
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+    try {
+      // Use Cloudinary's video endpoint
+      const CLOUDINARY_VIDEO_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(CLOUDINARY_VIDEO_API_URL, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.secure_url) {
+        urlInput.value = data.secure_url;
+        previewVideo.src = data.secure_url;
+        previewVideo.style.display = "block";
+        showToast("Video uploaded to Cloudinary and URL populated. Remember to save the item.", "success");
+      } else {
+        throw new Error(data.error?.message || "Cloudinary video upload failed.");
+      }
+    } catch (error) {
+      showToast(`Cloudinary video upload failed: ${error.message}`, "error", 5000);
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload Video';
+    }
+  };
+}
+
+// Call setupVideoUpload for primary banner after DOM is ready
+window.addEventListener('DOMContentLoaded', function() {
+  setupVideoUpload(
+    "primary-banner-video-file-input",
+    "primary-banner-video-url-input",
+    "primary-banner-video-preview",
+    "primary-banner-video-upload-btn"
+  );
+});
