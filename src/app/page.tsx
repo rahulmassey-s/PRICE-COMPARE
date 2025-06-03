@@ -636,7 +636,7 @@ export default function HomePage({ }: HomePageProps) {
         ) : tests.length > 0 ? (
           <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar">
             {tests.map(test => (
-              <div key={`${keyPrefix}-${test.docId}`} className="w-[280px] sm:w-[310px] md:w-[330px] flex-shrink-0 h-full">
+              <div key={`${keyPrefix}-${test.docId}`} className="w-full min-w-0 sm:min-w-[700px] md:min-w-[1050px] max-w-full flex-shrink-0 h-full">
                 <DynamicLabTestCard test={test} contactDetails={contactDetailsData} userRole={userRole} onCardClick={handleOpenTestDetailsDialog} />
               </div>
             ))}
@@ -880,7 +880,7 @@ export default function HomePage({ }: HomePageProps) {
                       <Button
                         key={test.docId}
                         variant="default"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground h-auto py-2.5 px-2.5 text-xs sm:text-sm text-center break-words line-clamp-2 leading-tight shadow-md rounded-lg transition-transform hover:scale-105 active:scale-95"
+                        className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold h-auto py-2.5 px-2.5 text-xs sm:text-sm text-center break-words line-clamp-2 leading-tight shadow-md rounded-lg transition-transform hover:scale-105 active:scale-95"
                         onClick={() => handleQuickTestSelect(test.name, test.docId)}
                         disabled={isLoadingSingleTest && activeSearchQuery === null && selectedTestForDetail?.docId === test.docId}
                       >

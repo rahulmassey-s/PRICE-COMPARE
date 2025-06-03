@@ -759,9 +759,11 @@ async function loadUsers() {
       });
       roleSelect.onchange = async function () {
         try {
-          await firestoreRequest("updateDoc", "users", userId, {
-            role: this.value,
-          });
+          const updates = { role: this.value };
+          if (this.value === "member") {
+            updates.membershipStartDate = new Date().toISOString();
+          }
+          await firestoreRequest("updateDoc", "users", userId, updates);
           showToast("Role updated!", "success");
         } catch (e) {
           showToast("Failed to update role.", "error");

@@ -337,93 +337,38 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
     }
   };
 
-  const handleVisitCollectionCenter = async () => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        toast({
-          title: "Login Required",
-          description: "Please log in to proceed with your booking.",
-          variant: "destructive",
-        });
-        if (mounted.current) onOpenChange(false);
-        return;
-      }
-      setShowCollectionPopup(false);
-      setIsBooking(true);
-      const userDoc = await getOrCreateUserDocument(currentUser);
-      if (!mounted.current) return;
-      const bookingUserDetails: { displayName: string | null; phoneNumber: string | null } = {
-        displayName: userDoc?.displayName ?? currentUser.displayName ?? null,
-        phoneNumber: userDoc?.phoneNumber ?? currentUser.phoneNumber ?? null,
-      };
-      // Ensure appointmentDateTime is set for each item from cartAppointmentDateTime
-      let itemsWithDateTime = items.map(item => {
-        if (item.appointmentDateTime) return item;
-        if (cartAppointmentDateTime) {
-          try {
-            const parsed = JSON.parse(cartAppointmentDateTime);
-            if (parsed.date && parsed.slot) {
-              let startTime = parsed.slot.split(' - ')[0];
-              let dateTimeStr;
-              if (/am|pm/i.test(startTime)) {
-                const [time, ampm] = startTime.split(' ');
-                let [hour, minute] = time.split(':');
-                hour = parseInt(hour, 10);
-                minute = minute || '00';
-                if (ampm.toLowerCase() === 'pm' && hour !== 12) hour += 12;
-                if (ampm.toLowerCase() === 'am' && hour === 12) hour = 0;
-                dateTimeStr = `${parsed.date}T${hour.toString().padStart(2, '0')}:${minute}:00`;
-              } else {
-                dateTimeStr = `${parsed.date}T${startTime}:00`;
-              }
-              const isoString = new Date(dateTimeStr).toISOString();
-              return { ...item, appointmentDateTime: isoString };
-            }
-          } catch (e) { console.error("Error parsing cartAppointmentDateTime", e); }
-        }
-        return item;
-      });
-      const customerName = bookingUserDetails.displayName?.split(' ')[0] || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0] || "Valued Customer";
-      let message = `Hello Lab Price Compare Team,\n\nI would like to book a test and will visit the collection center.\n\n`;
-      message += `👤 *Name:* ${bookingUserDetails.displayName || 'N/A'}\n`;
-      if (bookingUserDetails.phoneNumber) {
-        message += `📞 *Phone:* ${bookingUserDetails.phoneNumber}\n`;
-      }
-      if (currentUser.email) {
-         message += `📧 *Email:* ${currentUser.email}\n`;
-      }
-      message += `\n📝 *Booked Tests:*\n`;
-      items.forEach(item => {
-        message += `  - ${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}\n`;
-        if (item.appointmentDateTime) {
-          const dt = new Date(item.appointmentDateTime);
-          const dateStr = dt.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
-          const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-          message += `    🗓 ${dateStr} ${timeStr}\n`;
-        }
-      });
-      message += `\n💰 *Total Amount:* ₹${finalTotal.toFixed(2)}\n`;
-      message += `\n🚶‍♂️ User will visit the collection center for sample collection.`;
-      message += `\n\nPlease confirm my booking and let me know the next steps.\n\nThank you!`;
-      const whatsappUrl = `https://wa.me/${contactDetailsData.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-      sessionStorage.setItem(SESSION_STORAGE_KEY_BOOKING_PENDING_MSG, JSON.stringify({ 
-        name: customerName, 
-        timestamp: Date.now() 
-      }));
-      window.open(whatsappUrl, '_blank');
-      clearCart();
-      if (mounted.current) onOpenChange(false);
-    } catch (error: any) {
-      if (!mounted.current) return;
-      toast({
-        title: "Booking Failed",
-        description: error.message || 'Could not process your booking. Please try again.',
-        variant: "destructive",
-      });
-    } finally {
-      if (mounted.current) setIsBooking(false);
+  const handleVisitCollectionCenter = () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({ title: "Login Required", description: "Please log in to save your interest.", variant: "destructive" });
+      return;
     }
+
+    const userDetails = {
+      name: currentUser.displayName || currentUser.email?.split('@')[0] || "Valued Customer",
+      phone: currentUser.phoneNumber || "Not Provided",
+      email: currentUser.email || "Not Provided",
+    };
+
+    let message = `🔔 *Notification: User Wants to Visit Collection Center* 🔔\n\n`;
+    message += `A user has indicated they will visit a collection center for their tests.\n\n`;
+    message += `👤 *User:* ${userDetails.name}\n`;
+    if (userDetails.phone !== "Not Provided") message += `📞 *Phone:* ${userDetails.phone}\n`;
+    if (userDetails.email !== "Not Provided") message += `📧 *Email:* ${userDetails.email}\n\n`;
+    
+    message += `🛒 *Cart Details:*\n`;
+    items.forEach(item => {
+      message += `  - ${item.testName} (${item.labName}) - ₹${item.price.toFixed(2)}\n`;
+    });
+    message += `\n💰 *Cart Total (before potential collection charge):* ₹${finalTotal.toFixed(2)}\n\n`;
+    message += `Please reach out to the user to coordinate their visit and confirm test availability.\n`;
+
+    const whatsappUrl = `https://wa.me/${contactDetailsData.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    setShowCollectionPopup(false);
+    // Optionally, you can clear the cart or keep it for user reference
+    // clearCart(); 
+    toast({ title: "Collection Center Visit", description: "We've noted your interest. Please coordinate with our team via WhatsApp for your visit." });
   };
 
   return (

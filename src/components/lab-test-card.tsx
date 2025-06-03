@@ -36,9 +36,23 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
   const [generatedCoupons, setGeneratedCoupons] = useState<Record<string, string>>({});
   const [copiedStatus, setCopiedStatus] = useState<Record<string, boolean>>({});
   const [openLabDetailsIndex, setOpenLabDetailsIndex] = useState<number | null>(null);
+  const [showDescriptionBox, setShowDescriptionBox] = useState(false);
   
   const { toast } = useToast();
   const { addToCart, items: cartItems, removeFromCart } = useCart();
+
+  const minMemberPrice = useMemo(() => {
+    if (!test.prices || test.prices.length === 0) return Infinity;
+    const memberPrices = test.prices
+      .map(p => (typeof p.memberPrice === 'number' && p.memberPrice > 0 ? p.memberPrice : undefined))
+      .filter(p => typeof p === 'number');
+    return memberPrices.length > 0 ? Math.min(...memberPrices) : Infinity;
+  }, [test.prices]);
+
+  const minNonMemberPrice = useMemo(() => {
+    if (!test.prices || test.prices.length === 0) return Infinity;
+    return Math.min(...test.prices.map(p => p.price));
+  }, [test.prices]);
 
   const minPriceData = useMemo(() => {
     if (!test.prices || test.prices.length === 0) {
@@ -126,15 +140,32 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       description: `${test.name} from ${priceInfo.labName} added to your cart.`,
     });
 
-    if (priceInfo.price > minPrice && bestPriceLabs.length > 0) {
+    // Robust best price notification logic
+    const isMember = userRole === 'member';
+    const currentMemberPrice = typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice : undefined;
+    const bestMemberPrice = minMemberPrice !== Infinity ? minMemberPrice : undefined;
+    const bestNonMemberPrice = minNonMemberPrice !== Infinity ? minNonMemberPrice : undefined;
+
+    if (isMember && currentMemberPrice !== undefined && bestMemberPrice !== undefined && currentMemberPrice > bestMemberPrice) {
+      // Show member best price notification
+      const bestLabs = test.prices.filter(p => typeof p.memberPrice === 'number' && p.memberPrice === bestMemberPrice).map(p => p.labName);
       toast({
         title: "Best Price Available!",
-        description: `Get ${test.name} for ₹${minPrice.toFixed(2)} at ${bestPriceLabs.map(l => l.labName).join('/')}. Consider adding it.`,
+        description: `Get ${test.name} for ₹${bestMemberPrice.toFixed(2)} at ${bestLabs.join('/')}. Consider adding it.`,
+        duration: 7000,
+        variant: "default",
+      });
+    } else if (!isMember && priceInfo.price > bestNonMemberPrice && bestNonMemberPrice !== undefined) {
+      // Show non-member best price notification
+      const bestLabs = test.prices.filter(p => p.price === bestNonMemberPrice).map(p => p.labName);
+      toast({
+        title: "Best Price Available!",
+        description: `Get ${test.name} for ₹${bestNonMemberPrice.toFixed(2)} at ${bestLabs.join('/')}. Consider adding it.`,
         duration: 7000,
         variant: "default",
       });
     }
-  }, [addToCart, test, minPrice, bestPriceLabs, toast]);
+  }, [addToCart, test, userRole, minMemberPrice, minNonMemberPrice, toast]);
 
   const handleRemoveFromCart = useCallback((priceInfo: LabPriceType) => {
     removeFromCart(test.docId, priceInfo.labName);
@@ -163,9 +194,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     return url.trim().startsWith('http://') || url.trim().startsWith('https://');
   };
 
-  const effectiveImageUrl = (isValidHttpUrl(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl))
-    ? (test.imageUrl || test.testImageUrl)
-    : `https://placehold.co/200x200.png`;
+  const hasValidImage = isValidHttpUrl(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl);
+  const effectiveImageUrl = hasValidImage ? (test.imageUrl || test.testImageUrl) : undefined;
 
   const handleTestCardClick = () => {
     try {
@@ -182,303 +212,359 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     } catch (e) {}
   };
 
+  // --- FINAL TABLE STYLES FOR HORIZONTAL WIDE COLUMNS, NO VERTICAL STRETCH ---
+  const fontFamily = `'Inter', 'Roboto', Arial, sans-serif`;
+  const borderColor = '#e5e7eb';
+  const headerGradient = 'linear-gradient(90deg, #e0e7ff 0%, #f0f9ff 100%)';
+  const tableHeaderStyle = {
+    border: `2px solid ${borderColor}`,
+    background: headerGradient,
+    color: '#2563eb',
+    fontWeight: 700,
+    fontSize: '1.08rem',
+    textAlign: 'center' as const,
+    padding: '10px 8px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1.2px',
+    fontFamily,
+    borderBottom: `3px solid #d1d5db`,
+    width: 150,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    userSelect: 'none' as const,
+  };
+  const tableHeaderLabName = {
+    ...tableHeaderStyle,
+    width: 260,
+    textAlign: 'left' as const,
+    paddingLeft: 16,
+  };
+  const tableHeaderBook = {
+    ...tableHeaderStyle,
+    width: 180,
+    background: 'linear-gradient(90deg, #38bdf8 0%, #2563eb 100%)',
+    color: 'white',
+    fontWeight: 800,
+    fontSize: '1.08rem',
+    letterSpacing: '1.5px',
+  };
+  const tableCellLabName = {
+    border: `2px solid ${borderColor}`,
+    background: '#e0f2fe',
+    color: '#0f172a',
+    fontWeight: 600,
+    fontSize: '1.02rem',
+    textAlign: 'left' as const,
+    padding: '10px 16px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    fontFamily,
+    width: 260,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    borderLeft: `4px solid #2563eb`,
+    borderRadius: '12px 0 0 12px',
+  };
+  const tableCellLabPrice = {
+    border: `2px solid ${borderColor}`,
+    background: '#f1f5f9',
+    color: '#64748b',
+    fontWeight: 500,
+    fontSize: '1.02rem',
+    textAlign: 'center' as const,
+    padding: '10px 8px',
+    textDecoration: 'line-through',
+    fontFamily,
+    width: 150,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  };
+  const tableCellNonMember = {
+    border: `2px solid ${borderColor}`,
+    background: '#fff',
+    color: '#f59e42',
+    fontWeight: 600,
+    fontSize: '1.08rem',
+    textAlign: 'center' as const,
+    padding: '10px 8px',
+    fontFamily,
+    width: 150,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  };
+  const tableCellMember = {
+    border: `2px solid ${borderColor}`,
+    background: '#fff',
+    color: '#bfa100',
+    fontWeight: 700,
+    fontSize: '1.08rem',
+    textAlign: 'center' as const,
+    padding: '10px 8px',
+    fontFamily,
+    width: 150,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    letterSpacing: '0.5px',
+  };
+  const bookBtnStyle = {
+    background: 'linear-gradient(90deg, #2563eb 0%, #38bdf8 100%)',
+    color: 'white',
+    fontWeight: 700,
+    border: 'none',
+    borderRadius: '999px',
+    padding: '10px 0',
+    cursor: 'pointer',
+    fontSize: '1.02rem',
+    fontFamily,
+    letterSpacing: '0.5px',
+    boxShadow: '0 2px 12px #2563eb22',
+    transition: 'background 0.2s, box-shadow 0.2s, transform 0.18s',
+    outline: 'none',
+    width: '100%',
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    display: 'inline-block',
+  };
+  const bookBtnHover = {
+    background: 'linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 100%)',
+    boxShadow: '0 6px 24px #2563eb33',
+    transform: 'scale(1.08)',
+  };
+  // Modern crown SVG
+  const crownIcon = (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffe066" stroke="#bfa100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6, verticalAlign: 'middle', filter: 'drop-shadow(0 1px 2px #fff8)' }}><path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z" /></svg>
+  );
+
+  // Fade-in animation for card
+  const cardFadeIn = {
+    animation: 'fadeInCard 0.7s cubic-bezier(.4,0,.2,1) 1',
+  };
+  // Add keyframes in a style tag (will inject below)
+
   return (
-    <Card
-      className="border text-card-foreground shadow-xl rounded-xl overflow-hidden flex flex-col h-full bg-card transition-all duration-300 ease-out group hover:shadow-2xl"
-      role="article"
-      aria-labelledby={`test-name-${test.id}`}
-      onClick={handleTestCardClick}
-    >
-      {/* Test Image (once at top) */}
-      {(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl).trim() !== '' && (
-        <div className="relative w-full h-32 sm:h-40 bg-card overflow-hidden rounded-t-xl border-b border-border mb-2">
-          <Image
-            src={effectiveImageUrl}
-            alt={test.name}
-            fill
-            style={{ objectFit: "contain" }}
-            className="bg-card group-hover:opacity-90 transition-opacity duration-300"
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
-            priority={false}
-            quality={75}
-            data-ai-hint="medical test"
-          />
+    <>
+      <style>{`
+        @keyframes fadeInCard { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: none; } }
+        .enhanced-table-card:hover { box-shadow: 0 12px 40px #2563eb22, 0 2px 8px #2563eb11; transform: translateY(-4px) scale(1.012); transition: box-shadow 0.25s, transform 0.22s; }
+      `}</style>
+      <Card className="enhanced-table-card shadow-xl rounded-2xl overflow-hidden flex flex-col h-full bg-white" style={{ width: '100%', margin: '0 auto', border: `2px solid ${borderColor}`, fontFamily, ...cardFadeIn }}>
+        {/* Top Banner Image (only if image exists) */}
+        {hasValidImage && (
+          <div className="relative w-full" style={{ height: 210, borderBottom: `2px solid ${borderColor}` }}>
+            <Image
+              src={effectiveImageUrl}
+              alt={test.name}
+              fill
+              style={{ objectFit: 'cover' }}
+              className="bg-card"
+              priority={false}
+              quality={95}
+            />
+          </div>
+        )}
+        {/* Test Name Banner - modern, enhanced */}
+        <div className="w-full flex justify-center items-center py-3 bg-white border-b-2 border-blue-100">
+          <h2
+            className="text-2xl sm:text-3xl font-extrabold tracking-wide text-center leading-tight drop-shadow"
+            style={{
+              fontFamily: "'Inter', 'Roboto', Arial, sans-serif",
+              letterSpacing: '0.04em',
+              textShadow: '0 2px 8px #2563eb22'
+            }}
+          >
+            <span className="bg-gradient-to-r from-blue-400 via-blue-600 to-blue-400 bg-clip-text text-transparent">
+              {test.name}
+            </span>
+          </h2>
+        </div>
+        {/* Mobile: Custom colorful table like desktop color pattern */}
+        <div className="block sm:hidden w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full rounded-lg overflow-hidden">
+              <thead>
+                <tr>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">LAB NAME</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">LAB PRICE</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">NON MEMBER</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">
+                    MEMBER <span className="inline-block align-middle ml-1"><svg width="16" height="16" fill="#facc15" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z"/></svg></span>
+                  </th>
+                  <th className="bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-sm sm:text-base px-1 py-2 text-center rounded-tr-lg cursor-pointer hover:brightness-110 transition" onClick={() => setShowDescriptionBox(true)} tabIndex={0} role="button" aria-label="View Test Details">view test details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {test.prices && test.prices.length > 0 ? (
+                  test.prices.map((priceInfo, idx) => (
+                    <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100'}>
+                      <td className="px-1 py-2 font-bold text-black text-sm sm:text-base text-left">{priceInfo.labName}</td>
+                      <td className="px-1 py-2 font-extrabold text-gray-500 text-lg sm:text-xl text-center line-through">
+                        ₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
+                      </td>
+                      <td className={
+                        `px-1 py-2 font-extrabold text-lg sm:text-xl text-center ` +
+                        (userRole === 'member'
+                          ? 'text-orange-500'
+                          : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse' : 'text-orange-500'))
+                      }>
+                        ₹{priceInfo.price.toFixed(0)}/-
+                        {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Best</span>
+                        )}
+                      </td>
+                      <td className={
+                        `px-1 py-2 font-extrabold text-yellow-600 text-lg sm:text-xl text-center ` +
+                        (userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice ? 'bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse text-green-700' : '')
+                      }>
+                        ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
+                        {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Best</span>
+                        )}
+                      </td>
+                      <td className="px-1 py-2 text-center">
+                        {isItemInCart(priceInfo.labName) ? (
+                          <button
+                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-sm sm:text-base px-3 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            aria-label="Remove from Cart"
+                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
+                            type="button"
+                          >
+                            Remove
+                          </button>
+                        ) : (
+                          <button
+                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-sm sm:text-base px-3 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label="Book Test"
+                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
+                            type="button"
+                          >
+                            Book Test
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan={5} className="text-center text-gray-400 py-4">No pricing information available.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/* Desktop/Tablet: Table */}
+        <div className="hidden sm:block p-0 w-full" style={{ borderRadius: 18, margin: '0 auto', background: '#fff' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, margin: 0, tableLayout: 'fixed', background: 'white', fontFamily, borderRadius: 18, overflow: 'hidden' }}>
+            <thead>
+              <tr>
+                <th style={tableHeaderLabName}>Lab Name</th>
+                <th style={tableHeaderStyle}>Lab Price</th>
+                <th style={tableHeaderStyle}>Non Member</th>
+                <th style={tableHeaderStyle}>Member {crownIcon}</th>
+                <th
+                  className="bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-base px-1 py-2 text-center rounded-tr-2xl cursor-pointer hover:brightness-110 transition"
+                  style={{width: 170, border: `2px solid ${borderColor}`}}
+                  onClick={() => setShowDescriptionBox(true)}
+                  tabIndex={0}
+                  role="button"
+                  aria-label="View Test Details"
+                >
+                  view test details
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {test.prices && test.prices.length > 0 ? (
+                test.prices.map((priceInfo, idx) => {
+                  const inCart = isItemInCart(priceInfo.labName);
+                  const zebra = idx % 2 === 0 ? { background: '#f8fafc' } : { background: '#fff' };
+                  return (
+                    <tr key={priceInfo.labName + idx} style={{ transition: 'background 0.2s', ...zebra }}
+                      onMouseOver={e => {
+                        e.currentTarget.style.background = '#e0e7ff';
+                        const btn = e.currentTarget.querySelector('button');
+                        if (btn) Object.assign(btn.style, bookBtnHover);
+                      }}
+                      onMouseOut={e => {
+                        e.currentTarget.style.background = zebra.background;
+                        const btn = e.currentTarget.querySelector('button');
+                        if (btn) Object.assign(btn.style, bookBtnStyle);
+                      }}
+                    >
+                      <td style={tableCellLabName}>{priceInfo.labName}</td>
+                      <td style={{...tableCellLabPrice, fontSize: '1.25rem', fontWeight: 800}}>₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-</td>
+                      <td
+                        style={{
+                          ...tableCellNonMember,
+                          fontSize: '1.25rem',
+                          fontWeight: 800,
+                          color: userRole === 'member' ? tableCellNonMember.color : (priceInfo.price === minNonMemberPrice ? '#16a34a' : tableCellNonMember.color),
+                          background: userRole === 'member' ? tableCellNonMember.background : (priceInfo.price === minNonMemberPrice ? '#dcfce7' : tableCellNonMember.background),
+                          boxShadow: userRole === 'member' ? undefined : (priceInfo.price === minNonMemberPrice ? '0 0 0 2px #4ade80' : undefined),
+                          borderRadius: userRole === 'member' ? tableCellNonMember.borderRadius : (priceInfo.price === minNonMemberPrice ? 10 : tableCellNonMember.borderRadius),
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        ₹{priceInfo.price.toFixed(0)}/-
+                        {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
+                          <span style={{marginLeft: 6, fontSize: 13, background: '#bbf7d0', color: '#166534', padding: '2px 8px', borderRadius: 8, fontWeight: 700}}>Best</span>
+                        )}
+                      </td>
+                      <td style={{...tableCellMember, fontSize: '1.25rem', fontWeight: 800}}>₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-</td>
+                      <td className="px-1 py-2 text-center">
+                        {isItemInCart(priceInfo.labName) ? (
+                          <button
+                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            aria-label="Remove from Cart"
+                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
+                            type="button"
+                          >
+                            Remove
+                          </button>
+                        ) : (
+                          <button
+                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label="Book Test"
+                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
+                            type="button"
+                          >
+                            Book Test
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr><td colSpan={5} style={{ ...tableCellLabName, background: 'white', color: '#888', textAlign: 'center' }}>No pricing information available.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      {/* Description Box Modal */}
+      {showDescriptionBox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fade-in-up">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-xl font-bold focus:outline-none"
+              onClick={() => setShowDescriptionBox(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h2 className="text-xl font-extrabold text-blue-700 mb-2 text-center">{test.name}</h2>
+            <div className="text-gray-700 text-base whitespace-pre-line text-center max-h-[60vh] overflow-y-auto pr-2">
+              {test.description ? test.description : 'No description available.'}
+            </div>
+          </div>
         </div>
       )}
-      {/* Test Name / Banner (once at top) */}
-      <div id={`test-name-${test.id}`} className={cn(
-          "p-3 sm:p-4 border-b border-border text-center flex items-center justify-center overflow-hidden bg-primary/5",
-          "h-14 sm:h-16"
-      )}>
-        {test.bannerText && test.bannerText.trim() !== '' ? (
-          <div className="marquee-container h-full w-full text-sm sm:text-base font-semibold text-primary flex items-center">
-            <span className="marquee-text">{test.bannerText}</span>
-          </div>
-        ) : (
-          <h3 className="font-bold text-base sm:text-lg text-primary truncate" title={test.name}>
-            {test.name}
-          </h3>
-        )}
-      </div>
-      <CardContent className="p-4 flex-grow space-y-3 min-h-[200px]">
-        {test.prices && test.prices.length > 0 ? (
-          test.prices.map((priceInfo, index) => {
-            const labPriceId = `${test.docId}_${priceInfo.labName.replace(/\s+/g, '-')}_${index}`;
-            const currentCoupon = generatedCoupons[labPriceId];
-            const isExpanded = expandedLabPriceId === labPriceId;
-            const hasOriginalPrice = typeof priceInfo.originalPrice === 'number' && priceInfo.originalPrice > priceInfo.price;
-            const discountPercentage = hasOriginalPrice && priceInfo.originalPrice && priceInfo.originalPrice > 0
-              ? Math.round(((priceInfo.originalPrice - priceInfo.price) / priceInfo.originalPrice) * 100)
-              : 0;
-            const isMarkedAsBestPrice = priceInfo.price === minPrice && test.prices.length > 0 && bestPriceLabs.some(l => l.labName === priceInfo.labName);
-            const inCart = isItemInCart(priceInfo.labName);
-            const showBestPriceSuggestion = inCart && priceInfo.price > minPrice && bestPriceLabs.length > 0;
-
-            const memberPrice = (typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0)
-              ? priceInfo.memberPrice
-              : undefined;
-
-            const originalPrice = (typeof priceInfo.originalPrice === 'number' && priceInfo.originalPrice > 0)
-              ? priceInfo.originalPrice
-              : priceInfo.price;
-            // Calculate member discount percent for badge (based on original price)
-            const showMemberDiscountBadge = typeof memberPrice === 'number' && memberPrice > 0 && originalPrice > memberPrice;
-            const memberDiscountPercent = showMemberDiscountBadge ? Math.round(((originalPrice - memberPrice) / originalPrice) * 100) : 0;
-
-            // BADGE ROW: Render above the card content for this lab
-            const badgeRow = (
-              <div className="flex gap-2 mb-2 flex-wrap items-center">
-                {isMarkedAsBestPrice && (
-                  <span className="inline-flex bg-green-600 text-white text-xs md:text-sm font-bold px-2 py-1 rounded-full shadow items-center gap-1 pointer-events-auto">
-                    <Star className="h-3 w-3 fill-current" /> Best Price
-                  </span>
-                )}
-                {discountPercentage > 0 && (
-                  <span className="inline-flex bg-red-500 text-white text-xs md:text-sm font-bold px-2 py-1 rounded-full shadow items-center pointer-events-auto" style={{lineHeight: '1.1'}}>
-                    {discountPercentage}% OFF
-                  </span>
-                )}
-                {showMemberDiscountBadge && memberDiscountPercent > 0 && (
-                  <span
-                    className="inline-flex items-center justify-center gap-1 px-5 py-1.5 rounded-full border-2 border-[#b8860b] font-black text-[#7c5700] text-base text-center pointer-events-auto animate-bounce-slow shadow-[0_0_16px_#f0b03099]"
-                    style={{
-                      background: 'linear-gradient(90deg, #f7c873 0%, #f0b030 60%, #b8860b 100%)',
-                      lineHeight: '1.1',
-                      textShadow: '0 1px 4px #fff8, 0 0px 2px #b8860b88',
-                      maxWidth: '100%',
-                    }}
-                  >
-                    <Crown className="h-5 w-5 mr-1" style={{ color: '#b8860b', filter: 'drop-shadow(0 0 4px #f0b030)' }} />
-                    {memberDiscountPercent}% OFF FOR MEMBER
-                  </span>
-                )}
-              </div>
-            );
-
-            return (
-              <div
-                key={labPriceId}
-                className={cn(
-                  "rounded-xl shadow-lg border border-gray-200 bg-white flex flex-col gap-3 relative mb-4",
-                  isExpanded ? "ring-2 ring-primary/70 shadow-xl" : "hover:shadow-md",
-                  isMarkedAsBestPrice ? "border-green-500 border-2" : "border-border"
-                )}
-              >
-                {badgeRow}
-                {/* Centered Lab Name Row */}
-                <div className="flex flex-col items-center justify-center mb-2">
-                  <span className="flex items-center gap-2 text-center">
-                    <Building className="text-gray-400" size={18} />
-                    <span className="font-bold text-lg text-gray-900">{priceInfo.labName}</span>
-                  </span>
-                </div>
-                {/* Centered Price Row */}
-                <div className="flex flex-col items-center justify-center mb-2">
-                  <span className="text-2xl font-extrabold text-primary text-center">₹{priceInfo.price.toFixed(2)}</span>
-                  {hasOriginalPrice && (
-                    <span className="text-sm text-gray-400 line-through text-center">₹{priceInfo.originalPrice?.toFixed(2)}</span>
-                  )}
-                </div>
-                {/* Premium Member Price Badge */}
-                {typeof memberPrice === 'number' && memberPrice > 0 && (
-                  <div className={`relative flex flex-col items-center w-full my-2`}>
-                    <div
-                      className={`member-price-badge-glass group transition-transform duration-200 opacity-100 scale-100 hover:scale-105 active:scale-100`}
-                      tabIndex={0}
-                      title={userRole === 'member' ? 'You are getting the best member price!' : 'Unlock this price by becoming a member!'}
-                    >
-                      <span className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-widest font-bold mb-0.5" style={{ color: '#bfa100' }}>
-                        <Crown className="h-4 w-4" style={{ color: '#bfa100' }} />
-                        FOR MEMBERS
-                      </span>
-                      <span className="flex items-center justify-center text-2xl font-extrabold bg-gradient-to-r from-green-400 via-yellow-300 to-green-700 text-transparent bg-clip-text animate-member-price-shimmer drop-shadow-member-price-glow">
-                        {userRole === 'member' ? (
-                          <Smile className="h-6 w-6 mr-1 text-green-500 animate-member-price-pulse" />
-                        ) : (
-                          <Lock className="h-5 w-5 mr-1 text-yellow-500 animate-member-price-pulse" />
-                        )}
-                        ₹{memberPrice.toFixed(2)}
-                      </span>
-                      {userRole !== 'member' && (
-                        <span className="block text-xs text-yellow-700 font-semibold mt-1 animate-bounce-slow">Become a Member & Save More</span>
-                      )}
-                      {userRole === 'member' && (
-                        <span className="block text-xs text-green-700 font-semibold mt-1 animate-bounce-slow">Exclusive Member Price</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-center border-primary text-primary font-medium mb-1 bg-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenLabDetailsIndex(index);
-                  }}
-                >
-                  <Eye size={16} className="mr-1 eye-blink-animate" />
-                  View Details
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "w-full justify-center border-primary text-primary font-medium mb-1",
-                    isExpanded && "bg-primary/10 ring-1 ring-primary/50"
-                  )}
-                  aria-expanded={isExpanded}
-                  aria-controls={`coupon-details-${labPriceId}`}
-                  data-state={isExpanded ? "open" : "closed"}
-                  onClick={(e) => handleToggleDiscount(e, labPriceId, priceInfo.labName)}
-                >
-                  <Percent className="mr-1 h-4 w-4" />
-                  Coupon
-                </Button>
-                <Button
-                  variant={inCart ? 'outline' : 'primary'}
-                  size="lg"
-                  className={cn(
-                    "w-full justify-center font-bold text-white bg-primary hover:bg-primary/90 transition mb-1",
-                    inCart ? "border-destructive text-destructive bg-white hover:bg-destructive/10" : ""
-                  )}
-                  onClick={(e) => handleCartAction(e, priceInfo, inCart)}
-                >
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                  {inCart ? "Remove" : "Book Now"}
-                </Button>
-                <div
-                  id={`coupon-details-${labPriceId}`}
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
-                  aria-live="polite"
-                >
-                  {isExpanded && (
-                    <div className="p-2.5 sm:p-3 border-t border-border bg-muted/30 rounded-b-lg">
-                      {currentCoupon ? (
-                        <>
-                          <p className="text-xs font-semibold text-foreground mb-1">Your Exclusive Coupon Code:</p>
-                          <div className="flex items-center gap-2 mb-2.5 p-2 border-2 border-dashed border-primary/70 rounded-lg bg-primary/5">
-                            <Percent className="h-4 w-4 text-primary shrink-0" />
-                            <span className="text-sm sm:text-md font-mono text-primary tracking-wider flex-grow">{currentCoupon}</span>
-                            <Button
-                              onClick={(e) => handleCopyCoupon(e, currentCoupon, labPriceId)}
-                              variant="ghost"
-                              size="icon"
-                              className="text-primary hover:bg-primary/20 h-7 w-7"
-                            >
-                              {copiedStatus[labPriceId] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                              <span className="sr-only">{copiedStatus[labPriceId] ? "Copied" : "Copy coupon"}</span>
-                            </Button>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="sm"
-                              className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <a href={`tel:${contactDetails.phone}`}>
-                                <Phone size={14} className="mr-1.5 shrink-0" /> Call: {contactDetails.phone}
-                              </a>
-                            </Button>
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="sm"
-                              className="w-full justify-start text-primary border-primary/70 hover:bg-primary/10 hover:text-primary text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <a href={generateWhatsappUrl(priceInfo.labName, currentCoupon)} target="_blank" rel="noopener noreferrer">
-                                <MessageSquare size={14} className="mr-1.5 shrink-0" /> WhatsApp Us
-                              </a>
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-center py-3">
-                          <p className="text-xs text-muted-foreground">Generating your coupon...</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">No pricing information available for this test.</p>
-        )}
-      </CardContent>
-
-      {openLabDetailsIndex !== null && test.prices && (
-        <Dialog open={openLabDetailsIndex !== null} onOpenChange={() => setOpenLabDetailsIndex(null)}>
-          <DialogContent className="sm:max-w-md rounded-xl">
-            <DialogHeader>
-              <DialogTitleComponent className="text-lg sm:text-xl text-primary flex items-center">
-                <Info size={20} className="mr-2" /> Lab Details: {test.prices[openLabDetailsIndex].labName}
-              </DialogTitleComponent>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon" className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                  <XIcon className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </DialogClose>
-            </DialogHeader>
-            <div className="py-4 text-sm text-muted-foreground max-h-[60vh] overflow-y-auto">
-              <div className="mb-2">
-                <span className="font-semibold text-foreground">Lab:</span> {test.prices[openLabDetailsIndex].labName}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold text-foreground">Price:</span> ₹{test.prices[openLabDetailsIndex].price.toFixed(2)}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold text-foreground">MRP:</span> ₹{test.prices[openLabDetailsIndex].originalPrice?.toFixed(2) || '-'}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold text-foreground">Discount:</span> {test.prices[openLabDetailsIndex].originalPrice && test.prices[openLabDetailsIndex].originalPrice > test.prices[openLabDetailsIndex].price ? `${Math.round(((test.prices[openLabDetailsIndex].originalPrice - test.prices[openLabDetailsIndex].price) / test.prices[openLabDetailsIndex].originalPrice) * 100)}% OFF` : '-'}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold text-foreground">Lab Description:</span><br />
-                {test.prices[openLabDetailsIndex].labDescription
-                  ? <span className="whitespace-pre-wrap">{test.prices[openLabDetailsIndex].labDescription}</span>
-                  : test.description
-                    ? <span className="whitespace-pre-wrap">{test.description}</span>
-                    : <span className="text-muted-foreground">No description available.</span>
-                }
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpenLabDetailsIndex(null)}>Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {openLabDetailsIndex !== null && test.prices && (
-        (() => { console.log('DEBUG: View Details dialog data:', test.prices[openLabDetailsIndex]); return null; })()
-      )}
-    </Card>
+    </>
   );
 }
 

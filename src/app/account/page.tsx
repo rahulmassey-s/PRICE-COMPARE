@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -152,6 +151,22 @@ export default function AccountPage() {
     return 'U';
   };
 
+  // Debug: log userDetails state changes
+  useEffect(() => {
+    console.log('userDetails (debug):', userDetails);
+  }, [userDetails]);
+
+  // Robust member check (now checks for expiry)
+  const membershipStart = userDetails?.membershipStartDate ? new Date(userDetails.membershipStartDate) : null;
+  const membershipExpiry = membershipStart ? new Date(membershipStart) : null;
+  if (membershipExpiry) membershipExpiry.setFullYear(membershipExpiry.getFullYear() + 1);
+  const isMember = !!membershipStart && !isNaN(membershipStart.getTime()) && membershipExpiry && new Date() < membershipExpiry;
+
+  // Debug: log firebaseUser state changes
+  useEffect(() => {
+    console.log('firebaseUser state:', firebaseUser);
+  }, [firebaseUser]);
+
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
@@ -192,6 +207,46 @@ export default function AccountPage() {
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-lg mx-auto shadow-xl rounded-xl">
         <CardHeader className="items-center text-center p-6 bg-primary/5 rounded-t-xl">
+          {/* Member badge and membership info */}
+          {isMember ? (
+            <div className="flex flex-col items-center mb-4">
+              <span className="inline-flex items-center px-4 py-1 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold text-base shadow-md mb-1">
+                <svg width="22" height="22" fill="#ffd700" stroke="#bfa100" strokeWidth="2" className="mr-2">
+                  <path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z" />
+                </svg>
+                Active Member
+              </span>
+              <span className="text-blue-900 font-semibold text-sm mt-1">
+                Joined: {membershipStart ? membershipStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+              </span>
+              <span className="text-blue-700 text-xs">
+                Expires: {membershipExpiry ? membershipExpiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center mb-4">
+              <span className="inline-flex items-center px-4 py-1 rounded-full bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 font-bold text-base shadow mb-1">
+                <svg width="18" height="18" fill="#d1d5db" stroke="#a3a3a3" strokeWidth="2" className="mr-2">
+                  <path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z" />
+                </svg>
+                Not a member
+              </span>
+              <Button
+                asChild
+                className="mt-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-bold shadow hover:from-yellow-500 hover:to-yellow-600"
+                size="sm"
+              >
+                <a
+                  href="https://wa.me/918077483317?text=Hi%2C%20I%20want%20to%20join%20the%20Smart%20Lab%20membership%21"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Join Membership
+                </a>
+              </Button>
+              {/* DEV ONLY: Set Membership Active Button removed for production */}
+            </div>
+          )}
           <Avatar className="h-20 w-20 sm:h-24 sm:w-24 mb-4 border-4 border-primary shadow-lg">
             <AvatarImage 
               src={firebaseUser.photoURL || userDetails?.displayName ? `https://picsum.photos/seed/${userDetails?.displayName || firebaseUser.uid}/100/100` : `https://picsum.photos/seed/${firebaseUser.uid}/100/100`} 
