@@ -1045,7 +1045,7 @@ async function loadSiteSettings() {
       }
     } else {
       console.log("No 'main' site settings document found.");
-      siteNameInput.value = "Lab Price Compare"; // Default
+      siteNameInput.value = ""; // Leave blank instead of 'Lab Price Compare'
       siteLogoUrlInput.value = "";
       siteLogoPreviewImg.style.display = "none";
       siteLogoPreviewImg.src = "#";
@@ -1500,10 +1500,6 @@ async function handleSiteSettingsFormSubmit(event) {
   const siteName = siteNameInput.value.trim();
   const logoUrl = siteLogoUrlInput.value.trim();
 
-  if (!siteName) {
-    showToast("Site name is required.", "error");
-    return;
-  }
   const siteSettingsData = {
     name: siteName,
     logoUrl: logoUrl || null,

@@ -151,12 +151,12 @@ export default function PromotionalBannerCarousel({
         <div className="flex items-center gap-3">
           {/* Only render icon if IconComponent is not null */}
           {IconComponent && (
-            <div className={cn(
-              "rounded-full p-2 shadow",
+          <div className={cn(
+            "rounded-full p-2 shadow",
               currentBanner.imageUrl || currentBanner.videoUrl ? "bg-background/70" : "bg-background/70"
-            )}>
-              <IconComponent className="h-6 w-6 text-primary" />
-            </div>
+          )}>
+            <IconComponent className="h-6 w-6 text-primary" />
+          </div>
           )}
           <div>
             <h3 className={cn(

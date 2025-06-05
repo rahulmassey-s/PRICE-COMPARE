@@ -155,7 +155,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         duration: 7000,
         variant: "default",
       });
-    } else if (!isMember && priceInfo.price > bestNonMemberPrice && bestNonMemberPrice !== undefined) {
+    } else if (!isMember && bestNonMemberPrice !== undefined && priceInfo.price > bestNonMemberPrice) {
       // Show non-member best price notification
       const bestLabs = test.prices.filter(p => p.price === bestNonMemberPrice).map(p => p.labName);
       toast({
@@ -194,8 +194,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     return url.trim().startsWith('http://') || url.trim().startsWith('https://');
   };
 
-  const hasValidImage = isValidHttpUrl(test.imageUrl || test.testImageUrl) && (test.imageUrl || test.testImageUrl);
-  const effectiveImageUrl = hasValidImage ? (test.imageUrl || test.testImageUrl) : undefined;
+  const hasValidImage = isValidHttpUrl(test.imageUrl) && test.imageUrl;
+  const effectiveImageUrl = hasValidImage ? test.imageUrl : undefined;
 
   const handleTestCardClick = () => {
     try {
@@ -206,8 +206,10 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       const testId = test.docId || test.id || '';
       const testName = test.name || '';
       const labName = (test.prices && test.prices[0] && test.prices[0].labName) || '';
+      const userNameStr = typeof userName === 'string' ? userName : undefined;
+      const userEmailStr = typeof userEmail === 'string' ? userEmail : undefined;
       if (userId && testId) {
-        logUserActivity(userId, 'test_view', { testId, testName, labName }, userName, userEmail);
+        logUserActivity(userId, 'test_view', { testId, testName, labName: labName || '' }, userNameStr, userEmailStr);
       }
     } catch (e) {}
   };
@@ -352,10 +354,30 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       <style>{`
         @keyframes fadeInCard { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: none; } }
         .enhanced-table-card:hover { box-shadow: 0 12px 40px #2563eb22, 0 2px 8px #2563eb11; transform: translateY(-4px) scale(1.012); transition: box-shadow 0.25s, transform 0.22s; }
+        @keyframes pulseBest {
+          0%, 100% { box-shadow: 0 0 0 0 #4ade80; }
+          50% { box-shadow: 0 0 0 8px #bbf7d0; }
+        }
+        .animate-pulse-best { animation: pulseBest 1.5s infinite; }
+        .lab-pill { background: linear-gradient(90deg, #e0e7ff 0%, #f0f9ff 100%); color: #2563eb; font-weight: 700; border-radius: 999px; padding: 1.5px 7px; font-size: 0.82rem; box-shadow: 0 2px 8px #2563eb11; display: inline-block; }
+        .book-btn-animated { transition: transform 0.12s, box-shadow 0.18s, background 0.18s; }
+        .book-btn-animated:active { transform: scale(0.97); box-shadow: 0 2px 8px #2563eb33; }
+        .book-btn-animated:focus { outline: 2px solid #2563eb; outline-offset: 2px; }
+        .best-tooltip { position: relative; cursor: pointer; }
+        .best-tooltip:hover .best-tooltip-text, .best-tooltip:focus .best-tooltip-text { opacity: 1; pointer-events: auto; }
+        .best-tooltip-text { opacity: 0; pointer-events: none; position: absolute; top: 120%; left: 50%; transform: translateX(-50%); background: #166534; color: #fff; padding: 3px 7px; border-radius: 6px; font-size: 0.75rem; white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px #16653433; transition: opacity 0.18s; }
+        @media (max-width: 480px) {
+          .lab-pill { font-size: 0.75rem; padding: 1.5px 5px; }
+          .enhanced-table-card h2 { font-size: 0.95rem !important; }
+          .enhanced-table-card th, .enhanced-table-card td { font-size: 0.82rem !important; padding: 4px 1px !important; }
+          .enhanced-table-card button { font-size: 0.82rem !important; padding: 4px 0.3rem !important; }
+        }
       `}</style>
-      <Card className="enhanced-table-card shadow-xl rounded-2xl overflow-hidden flex flex-col h-full bg-white" style={{ width: '100%', margin: '0 auto', border: `2px solid ${borderColor}`, fontFamily, ...cardFadeIn }}>
+      <Card className="enhanced-table-card shadow-xl rounded-2xl overflow-hidden flex flex-col h-full bg-white border-2 border-blue-200 relative" style={{ width: '100%', margin: '0 auto', fontFamily, ...cardFadeIn, maxWidth: 420 }}>
+        {/* Gradient accent border at top */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 via-blue-200 to-blue-400 z-10" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }} />
         {/* Top Banner Image (only if image exists) */}
-        {hasValidImage && (
+        {typeof effectiveImageUrl === 'string' && effectiveImageUrl && (
           <div className="relative w-full" style={{ height: 210, borderBottom: `2px solid ${borderColor}` }}>
             <Image
               src={effectiveImageUrl}
@@ -372,7 +394,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         <div className="w-full flex justify-center items-center py-3 bg-white border-b-2 border-blue-100">
           <h2
             className="text-2xl sm:text-3xl font-extrabold tracking-wide text-center leading-tight drop-shadow"
-            style={{
+                    style={{
               fontFamily: "'Inter', 'Roboto', Arial, sans-serif",
               letterSpacing: '0.04em',
               textShadow: '0 2px 8px #2563eb22'
@@ -386,7 +408,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         {/* Mobile: Custom colorful table like desktop color pattern */}
         <div className="block sm:hidden w-full">
           <div className="overflow-x-auto">
-            <table className="w-full rounded-lg overflow-hidden">
+            <table className="w-full rounded-lg overflow-hidden min-w-[340px]" style={{fontSize: '0.85rem'}}>
               <thead>
                 <tr>
                   <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">LAB NAME</th>
@@ -402,34 +424,40 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                 {test.prices && test.prices.length > 0 ? (
                   test.prices.map((priceInfo, idx) => (
                     <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100'}>
-                      <td className="px-1 py-2 font-bold text-black text-sm sm:text-base text-left">{priceInfo.labName}</td>
-                      <td className="px-1 py-2 font-extrabold text-gray-500 text-lg sm:text-xl text-center line-through">
+                      <td className="px-1 py-1 text-left"><span className="lab-pill">{priceInfo.labName}</span></td>
+                      <td className="px-1 py-1 font-extrabold text-gray-500 text-base text-center line-through">
                         ₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
                       </td>
                       <td className={
-                        `px-1 py-2 font-extrabold text-lg sm:text-xl text-center ` +
+                        `px-1 py-1 font-extrabold text-base text-center ` +
                         (userRole === 'member'
                           ? 'text-orange-500'
-                          : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse' : 'text-orange-500'))
+                          : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse-best best-tooltip' : 'text-orange-500'))
                       }>
                         ₹{priceInfo.price.toFixed(0)}/-
                         {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Best</span>
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
+                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                            <span className="best-tooltip-text">Lowest price for non-members!</span>
+                          </span>
                         )}
                       </td>
                       <td className={
-                        `px-1 py-2 font-extrabold text-yellow-600 text-lg sm:text-xl text-center ` +
-                        (userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice ? 'bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse text-green-700' : '')
+                        `px-1 py-1 font-extrabold text-yellow-600 text-base text-center ` +
+                        (userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice ? 'bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse-best best-tooltip text-green-700' : '')
                       }>
                         ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
                         {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Best</span>
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best member price" role="tooltip">
+                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                            <span className="best-tooltip-text">Lowest price for members!</span>
+                          </span>
                         )}
                       </td>
-                      <td className="px-1 py-2 text-center">
+                      <td className="px-1 py-1 text-center">
                         {isItemInCart(priceInfo.labName) ? (
                           <button
-                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-sm sm:text-base px-3 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-xs px-2 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 book-btn-animated"
                             aria-label="Remove from Cart"
                             onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
                             type="button"
@@ -438,12 +466,13 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                           </button>
                         ) : (
                           <button
-                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-sm sm:text-base px-3 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-xs px-2 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated"
                             aria-label="Book Test"
                             onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
                             type="button"
                           >
-                            Book Test
+                            <svg className="inline mr-1 -mt-0.5" width="16" height="16" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            Book
                           </button>
                         )}
                       </td>
@@ -495,7 +524,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                         if (btn) Object.assign(btn.style, bookBtnStyle);
                       }}
                     >
-                      <td style={tableCellLabName}>{priceInfo.labName}</td>
+                      <td style={tableCellLabName}><span className="lab-pill">{priceInfo.labName}</span></td>
                       <td style={{...tableCellLabPrice, fontSize: '1.25rem', fontWeight: 800}}>₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-</td>
                       <td
                         style={{
@@ -505,20 +534,31 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                           color: userRole === 'member' ? tableCellNonMember.color : (priceInfo.price === minNonMemberPrice ? '#16a34a' : tableCellNonMember.color),
                           background: userRole === 'member' ? tableCellNonMember.background : (priceInfo.price === minNonMemberPrice ? '#dcfce7' : tableCellNonMember.background),
                           boxShadow: userRole === 'member' ? undefined : (priceInfo.price === minNonMemberPrice ? '0 0 0 2px #4ade80' : undefined),
-                          borderRadius: userRole === 'member' ? tableCellNonMember.borderRadius : (priceInfo.price === minNonMemberPrice ? 10 : tableCellNonMember.borderRadius),
+                          borderRadius: userRole === 'member' ? (tableCellNonMember as any).borderRadius || 0 : (priceInfo.price === minNonMemberPrice ? 10 : (tableCellNonMember as any).borderRadius || 0),
                           transition: 'all 0.2s',
                         }}
                       >
                         ₹{priceInfo.price.toFixed(0)}/-
                         {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
-                          <span style={{marginLeft: 6, fontSize: 13, background: '#bbf7d0', color: '#166534', padding: '2px 8px', borderRadius: 8, fontWeight: 700}}>Best</span>
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
+                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                            <span className="best-tooltip-text">Lowest price for non-members!</span>
+                          </span>
                         )}
                       </td>
-                      <td style={{...tableCellMember, fontSize: '1.25rem', fontWeight: 800}}>₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-</td>
+                      <td style={{...tableCellMember, fontSize: '1.25rem', fontWeight: 800}}>
+                        ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
+                        {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
+                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best member price" role="tooltip">
+                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                            <span className="best-tooltip-text">Lowest price for members!</span>
+                          </span>
+                        )}
+                      </td>
                       <td className="px-1 py-2 text-center">
-                        {isItemInCart(priceInfo.labName) ? (
+                        {inCart ? (
                           <button
-                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 book-btn-animated"
                             aria-label="Remove from Cart"
                             onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
                             type="button"
@@ -527,11 +567,12 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                           </button>
                         ) : (
                           <button
-                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated"
                             aria-label="Book Test"
                             onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
                             type="button"
                           >
+                            <svg className="inline mr-1 -mt-0.5" width="18" height="18" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             Book Test
                           </button>
                         )}
@@ -560,9 +601,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
             <h2 className="text-xl font-extrabold text-blue-700 mb-2 text-center">{test.name}</h2>
             <div className="text-gray-700 text-base whitespace-pre-line text-center max-h-[60vh] overflow-y-auto pr-2">
               {test.description ? test.description : 'No description available.'}
+              </div>
+              </div>
             </div>
-          </div>
-        </div>
       )}
     </>
   );

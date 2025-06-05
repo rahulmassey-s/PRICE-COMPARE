@@ -4,6 +4,7 @@ export interface LabPrice {
   labName: string;
   price: number; // This is the selling/discounted price
   originalPrice?: number; // Optional: For showing strike-through original price (MRP)
+  memberPrice?: number; // Optional: Member price for this lab/test
 }
 
 export interface LabTest {

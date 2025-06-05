@@ -231,6 +231,9 @@ export default function ClientLayout({
         <BottomNavigation 
           onCartIconClick={() => setIsCartOpen(true)} 
         />
+        <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
+          © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
+        </footer>
       </div>
       <Toaster />
 

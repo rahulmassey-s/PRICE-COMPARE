@@ -55,10 +55,10 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
     const unsubscribeSiteSettings = onSnapshot(siteSettingsRef, (docSnap) => {
       if (docSnap.exists()) {
         const settings = docSnap.data();
-        setDynamicSiteName(settings.name && typeof settings.name === 'string' && settings.name.trim() !== '' ? settings.name : siteConfig.name);
+        setDynamicSiteName(settings.name && typeof settings.name === 'string' && settings.name.trim() !== '' ? settings.name : '');
         setDynamicLogoUrl(settings.logoUrl && typeof settings.logoUrl === 'string' && settings.logoUrl.trim() !== '' ? settings.logoUrl : null);
       } else {
-        setDynamicSiteName(siteConfig.name);
+        setDynamicSiteName('');
         setDynamicLogoUrl(null);
       }
     });
@@ -160,31 +160,33 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
           {/* Left: Logo + Name */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {dynamicLogoUrl && (
-              <div className="relative h-12 w-12 flex-shrink-0 rounded bg-white overflow-hidden border border-border shadow-sm">
+              <div className="relative h-24 w-24 flex-shrink-0">
                 <Image
                   src={dynamicLogoUrl}
                   alt={`${dynamicSiteName} Logo`}
                   fill
                   style={{ objectFit: 'contain' }}
-                  sizes="48px"
+                  sizes="96px"
                   data-ai-hint="company logo"
                 />
               </div>
             )}
-            <span
-              className="flex items-center gap-[1px] overflow-hidden text-ellipsis whitespace-nowrap w-full font-extrabold"
-              style={{ color: 'hsla(180,75%,46%,0.85)' }}
-            >
-              {dynamicSiteName.split("").map((char, i) => (
-                <span
-                  key={i}
-                  className="app-title-wave"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
-                  {char === ' ' ? '\u00A0' : char}
-                </span>
-              ))}
-            </span>
+            {dynamicSiteName.trim() && (
+              <span
+                className="flex items-center gap-[1px] overflow-hidden text-ellipsis whitespace-nowrap w-full font-extrabold"
+                style={{ color: 'hsla(180,75%,46%,0.85)' }}
+              >
+                {dynamicSiteName.split("").map((char, i) => (
+                  <span
+                    key={i}
+                    className="app-title-wave"
+                    style={{ animationDelay: `${i * 0.08}s` }}
+                  >
+                    {char === ' ' ? '\u00A0' : char}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
           {/* Right: Icons */}
           <div className="flex items-center gap-4 sm:gap-5 flex-shrink-0">
@@ -240,7 +242,23 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
               </Button>
               {/* Dropdown */}
               {notifDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-80 max-w-xs bg-blue-50 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded-xl shadow-xl z-50 p-3 transition-all duration-200" style={{ minWidth: 320 }}>
+                <div
+                  className="fixed"
+                  style={{
+                    zIndex: 1000,
+                    top: 60,
+                    right: 8,
+                    minWidth: 180,
+                    width: 'min(95vw, 360px)',
+                    maxWidth: 360,
+                    borderRadius: 16,
+                    boxShadow: '0 8px 32px #2563ebcc, 0 2px 8px #2563eb22',
+                    overflowX: 'hidden',
+                    overflowWrap: 'break-word',
+                    background: '#fff',
+                    border: '1.5px solid #e0e7ef',
+                  }}
+                >
                   <div className="font-bold text-base mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200"><Bell size={18} /> Notifications</div>
                   {notifications.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">No notifications</div>}
                   <ul className="max-h-72 overflow-y-auto divide-y divide-blue-200 dark:divide-blue-800">

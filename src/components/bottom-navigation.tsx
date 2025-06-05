@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Scale, ShoppingCart, BadgePercent, User, Crown } from 'lucide-react'; // Changed TestTube2 to Scale
+import { Home, Scale, ShoppingCart, BadgePercent, User, Crown, Info } from 'lucide-react'; // Changed TestTube2 to Scale
 import { cn } from '@/lib/utils';
 import { useCartState } from '@/context/CartContext';
 import React from 'react';
@@ -42,7 +42,7 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
     { href: '/', label: 'Home', icon: Home, exact: true },
     { href: '/lab-tests', label: 'Compare Price', icon: Scale }, // Changed label and icon
     { href: '#', label: 'Cart', icon: ShoppingCart, action: onCartIconClick },
-    { href: '/offers', label: 'Offers', icon: BadgePercent },
+    { href: '/about', label: 'About Us', icon: Info },
     { href: '/account', label: 'Account', icon: User },
   ];
 

@@ -60,7 +60,7 @@ function getNext7Days() {
 
 export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { items, removeFromCart, clearCart, updateAppointmentDateTime, cartAppointmentDateTime, setCartAppointmentDateTime } = useCart();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [isBooking, setIsBooking] = useState(false);
   const [userPoints, setUserPoints] = useState(0);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
@@ -70,6 +70,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const [forceHomeCollection, setForceHomeCollection] = useState(false);
 
   const mounted = useRef(true); // Ref to track if component is mounted
+  const grandTotalRef = useRef<HTMLDivElement>(null); // Ref for Grand Total section
 
   useEffect(() => {
     mounted.current = true;
@@ -94,6 +95,15 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
     setPointsToRedeem(0);
     setRedeemError('');
   }, [open]);
+
+  // Only dismiss toasts when cart transitions from closed to open
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      dismiss();
+    }
+    prevOpenRef.current = open;
+  }, [open, dismiss]);
 
   // Calculate subtotal and member discount using memberPrice if available
   const subtotal = items.reduce((sum, item) => {
@@ -434,6 +444,10 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         onClick={() => {
                           if (!selectedDate) return;
                           setCartAppointmentDateTime(JSON.stringify({ date: selectedDate, slot: slotLabel }));
+                          setTimeout(() => {
+                            const val = JSON.stringify({ date: selectedDate, slot: slotLabel });
+                            if (selectedDate && slotLabel) grandTotalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
                         }}
                         type="button"
                         disabled={!selectedDate}
@@ -592,7 +606,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   </div>
                 </div>
                 <Separator />
-                <div className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
+                <div ref={grandTotalRef} className="flex justify-between items-center text-lg font-extrabold text-foreground bg-gradient-to-r from-green-100 to-blue-50 dark:from-green-900 dark:to-blue-900 rounded-xl px-4 py-3 shadow-lg border border-blue-200 dark:border-blue-800 mb-1 transition-all duration-300 animate-fade-in">
                   <span>Grand Total</span>
                   <span className={pointsToRedeem > 0 ? "text-green-700 dark:text-green-300 animate-bounce" : ""}>₹{grandTotal.toFixed(2)}</span>
                 </div>

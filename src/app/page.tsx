@@ -634,12 +634,28 @@ export default function HomePage({ }: HomePageProps) {
             <p className="ml-3 text-muted-foreground">Loading...</p>
           </div>
         ) : tests.length > 0 ? (
-          <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar">
+          <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar relative">
             {tests.map(test => (
               <div key={`${keyPrefix}-${test.docId}`} className="w-full min-w-0 sm:min-w-[700px] md:min-w-[1050px] max-w-full flex-shrink-0 h-full">
                 <DynamicLabTestCard test={test} contactDetails={contactDetailsData} userRole={userRole} onCardClick={handleOpenTestDetailsDialog} />
               </div>
             ))}
+            {/* Gradient overlay and scroll arrow for horizontal scroll hint */}
+            <div className="pointer-events-none absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-white to-transparent z-10" style={{borderRadius: '0 18px 18px 0'}}></div>
+            <div className="absolute top-1/2 right-4 -translate-y-1/2 z-20 flex items-center">
+              <svg className="w-7 h-7 text-blue-400 animate-bounce-x" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <style jsx>{`
+              @keyframes bounce-x {
+                0%, 100% { transform: translateX(0); }
+                50% { transform: translateX(8px); }
+              }
+              .animate-bounce-x {
+                animation: bounce-x 1.2s infinite;
+              }
+            `}</style>
           </div>
         ) : (
           !isLoadingList && (
