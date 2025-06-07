@@ -355,3 +355,12 @@
 .datepicker-popper-z {
   z-index: 99999 !important;
 }
+
+.modern-price-font {
+  font-family: 'Inter', 'Poppins', 'Roboto', Arial, sans-serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1.5px 6px rgba(34,197,94,0.08), 0 0.5px 2px rgba(30,64,175,0.10);
+  line-height: 1.18;
+}

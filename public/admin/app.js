@@ -2857,7 +2857,7 @@ function addLabPriceRow(
   rowDiv.appendChild(makeCol("Price", priceInput));
   rowDiv.appendChild(makeCol("MRP", originalPriceInput));
   rowDiv.appendChild(makeCol("Member", memberPriceInput));
-  // Optionally: rowDiv.appendChild(makeCol('Description', labDescInput));
+  rowDiv.appendChild(makeCol('Description', labDescInput));
   rowDiv.appendChild(removeBtn);
   containerElement.appendChild(rowDiv);
 

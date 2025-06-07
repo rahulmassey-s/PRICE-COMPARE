@@ -5,11 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/bottom-navigation';
 import { CartProvider } from '@/context/CartContext';
-import IntroAnimation from '@/components/intro-animation';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { usePathname } from 'next/navigation'; // Import usePathname
+import { usePathname, useRouter } from 'next/navigation'; // Import usePathname and useRouter
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import {
@@ -19,9 +18,74 @@ import {
   incrementUserLoginCount,
   logUserActivity
 } from '@/lib/firebase/firestoreService';
+import { siteConfig } from '@/config/site';
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+function SplashScreen() {
+  const router = useRouter();
+  const handleLogoClick = () => {
+    router.push('/');
+  };
+  return (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-br from-cyan-400 to-teal-400 animate-bg-move">
+      <button onClick={handleLogoClick} aria-label="Go to Home" className="focus:outline-none">
+        <img
+          src="/icons/icon-192x192.png"
+          alt="App Logo"
+          width={110}
+          height={110}
+          className="mb-6 drop-shadow-xl animate-bounce-in hover:scale-105 transition-transform"
+          style={{ animationDelay: '0.2s' }}
+        />
+      </button>
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow mb-2 text-center animate-fade-in" style={{ animationDelay: '0.6s' }}>
+        Smart Bharat Health Services
+      </h1>
+      <p className="text-lg text-white/80 font-medium text-center animate-fade-in" style={{ animationDelay: '1s' }}>
+        Finding the best lab test prices for you...
+      </p>
+      <div className="flex mt-6 gap-1">
+        <span className="w-2 h-2 bg-white/80 rounded-full animate-blink"></span>
+        <span className="w-2 h-2 bg-white/60 rounded-full animate-blink" style={{ animationDelay: '0.2s' }}></span>
+        <span className="w-2 h-2 bg-white/40 rounded-full animate-blink" style={{ animationDelay: '0.4s' }}></span>
+      </div>
+      <style jsx global>{`
+        @keyframes bounceIn {
+          0% { opacity: 0; transform: scale(0.7) translateY(40px);}
+          60% { opacity: 1; transform: scale(1.1) translateY(-10px);}
+          100% { opacity: 1; transform: scale(1) translateY(0);}
+        }
+        .animate-bounce-in {
+          animation: bounceIn 0.8s cubic-bezier(0.68,-0.55,0.27,1.55) both;
+        }
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: translateY(20px);}
+          100% { opacity: 1; transform: translateY(0);}
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.7s ease both;
+        }
+        @keyframes blink {
+          0%, 80%, 100% { opacity: 0.2; }
+          40% { opacity: 1; }
+        }
+        .animate-blink {
+          animation: blink 1.4s infinite both;
+        }
+        @keyframes bgMove {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 100% 50%; }
+        }
+        .animate-bg-move {
+          background-size: 200% 200%;
+          animation: bgMove 4s linear infinite alternate;
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function ClientLayout({
   children,
@@ -32,6 +96,7 @@ export default function ClientLayout({
   const [showIntroAnimation, setShowIntroAnimation] = useState(true);
   const [introAnimationFinished, setIntroAnimationFinished] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string>(siteConfig.logo || '/smart-bharat-logo.png');
 
   const [postWhatsAppSuccessData, setPostWhatsAppSuccessData] = useState<{ name: string } | null>(null);
   const [isPostWhatsAppSuccessDialogOpen, setIsPostWhatsAppSuccessDialogOpen] = useState(false);
@@ -44,16 +109,38 @@ export default function ClientLayout({
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-        setIsLoadingIntroState(false);
-        if (!showIntroAnimation) {
-            setIntroAnimationFinished(true);
-        }
-    }, 100); 
-
-    return () => clearTimeout(timer);
-  }, [showIntroAnimation]);
-
+    let timer: NodeJS.Timeout;
+    let unsub: (() => void) | undefined;
+    async function fetchLogo() {
+      try {
+        const { db } = await import('@/lib/firebase/client');
+        const { doc, onSnapshot } = await import('firebase/firestore');
+        const siteSettingsRef = doc(db, 'siteConfiguration', 'main');
+        unsub = onSnapshot(siteSettingsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const settings = docSnap.data();
+            if (settings.logoUrl && typeof settings.logoUrl === 'string' && settings.logoUrl.trim() !== '') {
+              setLogoUrl(settings.logoUrl);
+            } else {
+              setLogoUrl('/smart-bharat-logo.png');
+            }
+          } else {
+            setLogoUrl('/smart-bharat-logo.png');
+          }
+        });
+      } catch (e) {
+        setLogoUrl('/smart-bharat-logo.png');
+      }
+    }
+    fetchLogo();
+    timer = setTimeout(() => {
+      setIsLoadingIntroState(false);
+    }, 2500); // 2.5 seconds minimum
+    return () => {
+      clearTimeout(timer);
+      if (unsub) unsub();
+    };
+  }, []);
 
   const checkPendingSuccessMessage = useCallback(() => {
     try {
@@ -74,7 +161,6 @@ export default function ClientLayout({
       sessionStorage.removeItem(SESSION_STORAGE_KEY_BOOKING_PENDING_MSG); 
     }
   }, []);
-
 
   useEffect(() => {
     if (introAnimationFinished) {
@@ -205,17 +291,8 @@ export default function ClientLayout({
     }
   }, [pathname]);
 
-  if (isLoadingIntroState || (showIntroAnimation && !introAnimationFinished)) {
-    return (
-      <>
-        {showIntroAnimation && <IntroAnimation onAnimationComplete={handleAnimationComplete} />}
-        {(isLoadingIntroState && !showIntroAnimation && !introAnimationFinished) && ( 
-           <div className="flex items-center justify-center min-h-screen bg-background">
-             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-           </div>
-        )}
-      </>
-    );
+  if (isLoadingIntroState) {
+    return <SplashScreen />;
   }
 
   return (

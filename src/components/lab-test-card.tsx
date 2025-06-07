@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { LabTest, ContactDetails, LabPrice as LabPriceType } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { logUserActivity } from '@/lib/firebase/firestoreService';
 import { auth } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase/client';
+import { collection, getDocs } from 'firebase/firestore';
 
 interface LabTestCardProps {
   test: LabTest;
@@ -37,6 +39,16 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
   const [copiedStatus, setCopiedStatus] = useState<Record<string, boolean>>({});
   const [openLabDetailsIndex, setOpenLabDetailsIndex] = useState<number | null>(null);
   const [showDescriptionBox, setShowDescriptionBox] = useState(false);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftCueMobile, setShowLeftCueMobile] = useState(false);
+  const [showRightCueMobile, setShowRightCueMobile] = useState(false);
+  const [showSwipeHintMobile, setShowSwipeHintMobile] = useState(false);
+  const [showLeftCueDesktop, setShowLeftCueDesktop] = useState(false);
+  const [showRightCueDesktop, setShowRightCueDesktop] = useState(false);
+  const [showSwipeHintDesktop, setShowSwipeHintDesktop] = useState(false);
+  const [openLabLocation, setOpenLabLocation] = useState<string | null>(null);
+  const [labLocations, setLabLocations] = useState<Record<string, string>>({});
   
   const { toast } = useToast();
   const { addToCart, items: cartItems, removeFromCart } = useCart();
@@ -214,6 +226,26 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     } catch (e) {}
   };
 
+  // Fetch lab locations on mount (one-time)
+  useEffect(() => {
+    async function fetchLabLocations() {
+      try {
+        const labsSnapshot = await getDocs(collection(db, 'labs'));
+        const locations: Record<string, string> = {};
+        labsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.name) {
+            locations[data.name] = data.location || '';
+          }
+        });
+        setLabLocations(locations);
+      } catch (e) {
+        // ignore
+      }
+    }
+    fetchLabLocations();
+  }, []);
+
   // --- FINAL TABLE STYLES FOR HORIZONTAL WIDE COLUMNS, NO VERTICAL STRETCH ---
   const fontFamily = `'Inter', 'Roboto', Arial, sans-serif`;
   const borderColor = '#e5e7eb';
@@ -349,6 +381,33 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
   };
   // Add keyframes in a style tag (will inject below)
 
+  useEffect(() => {
+    const el = mobileScrollRef.current;
+    if (!el) return;
+    el.scrollLeft = 40;
+    setTimeout(() => { el.scrollLeft = 0; }, 600);
+    setShowSwipeHintMobile(el.scrollWidth > el.clientWidth);
+    const handleScroll = () => {
+      setShowLeftCueMobile(el.scrollLeft > 4);
+      setShowRightCueMobile(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    handleScroll();
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [test]);
+  useEffect(() => {
+    const el = desktopScrollRef.current;
+    if (!el) return;
+    setShowSwipeHintDesktop(el.scrollWidth > el.clientWidth);
+    const handleScroll = () => {
+      setShowLeftCueDesktop(el.scrollLeft > 4);
+      setShowRightCueDesktop(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    handleScroll();
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [test]);
+
   return (
     <>
       <style>{`
@@ -367,10 +426,31 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         .best-tooltip:hover .best-tooltip-text, .best-tooltip:focus .best-tooltip-text { opacity: 1; pointer-events: auto; }
         .best-tooltip-text { opacity: 0; pointer-events: none; position: absolute; top: 120%; left: 50%; transform: translateX(-50%); background: #166534; color: #fff; padding: 3px 7px; border-radius: 6px; font-size: 0.75rem; white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px #16653433; transition: opacity 0.18s; }
         @media (max-width: 480px) {
-          .lab-pill { font-size: 0.75rem; padding: 1.5px 5px; }
+          .lab-pill { font-size: 0.95rem; padding: 1.5px 5px; }
           .enhanced-table-card h2 { font-size: 0.95rem !important; }
-          .enhanced-table-card th, .enhanced-table-card td { font-size: 0.82rem !important; padding: 4px 1px !important; }
+          .enhanced-table-card th, .enhanced-table-card td { font-size: 0.88rem !important; padding: 4px 1px !important; }
           .enhanced-table-card button { font-size: 0.82rem !important; padding: 4px 0.3rem !important; }
+        }
+        .modern-swipe-left-arrow {
+          display: inline-block;
+          animation: modern-swipe-left-bounce 1.3s infinite cubic-bezier(0.4,0,0.2,1);
+          filter: drop-shadow(0 4px 16px #38bdf855);
+          margin-bottom: 0;
+        }
+        @keyframes modern-swipe-left-bounce {
+          0%, 100% { transform: translateX(0) scale(1); }
+          40% { transform: translateX(-18px) scale(1.08); }
+          60% { transform: translateX(-12px) scale(1.04); }
+        }
+        .canva-style-arrow {
+          display: inline-block;
+          animation: canva-arrow-bounce 1.3s infinite cubic-bezier(0.4,0,0.2,1);
+          margin-bottom: 0;
+        }
+        @keyframes canva-arrow-bounce {
+          0%, 100% { transform: translateX(0) scale(1); }
+          40% { transform: translateX(-18px) scale(1.08); }
+          60% { transform: translateX(-12px) scale(1.04); }
         }
       `}</style>
       <Card className="enhanced-table-card shadow-xl rounded-2xl overflow-hidden flex flex-col h-full bg-white border-2 border-blue-200 relative" style={{ width: '100%', margin: '0 auto', fontFamily, ...cardFadeIn, maxWidth: 420 }}>
@@ -405,79 +485,129 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
             </span>
           </h2>
         </div>
-        {/* Mobile: Custom colorful table like desktop color pattern */}
-        <div className="block sm:hidden w-full">
-          <div className="overflow-x-auto">
-            <table className="w-full rounded-lg overflow-hidden min-w-[340px]" style={{fontSize: '0.85rem'}}>
+        {/* Screenshot-perfect test card: full headers, blue details button, perfect alignment, no overlap, no scroll */}
+        <div className="w-full">
+          <div className="rounded-2xl border border-blue-200 shadow-sm bg-white overflow-hidden w-full">
+            <table className="w-full" style={{ fontSize: '0.95rem', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '22%' }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">LAB NAME</th>
-                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">LAB PRICE</th>
-                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">NON MEMBER</th>
-                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-sm sm:text-base px-1 py-2 text-center">
-                    MEMBER <span className="inline-block align-middle ml-1"><svg width="16" height="16" fill="#facc15" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z"/></svg></span>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-[11px] py-2.5 px-2 text-left rounded-tl-xl" style={{borderRight: '1.5px solid #dbeafe'}}>LAB NAME</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-[11px] py-2.5 px-2 text-center" style={{borderRight: '1.5px solid #dbeafe'}}>LAB PRICE</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-[11px] py-2.5 px-2 text-center" style={{borderRight: '1.5px solid #dbeafe'}}>NON MEMBER</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-[11px] py-2.5 px-2 text-center" style={{borderRight: '1.5px solid #dbeafe'}}>
+                    MEMBER <span className="inline-block align-middle ml-1"><svg width="12" height="12" fill="#facc15" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20 9.27l-5 4.87L16.18 21 12 17.27 7.82 21 9 14.14l-5-4.87 5.91-.91z"/></svg></span>
                   </th>
-                  <th className="bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-sm sm:text-base px-1 py-2 text-center rounded-tr-lg cursor-pointer hover:brightness-110 transition" onClick={() => setShowDescriptionBox(true)} tabIndex={0} role="button" aria-label="View Test Details">view test details</th>
+                  <th className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-700 font-bold text-[11px] py-2.5 px-2 text-center rounded-tr-xl">BOOK TEST</th>
                 </tr>
               </thead>
               <tbody>
                 {test.prices && test.prices.length > 0 ? (
-                  test.prices.map((priceInfo, idx) => (
-                    <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-blue-100'}>
-                      <td className="px-1 py-1 text-left"><span className="lab-pill">{priceInfo.labName}</span></td>
-                      <td className="px-1 py-1 font-extrabold text-gray-500 text-base text-center line-through">
-                        ₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
-                      </td>
-                      <td className={
-                        `px-1 py-1 font-extrabold text-base text-center ` +
-                        (userRole === 'member'
-                          ? 'text-orange-500'
-                          : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse-best best-tooltip' : 'text-orange-500'))
-                      }>
-                        ₹{priceInfo.price.toFixed(0)}/-
-                        {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
-                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
-                            <span className="best-tooltip-text">Lowest price for non-members!</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className={
-                        `px-1 py-1 font-extrabold text-yellow-600 text-base text-center ` +
-                        (userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice ? 'bg-green-50 ring-2 ring-green-300 rounded-lg animate-pulse-best best-tooltip text-green-700' : '')
-                      }>
-                        ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
-                        {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best member price" role="tooltip">
-                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
-                            <span className="best-tooltip-text">Lowest price for members!</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-1 py-1 text-center">
-                        {isItemInCart(priceInfo.labName) ? (
-                          <button
-                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-xs px-2 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 book-btn-animated"
-                            aria-label="Remove from Cart"
-                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
-                            type="button"
-                          >
-                            Remove
-                          </button>
-                        ) : (
-                          <button
-                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-xs px-2 py-1 rounded-r-lg shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated"
-                            aria-label="Book Test"
-                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
-                            type="button"
-                          >
-                            <svg className="inline mr-1 -mt-0.5" width="16" height="16" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            Book
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  test.prices.map((priceInfo, idx) => {
+                    const mainLabName = priceInfo.labName.replace(/\s*lab$/i, '');
+                    return (
+                      <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
+                        <td className="py-2.5 px-2 text-left align-middle font-bold text-blue-700 text-[11px] rounded-l-xl" style={{ lineHeight: 1.2 }}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="block uppercase font-bold break-words flex items-center gap-1">
+                              <span
+                                className="cursor-pointer hover:underline"
+                                onClick={() => setOpenLabLocation(priceInfo.labName)}
+                                tabIndex={0}
+                                role="button"
+                                aria-label={`Show location for ${mainLabName}`}
+                              >
+                                {mainLabName}
+                              </span>
+                            </span>
+                            <span className="block text-[10px] text-blue-400 tracking-widest font-semibold uppercase flex items-center gap-1">
+                              LAB
+                              <button
+                                type="button"
+                                className="ml-0.5 p-0.5 rounded-full hover:bg-blue-100 focus:outline-none"
+                                style={{ lineHeight: 0, height: 16, width: 16 }}
+                                onClick={e => { e.stopPropagation(); setOpenLabLocation(priceInfo.labName); }}
+                                tabIndex={0}
+                                aria-label={`Show location for ${mainLabName}`}
+                              >
+                                <Info className="h-3 w-3 text-blue-400" />
+                              </button>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            {priceInfo.originalPrice && priceInfo.originalPrice > priceInfo.price && (
+                              <span className="block line-through text-gray-400 break-words">₹{priceInfo.originalPrice.toFixed(0)}/-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <span className={cn(
+                              "inline-block break-words w-full modern-price-font",
+                              userRole === 'member'
+                                ? 'text-orange-500'
+                                : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip' : 'text-orange-500')
+                            )}>
+                              ₹{priceInfo.price.toFixed(0)}/-
+                            </span>
+                            {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
+                              <span className="mt-0.5 inline-block text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
+                                <svg className="inline mr-0.5" width="10" height="10" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                                <span className="best-tooltip-text">Lowest price for non-members!</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <span className={cn(
+                              "inline-block break-words w-full modern-price-font",
+                              userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice 
+                                ? 'bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip text-green-700' 
+                                : 'text-yellow-600'
+                            )}>
+                              ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
+                            </span>
+                            {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
+                              <span className="mt-0.5 inline-block text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best member price" role="tooltip">
+                                <svg className="inline mr-0.5" width="10" height="10" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
+                                <span className="best-tooltip-text">Lowest price for members!</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 text-center align-middle rounded-r-xl">
+                          <div className="flex flex-col justify-center gap-1">
+                            <button
+                              className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-[11px] w-full max-w-[80px] py-2 rounded-xl shadow transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated flex items-center justify-center gap-1"
+                              aria-label="Book Test"
+                              onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, isItemInCart(priceInfo.labName)); }}
+                              type="button"
+                            >
+                              <svg width="12" height="12" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              <span className="ml-0.5">Book</span>
+                            </button>
+                            <button
+                              className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 font-semibold text-[10px] w-full max-w-[80px] py-1.5 rounded-lg transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300 flex items-center justify-center gap-0.5"
+                              onClick={() => setOpenLabDetailsIndex(idx)}
+                              type="button"
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                              <span>Details</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr><td colSpan={5} className="text-center text-gray-400 py-4">No pricing information available.</td></tr>
                 )}
@@ -485,125 +615,72 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
             </table>
           </div>
         </div>
-        {/* Desktop/Tablet: Table */}
-        <div className="hidden sm:block p-0 w-full" style={{ borderRadius: 18, margin: '0 auto', background: '#fff' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, margin: 0, tableLayout: 'fixed', background: 'white', fontFamily, borderRadius: 18, overflow: 'hidden' }}>
-            <thead>
-              <tr>
-                <th style={tableHeaderLabName}>Lab Name</th>
-                <th style={tableHeaderStyle}>Lab Price</th>
-                <th style={tableHeaderStyle}>Non Member</th>
-                <th style={tableHeaderStyle}>Member {crownIcon}</th>
-                <th
-                  className="bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-base px-1 py-2 text-center rounded-tr-2xl cursor-pointer hover:brightness-110 transition"
-                  style={{width: 170, border: `2px solid ${borderColor}`}}
-                  onClick={() => setShowDescriptionBox(true)}
-                  tabIndex={0}
-                  role="button"
-                  aria-label="View Test Details"
-                >
-                  view test details
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {test.prices && test.prices.length > 0 ? (
-                test.prices.map((priceInfo, idx) => {
-                  const inCart = isItemInCart(priceInfo.labName);
-                  const zebra = idx % 2 === 0 ? { background: '#f8fafc' } : { background: '#fff' };
-                  return (
-                    <tr key={priceInfo.labName + idx} style={{ transition: 'background 0.2s', ...zebra }}
-                      onMouseOver={e => {
-                        e.currentTarget.style.background = '#e0e7ff';
-                        const btn = e.currentTarget.querySelector('button');
-                        if (btn) Object.assign(btn.style, bookBtnHover);
-                      }}
-                      onMouseOut={e => {
-                        e.currentTarget.style.background = zebra.background;
-                        const btn = e.currentTarget.querySelector('button');
-                        if (btn) Object.assign(btn.style, bookBtnStyle);
-                      }}
-                    >
-                      <td style={tableCellLabName}><span className="lab-pill">{priceInfo.labName}</span></td>
-                      <td style={{...tableCellLabPrice, fontSize: '1.25rem', fontWeight: 800}}>₹{priceInfo.originalPrice ? priceInfo.originalPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-</td>
-                      <td
-                        style={{
-                          ...tableCellNonMember,
-                          fontSize: '1.25rem',
-                          fontWeight: 800,
-                          color: userRole === 'member' ? tableCellNonMember.color : (priceInfo.price === minNonMemberPrice ? '#16a34a' : tableCellNonMember.color),
-                          background: userRole === 'member' ? tableCellNonMember.background : (priceInfo.price === minNonMemberPrice ? '#dcfce7' : tableCellNonMember.background),
-                          boxShadow: userRole === 'member' ? undefined : (priceInfo.price === minNonMemberPrice ? '0 0 0 2px #4ade80' : undefined),
-                          borderRadius: userRole === 'member' ? (tableCellNonMember as any).borderRadius || 0 : (priceInfo.price === minNonMemberPrice ? 10 : (tableCellNonMember as any).borderRadius || 0),
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        ₹{priceInfo.price.toFixed(0)}/-
-                        {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
-                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
-                            <span className="best-tooltip-text">Lowest price for non-members!</span>
-                          </span>
-                        )}
-                      </td>
-                      <td style={{...tableCellMember, fontSize: '1.25rem', fontWeight: 800}}>
-                        ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
-                        {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (
-                          <span className="ml-1 inline-block align-middle text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best member price" role="tooltip">
-                            <svg className="inline mr-1" width="14" height="14" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
-                            <span className="best-tooltip-text">Lowest price for members!</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-1 py-2 text-center">
-                        {inCart ? (
-                          <button
-                            className="bg-gradient-to-r from-red-400 to-red-600 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-400 book-btn-animated"
-                            aria-label="Remove from Cart"
-                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, true); }}
-                            type="button"
-                          >
-                            Remove
-                          </button>
-                        ) : (
-                          <button
-                            className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-base px-3 py-2 rounded-r-2xl shadow w-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated"
-                            aria-label="Book Test"
-                            onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, false); }}
-                            type="button"
-                          >
-                            <svg className="inline mr-1 -mt-0.5" width="18" height="18" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            Book Test
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr><td colSpan={5} style={{ ...tableCellLabName, background: 'white', color: '#888', textAlign: 'center' }}>No pricing information available.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </Card>
+      {/* Canva-style modern blue gradient left arrow below the card */}
+      <div className="flex justify-center mt-3">
+        <span className="canva-style-arrow">
+          <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="canvaArrowGradient" x1="0" y1="30" x2="120" y2="30" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#4fc3f7"/>
+                <stop offset="1" stopColor="#2563eb"/>
+              </linearGradient>
+              <filter id="canvaArrowShadow" x="-8" y="-8" width="136" height="76">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#2563eb55"/>
+              </filter>
+            </defs>
+            <polygon
+              points="0,15 80,15 80,0 120,30 80,60 80,45 0,45"
+              fill="url(#canvaArrowGradient)"
+              filter="url(#canvaArrowShadow)"
+              stroke="#2563eb"
+              strokeWidth="2"
+              rx="8"
+            />
+            <ellipse cx="70" cy="25" rx="18" ry="6" fill="#fff" fillOpacity="0.18"/>
+          </svg>
+        </span>
+      </div>
       {/* Description Box Modal */}
-      {showDescriptionBox && (
+      {openLabDetailsIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fade-in-up">
             <button
               className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-xl font-bold focus:outline-none"
-              onClick={() => setShowDescriptionBox(false)}
+              onClick={() => setOpenLabDetailsIndex(null)}
               aria-label="Close"
             >
               ×
             </button>
             <h2 className="text-xl font-extrabold text-blue-700 mb-2 text-center">{test.name}</h2>
             <div className="text-gray-700 text-base whitespace-pre-line text-center max-h-[60vh] overflow-y-auto pr-2">
-              {test.description ? test.description : 'No description available.'}
-              </div>
-              </div>
+              {test.prices && test.prices[openLabDetailsIndex]?.labDescription?.trim()
+                ? test.prices[openLabDetailsIndex].labDescription
+                : (test.description || 'No description available.')}
             </div>
+          </div>
+        </div>
+      )}
+      {openLabLocation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl max-w-xs w-full p-5 relative animate-fade-in-up">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xl font-bold focus:outline-none"
+              onClick={() => setOpenLabLocation(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h3 className="text-lg font-bold text-blue-700 mb-2 text-center flex items-center justify-center gap-1">
+              <Building className="h-5 w-5 text-blue-400" /> {openLabLocation}
+            </h3>
+            <div className="text-gray-700 text-sm text-center">
+              {labLocations[openLabLocation]?.trim()
+                ? labLocations[openLabLocation]
+                : 'Location not available'}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

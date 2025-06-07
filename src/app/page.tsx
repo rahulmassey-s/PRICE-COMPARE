@@ -585,7 +585,7 @@ export default function HomePage({ }: HomePageProps) {
 
   const bookingOptions = [
     {
-      label: 'Upload Rx',
+      label: 'Upload Dr Prescription',
       icon: UploadCloud,
       gradientClass: 'booking-card-upload-gradient',
       href: '/upload-prescription',

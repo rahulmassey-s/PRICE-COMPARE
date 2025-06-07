@@ -160,16 +160,18 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
           {/* Left: Logo + Name */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {dynamicLogoUrl && (
-              <div className="relative h-24 w-24 flex-shrink-0">
-                <Image
-                  src={dynamicLogoUrl}
-                  alt={`${dynamicSiteName} Logo`}
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  sizes="96px"
-                  data-ai-hint="company logo"
-                />
-              </div>
+              <Link href="/" aria-label="Go to Home">
+                <div className="relative h-24 w-24 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform">
+                  <Image
+                    src={dynamicLogoUrl}
+                    alt={`${dynamicSiteName} Logo`}
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    sizes="96px"
+                    data-ai-hint="company logo"
+                  />
+                </div>
+              </Link>
             )}
             {dynamicSiteName.trim() && (
               <span
