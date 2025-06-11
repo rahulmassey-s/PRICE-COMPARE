@@ -134,7 +134,7 @@ export default function ClientLayout({
     }
     fetchLogo();
     timer = setTimeout(() => {
-      setIsLoadingIntroState(false);
+        setIsLoadingIntroState(false);
     }, 2500); // 2.5 seconds minimum
     return () => {
       clearTimeout(timer);
@@ -290,6 +290,16 @@ export default function ClientLayout({
       };
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('Service worker registration failed:', err);
+        });
+      });
+    }
+  }, []);
 
   if (isLoadingIntroState) {
     return <SplashScreen />;

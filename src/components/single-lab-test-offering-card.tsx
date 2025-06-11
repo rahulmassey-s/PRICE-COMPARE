@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -80,20 +79,20 @@ export default function SingleLabTestOfferingCard({
         </div>
       )}
       <CardHeader className={cn("p-4", testImageUrl && "pt-3")}>
-        <CardTitle className="text-md sm:text-lg font-semibold text-foreground leading-tight truncate" title={testName}>
+        <CardTitle className="text-md sm:text-lg font-semibold text-gray-900 leading-tight truncate" title={testName}>
           {testName}
         </CardTitle>
-        <p className="text-sm text-muted-foreground flex items-center pt-0.5">
-          <Building className="mr-1.5 h-4 w-4 text-primary" /> {labName}
+        <p className="text-sm text-blue-700 flex items-center pt-0.5">
+          <Building className="mr-1.5 h-4 w-4 text-blue-700" /> {labName}
         </p>
       </CardHeader>
       <CardContent className="p-4 flex-grow space-y-2">
         <div className="flex items-baseline space-x-2">
-          <span className="text-2xl font-bold text-primary">
+          <span className="text-2xl font-bold text-blue-700">
             ₹{price.toFixed(2)}
           </span>
           {hasOriginalPrice && (
-            <span className="text-sm text-muted-foreground line-through">
+            <span className="text-sm text-gray-700 line-through">
               ₹{originalPrice.toFixed(2)}
             </span>
           )}

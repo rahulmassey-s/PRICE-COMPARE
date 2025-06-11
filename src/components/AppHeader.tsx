@@ -162,32 +162,32 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
             {dynamicLogoUrl && (
               <Link href="/" aria-label="Go to Home">
                 <div className="relative h-24 w-24 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform">
-                  <Image
-                    src={dynamicLogoUrl}
-                    alt={`${dynamicSiteName} Logo`}
-                    fill
-                    style={{ objectFit: 'contain' }}
+                <Image
+                  src={dynamicLogoUrl}
+                  alt={`${dynamicSiteName} Logo`}
+                  fill
+                  style={{ objectFit: 'contain' }}
                     sizes="96px"
-                    data-ai-hint="company logo"
-                  />
-                </div>
+                  data-ai-hint="company logo"
+                />
+              </div>
               </Link>
             )}
             {dynamicSiteName.trim() && (
-              <span
-                className="flex items-center gap-[1px] overflow-hidden text-ellipsis whitespace-nowrap w-full font-extrabold"
-                style={{ color: 'hsla(180,75%,46%,0.85)' }}
-              >
-                {dynamicSiteName.split("").map((char, i) => (
-                  <span
-                    key={i}
-                    className="app-title-wave"
-                    style={{ animationDelay: `${i * 0.08}s` }}
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </span>
-                ))}
-              </span>
+            <span
+              className="flex items-center gap-[1px] overflow-hidden text-ellipsis whitespace-nowrap w-full font-extrabold"
+              style={{ color: 'hsla(180,75%,46%,0.85)' }}
+            >
+              {dynamicSiteName.split("").map((char, i) => (
+                <span
+                  key={i}
+                  className="app-title-wave"
+                  style={{ animationDelay: `${i * 0.08}s` }}
+                >
+                  {char === ' ' ? '\u00A0' : char}
+                </span>
+              ))}
+            </span>
             )}
           </div>
           {/* Right: Icons */}

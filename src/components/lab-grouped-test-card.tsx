@@ -119,14 +119,14 @@ export default function LabGroupedTestCard({
     <Card className="shadow-xl rounded-xl overflow-hidden flex flex-col h-full transition-all duration-300 ease-out hover:shadow-2xl">
       <CardHeader className="p-4 bg-primary/10 border-b">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold text-primary flex items-center">
-            <Building className="mr-2 h-5 w-5" /> {labName}
+          <CardTitle className="text-lg font-semibold text-blue-700 flex items-center">
+            <Building className="mr-2 h-5 w-5 text-blue-700" /> {labName}
           </CardTitle>
           <div className="text-right shrink-0">
-            <p className="text-xs text-muted-foreground">Total for {testsOffered.length} test(s):</p>
-            <p className="text-lg font-bold text-primary">₹{labTotalPrice.toFixed(2)}</p>
+            <p className="text-xs text-gray-700">Total for {testsOffered.length} test(s):</p>
+            <p className="text-lg font-bold text-blue-700">₹{labTotalPrice.toFixed(2)}</p>
             {labTotalSavings > 0 && (
-              <p className="text-xs text-green-600">You save ₹{labTotalSavings.toFixed(2)}</p>
+              <p className="text-xs text-green-700">You save ₹{labTotalSavings.toFixed(2)}</p>
             )}
           </div>
         </div>
@@ -165,18 +165,18 @@ export default function LabGroupedTestCard({
                       <h4 className="font-medium text-sm text-foreground">{test.testName}</h4>
                       <div className="flex items-baseline space-x-1.5 mt-0.5">
                         {hasMemberPrice ? (
-                          <span className="font-bold text-green-700 text-base flex items-center">
-                            <svg className="h-4 w-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          <span className="font-bold text-blue-700 text-base flex items-center">
+                            <svg className="h-4 w-4 text-yellow-800 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                             ₹{test.memberPrice.toFixed(2)}
-                            <span className="ml-2 text-xs text-muted-foreground line-through">₹{test.price.toFixed(2)}</span>
+                            <span className="ml-2 text-xs text-gray-700 line-through">₹{test.price.toFixed(2)}</span>
                           </span>
                         ) : (
-                          <span className="font-bold text-primary text-base">
+                          <span className="font-bold text-blue-700 text-base">
                             ₹{test.price.toFixed(2)}
                           </span>
                         )}
                         {hasOriginalPrice && (
-                          <span className="text-xs text-muted-foreground line-through">
+                          <span className="text-xs text-gray-700 line-through">
                             ₹{test.originalPrice!.toFixed(2)}
                           </span>
                         )}

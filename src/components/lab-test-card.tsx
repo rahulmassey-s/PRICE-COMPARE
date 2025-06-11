@@ -459,13 +459,13 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         {/* Top Banner Image (only if image exists) */}
         {typeof effectiveImageUrl === 'string' && effectiveImageUrl && (
           <div className="relative w-full" style={{ height: 210, borderBottom: `2px solid ${borderColor}` }}>
-            <Image
-              src={effectiveImageUrl}
-              alt={test.name}
-              fill
+          <Image
+            src={effectiveImageUrl}
+            alt={test.name}
+            fill
               style={{ objectFit: 'cover' }}
               className="bg-card"
-              priority={false}
+            priority={false}
               quality={95}
             />
           </div>
@@ -478,13 +478,13 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
               fontFamily: "'Inter', 'Roboto', Arial, sans-serif",
               letterSpacing: '0.04em',
               textShadow: '0 2px 8px #2563eb22'
-            }}
-          >
+                    }}
+                  >
             <span className="bg-gradient-to-r from-blue-400 via-blue-600 to-blue-400 bg-clip-text text-transparent">
               {test.name}
-            </span>
+                  </span>
           </h2>
-        </div>
+              </div>
         {/* Screenshot-perfect test card: full headers, blue details button, perfect alignment, no overlap, no scroll */}
         <div className="w-full">
           <div className="rounded-2xl border border-blue-200 shadow-sm bg-white overflow-hidden w-full">
@@ -511,7 +511,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                 {test.prices && test.prices.length > 0 ? (
                   test.prices.map((priceInfo, idx) => {
                     const mainLabName = priceInfo.labName.replace(/\s*lab$/i, '');
-                    return (
+            return (
                       <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
                         <td className="py-2.5 px-2 text-left align-middle font-bold text-blue-700 text-[11px] rounded-l-xl" style={{ lineHeight: 1.2 }}>
                           <div className="flex flex-col gap-0.5">
@@ -526,7 +526,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                                 {mainLabName}
                               </span>
                             </span>
-                            <span className="block text-[10px] text-blue-400 tracking-widest font-semibold uppercase flex items-center gap-1">
+                            <span className="block text-[10px] text-blue-700 tracking-widest font-semibold uppercase flex items-center gap-1">
                               LAB
                               <button
                                 type="button"
@@ -536,35 +536,35 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                                 tabIndex={0}
                                 aria-label={`Show location for ${mainLabName}`}
                               >
-                                <Info className="h-3 w-3 text-blue-400" />
+                                <Info className="h-3 w-3 text-blue-700" />
                               </button>
-                            </span>
-                          </div>
+                  </span>
+                </div>
                         </td>
                         <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             {priceInfo.originalPrice && priceInfo.originalPrice > priceInfo.price && (
                               <span className="block line-through text-gray-400 break-words">₹{priceInfo.originalPrice.toFixed(0)}/-</span>
-                            )}
-                          </div>
+                  )}
+                </div>
                         </td>
                         <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             <span className={cn(
                               "inline-block break-words w-full modern-price-font",
                               userRole === 'member'
-                                ? 'text-orange-500'
-                                : (priceInfo.price === minNonMemberPrice ? 'text-green-600 bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip' : 'text-orange-500')
+                                ? 'text-orange-700'
+                                : (priceInfo.price === minNonMemberPrice ? 'text-green-700 bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip' : 'text-orange-700')
                             )}>
                               ₹{priceInfo.price.toFixed(0)}/-
-                            </span>
+                      </span>
                             {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
                               <span className="mt-0.5 inline-block text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
                                 <svg className="inline mr-0.5" width="10" height="10" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
                                 <span className="best-tooltip-text">Lowest price for non-members!</span>
-                              </span>
-                            )}
-                          </div>
+                      </span>
+                      )}
+                    </div>
                         </td>
                         <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
                           <div className="flex flex-col items-center justify-center gap-0.5">
@@ -572,7 +572,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                               "inline-block break-words w-full modern-price-font",
                               userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice 
                                 ? 'bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip text-green-700' 
-                                : 'text-yellow-600'
+                                : 'text-yellow-800'
                             )}>
                               ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
                             </span>
@@ -606,15 +606,15 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                           </div>
                         </td>
                       </tr>
-                    );
-                  })
-                ) : (
+            );
+          })
+        ) : (
                   <tr><td colSpan={5} className="text-center text-gray-400 py-4">No pricing information available.</td></tr>
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
+              </div>
+              </div>
       </Card>
       {/* Canva-style modern blue gradient left arrow below the card */}
       <div className="flex justify-center mt-3">
@@ -640,7 +640,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
             <ellipse cx="70" cy="25" rx="18" ry="6" fill="#fff" fillOpacity="0.18"/>
           </svg>
         </span>
-      </div>
+              </div>
       {/* Description Box Modal */}
       {openLabDetailsIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -657,9 +657,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
               {test.prices && test.prices[openLabDetailsIndex]?.labDescription?.trim()
                 ? test.prices[openLabDetailsIndex].labDescription
                 : (test.description || 'No description available.')}
+              </div>
+              </div>
             </div>
-          </div>
-        </div>
       )}
       {openLabLocation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

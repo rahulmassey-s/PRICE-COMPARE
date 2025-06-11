@@ -422,9 +422,9 @@ export default function LabTestsPage() {
                         <div className="flex justify-between items-center mt-1 text-xs">
                           {userRole === 'member' && typeof item.memberPrice === 'number' && item.memberPrice > 0 ? (
                             <span className="text-green-700 font-bold flex items-center">
-                              <Crown className="h-4 w-4 text-yellow-500 mr-1" />
+                              <Crown className="h-4 w-4 text-yellow-800 mr-1" />
                               Member Price: ₹{item.memberPrice.toFixed(2)}
-                              <span className="ml-2 text-xs text-muted-foreground line-through">
+                              <span className="ml-2 text-xs text-gray-700 line-through">
                                 Non-Member: ₹{item.price.toFixed(2)}
                               </span>
                             </span>
@@ -434,7 +434,7 @@ export default function LabTestsPage() {
                             </span>
                           )}
                           {item.originalPrice && item.originalPrice > item.price && (
-                            <span className="text-muted-foreground line-through flex items-center">
+                            <span className="text-gray-700 line-through flex items-center">
                               <TagIcon className="mr-0.5 h-3 w-3" /> MRP: ₹{item.originalPrice.toFixed(2)}
                             </span>
                           )}
@@ -444,7 +444,7 @@ export default function LabTestsPage() {
                   })}
                   {selectedTests.filter(t => !t.prices || t.prices.length === 0).length > 0 && (
                     <li className="p-2.5 border rounded-md bg-muted/50 shadow-sm text-center">
-                        <div className="flex items-center justify-center text-xs text-muted-foreground">
+                        <div className="flex items-center justify-center text-xs text-gray-700">
                             <Loader2 className="mr-2 h-3 w-3 animate-spin"/> 
                             <span>Prices for some selected tests are still loading...</span>
                         </div>
@@ -455,15 +455,15 @@ export default function LabTestsPage() {
               
               <div className="space-y-1 text-sm sm:text-base">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center"><Calculator className="mr-1.5 h-4 w-4"/>Total MRP:</span>
-                  <span className="font-medium">₹{packageDetails.totalMrp.toFixed(2)}</span>
+                  <span className="text-gray-700 flex items-center"><Calculator className="mr-1.5 h-4 w-4"/>Total MRP:</span>
+                  <span className="font-bold text-blue-700">₹{packageDetails.totalMrp.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-primary">
                   <span className="font-semibold flex items-center"><Tag className="mr-1.5 h-4 w-4"/>Your Price:</span>
-                  <span className="font-bold text-xl animate-price-pulse">₹{packageDetails.bestPrice.toFixed(2)}</span>
+                  <span className="font-bold text-blue-700 text-base animate-price-pulse">₹{packageDetails.bestPrice.toFixed(2)}</span>
                 </div>
                 {packageDetails.totalSavings > 0 && (
-                  <div className="flex justify-between items-center text-green-600">
+                  <div className="flex justify-between items-center text-green-700">
                     <span className="font-semibold flex items-center"><ShieldCheck className="mr-1.5 h-4 w-4"/>You Save:</span>
                     <span className="font-bold">₹{packageDetails.totalSavings.toFixed(2)}</span>
                   </div>
@@ -471,7 +471,7 @@ export default function LabTestsPage() {
                 {/* Member Extra Discount Row */}
                 {memberDiscountDetails && (
                   <div className="flex justify-between items-center text-green-700">
-                    <span className="font-semibold flex items-center"><Crown className="mr-1.5 h-4 w-4 text-yellow-500"/>Member Extra Discount:</span>
+                    <span className="font-semibold flex items-center"><Crown className="mr-1.5 h-4 w-4 text-yellow-800"/>Member Extra Discount:</span>
                     <span className="font-bold">₹{memberDiscountDetails.extraDiscount.toFixed(2)}</span>
                   </div>
                 )}
