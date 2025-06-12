@@ -586,15 +586,26 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                         </td>
                         <td className="py-2.5 px-2 text-center align-middle rounded-r-xl">
                           <div className="flex flex-col justify-center gap-1">
-                            <button
-                              className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-[11px] w-full max-w-[80px] py-2 rounded-xl shadow transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated flex items-center justify-center gap-1"
-                              aria-label="Book Test"
+                            <Button
                               onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, isItemInCart(priceInfo.labName)); }}
+                              variant={isItemInCart(priceInfo.labName) ? 'outline' : 'default'}
+                              className={cn(
+                                "bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-[11px] w-full max-w-[80px] py-2 rounded-xl shadow transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated flex items-center justify-center gap-1",
+                                isItemInCart(priceInfo.labName) && "border-destructive text-destructive hover:bg-destructive/10"
+                              )}
                               type="button"
                             >
-                              <svg width="12" height="12" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              <span className="ml-0.5">Book</span>
-                            </button>
+                              {isItemInCart(priceInfo.labName) ? (
+                                <>
+                                  <MinusCircle className="mr-1 h-3.5 w-3.5" /> Remove
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="12" height="12" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  <span className="ml-0.5">Book</span>
+                                </>
+                              )}
+                            </Button>
                             <button
                               className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 font-semibold text-[10px] w-full max-w-[80px] py-1.5 rounded-lg transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300 flex items-center justify-center gap-0.5"
                               onClick={() => setOpenLabDetailsIndex(idx)}

@@ -20,5 +20,147 @@
   "popular_lab_tests": "Popular Lab Tests",
   "no_popular_lab_tests": "There are currently no popular lab tests listed. More tests coming soon or try searching!",
   "packages": "Packages",
-  "no_packages_available": "No special packages available at the moment. Explore our individual tests or create your own custom package!"
+  "no_packages_available": "No special packages available at the moment. Explore our individual tests or create your own custom package!",
+  "about_us_title": "About Us",
+  "about_us_intro": "Smart Bharat Health Services (SBHS) is a Bareilly-based health-tech initiative that empowers individuals and families to book lab tests from trusted collection centers at affordable prices.",
+  "about_us_why": "Why We Exist:",
+  "about_us_why_text": "Most people get tests done only when they fall sick. SBHS was created to change that mindset by making preventive health checkups more affordable, regular, and accessible for everyone — especially in tier-2 cities like Bareilly.",
+  "about_us_vision": "Our Vision:",
+  "about_us_vision_text": "To become India's most trusted preventive health platform for all families.",
+  "about_us_values": "Core Values:",
+  "about_us_value_1": "Honesty & Transparency",
+  "about_us_value_2": "Quality without Compromise",
+  "about_us_value_3": "Customer-First Approach",
+  "about_us_value_4": "Clarity in Pricing & Choice",
+  "about_us_more_info": "More Information:",
+  "about_us_contact": "📞 Contact Us",
+  "about_us_privacy": "🔒 Privacy Policy",
+  "about_us_terms": "📄 Terms & Conditions",
+  "about_us_whatsapp": "📱 WhatsApp us at: <1>8533855141</1>",
+  "contact_title": "Contact Us – Smart Bharat Health Services (SBHS)",
+  "contact_intro": "Have a question, need help with a test, or want to give feedback? We're here to assist you — quickly and personally.",
+  "contact_support": "🧑‍💻 Customer Support",
+  "contact_call": "📱 Call or WhatsApp:",
+  "contact_email": "📧 Email:",
+  "contact_quick_help": "💬 For Quick Help:",
+  "contact_book_test": "To book a test, just send us your name and test name on WhatsApp.",
+  "contact_membership_help": "For membership queries, mention 'Membership Help'.",
+  "contact_urgent": "For any complaint or follow-up, reply with 'Urgent' on WhatsApp — we'll prioritize it.",
+  "contact_business": "🧾 Business & Tie-up Enquiries",
+  "contact_business_intro": "Are you a lab, collection center, or hospital looking to partner with us? We'd love to connect!",
+  "contact_privacy": "🔐 Concerned About Privacy?",
+  "contact_privacy_policy": "Privacy Policy",
+  "contact_terms": "Terms & Conditions",
+  "contact_footer": "Smart Bharat Health Services – Because your health matters. Let's stay connected!",
+  "privacy_title": "Privacy Policy – Smart Bharat Health Services (SBHS)",
+  "privacy_effective_date": "Effective Date:",
+  "privacy_intro": "At Smart Bharat Health Services (SBHS), we value your privacy and are committed to protecting the personal information you share with us. This Privacy Policy explains how we collect, use, share, and protect your information.",
+  "privacy_questions": "✅ Still have questions?",
+  "privacy_contact": "Please contact us directly at <1>smartbharathealthservices@gmail.com</1> or WhatsApp <3>8533855141</3>",
+  "privacy_footer": "SBHS – Preventive Healthcare made Affordable & Accessible.",
+  "terms_title": "Terms & Conditions – Smart Bharat Health Services (SBHS)",
+  "terms_effective_date": "Effective Date:",
+  "terms_intro": "By accessing or using the services offered by Smart Bharat Health Services (SBHS), you agree to be bound by the following Terms and Conditions. If you do not agree, please do not use our platform.",
+  "terms_support": "🛠 Support & Help",
+  "terms_contact": "For questions, complaints, or clarification:",
+  "terms_email": "Email:",
+  "terms_whatsapp": "WhatsApp:",
+  "terms_footer": "Smart Bharat Health Services – Because your health matters. Let's stay connected!",
+  "terms_section1_title": "🔹 1. About SBHS",
+  "terms_section1_list": [
+    "SBHS is a health service aggregator that facilitates test bookings from partnered diagnostic labs and collection centers. We do not perform any medical testing ourselves."
+  ],
+  "terms_section2_title": "🔹 2. Role & Responsibility",
+  "terms_section2_list": [
+    "SBHS acts only as a coordinator or booking platform between you (the customer) and the respective lab or collection center.",
+    "SBHS is not liable for lab report accuracy, delay in reports, or any misdiagnosis.",
+    "The final responsibility of test processing, quality, and reporting lies with the chosen lab."
+  ],
+  "terms_section3_title": "🔹 3. User Conduct",
+  "terms_section3_list": [
+    "By using our platform, you agree:",
+    "To provide accurate and honest information during bookings.",
+    "Not to misuse SBHS for spamming, fraudulent activity, or medical emergencies.",
+    "To treat our staff and lab partners with respect."
+  ],
+  "terms_section4_title": "🔹 4. Limitation of Liability",
+  "terms_section4_list": [
+    "SBHS will not be responsible for:",
+    "Lab errors, delayed reports, or misdiagnosis",
+    "Physical or emotional damage due to test results",
+    "Any issues arising due to third-party labs or technicians",
+    "Use of our services is at your own discretion and risk."
+  ],
+  "terms_section5_title": "🔹 5. Changes to Terms",
+  "terms_section5_text": "SBHS reserves the right to update or modify these Terms at any time. Continued use of our services means you accept the updated Terms.",
+  "contact_section_support": "🧑‍💻 Customer Support",
+  "contact_section_support_list": [
+    "Call or WhatsApp: 8533855141 (Available Monday to Saturday, 9:00 AM to 6:00 PM)",
+    "Email: smartbharathealthservices@gmail.com"
+  ],
+  "contact_section_quick_help": "💬 For Quick Help:",
+  "contact_section_quick_help_list": [
+    "To book a test, just send us your name and test name on WhatsApp.",
+    "For membership queries, mention 'Membership Help'.",
+    "For any complaint or follow-up, reply with 'Urgent' on WhatsApp — we'll prioritize it."
+  ],
+  "contact_section_business": "🧾 Business & Tie-up Enquiries",
+  "contact_section_business_list": [
+    "Are you a lab, collection center, or hospital looking to partner with us? We'd love to connect!",
+    "Email: smartbharathealthservices@gmail.com",
+    "WhatsApp: 8533855141 (mention 'Business Tie-up')"
+  ],
+  "contact_section_privacy": "🔐 Concerned About Privacy?",
+  "contact_section_privacy_links": [
+    "Privacy Policy",
+    "Terms & Conditions"
+  ],
+  "privacy_section1_title": "🔹 1. Information We Collect",
+  "privacy_section1_list": [
+    "Name, gender, and age",
+    "Mobile number & WhatsApp number",
+    "Email address",
+    "Address or location (for sample pickup)",
+    "Test details (selected lab, tests booked, prices)",
+    "Communication logs (WhatsApp, phone, etc.)"
+  ],
+  "privacy_section2_title": "🔹 2. How We Use Your Information",
+  "privacy_section2_list": [
+    "To process your lab test bookings",
+    "To coordinate with our partnered collection centers/labs",
+    "To send test reports via WhatsApp or email",
+    "To provide customer support and updates",
+    "To send you offers or reminders (optional)"
+  ],
+  "privacy_section3_title": "🔹 3. Information Sharing",
+  "privacy_section3_list": [
+    "We do not sell your personal data.",
+    "However, we may share limited information with:",
+    "Our trusted lab partners or collection center managers — only to complete your booking or sample pickup",
+    "WhatsApp or SMS APIs (for communication)",
+    "Legal authorities, if required under law"
+  ],
+  "privacy_section4_title": "🔹 4. Data Security",
+  "privacy_section4_list": [
+    "All your data is stored securely and is accessible only by authorized team members.",
+    "We follow industry-standard measures to protect your information from unauthorized access."
+  ],
+  "privacy_section5_title": "🔹 5. Cookies & Analytics",
+  "privacy_section5_list": [
+    "We may use basic analytics tools (like Google Analytics) to track visitor activity on our website or app. This helps us improve user experience.",
+    "No personally identifiable data is tracked."
+  ],
+  "privacy_section6_title": "🔹 6. Your Rights",
+  "privacy_section6_list": [
+    "You have the right to:",
+    "Request what data we have about you",
+    "Ask us to correct or delete your information",
+    "Opt-out of marketing or offer messages anytime",
+    "To do so, contact us at:",
+    "Email: smartbharathealthservices@gmail.com",
+    "WhatsApp: 8533855141"
+  ],
+  "privacy_section7_title": "🔹 7. Changes to this Privacy Policy",
+  "privacy_section7_text": "We may update this policy from time to time. Any changes will be posted here with a new 'Effective Date'.",
+  "privacy_section_footer": "✅ Still have questions? Please contact us directly at smartbharathealthservices@gmail.com or WhatsApp 8533855141. SBHS – Making preventive healthcare accessible and affordable."
 } 

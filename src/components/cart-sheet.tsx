@@ -52,6 +52,13 @@ const TIME_SLOTS = [
   { start: '11:30', end: '12:30' },
   { start: '12:00', end: '13:00' },
   { start: '12:30', end: '13:30' },
+  { start: '13:00', end: '14:00' },
+  { start: '13:30', end: '14:30' },
+  { start: '14:00', end: '15:00' },
+  { start: '14:30', end: '15:30' },
+  { start: '15:00', end: '16:00' },
+  { start: '15:30', end: '16:30' },
+  { start: '16:00', end: '17:00' },
 ];
 
 function getNext7Days() {
@@ -437,20 +444,31 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   const slotLabel = `${format(new Date(`1970-01-01T${slot.start}:00`), 'h:mm a')} - ${format(new Date(`1970-01-01T${slot.end}:00`), 'h:mm a')}`;
                   const isSelected = cartAppointmentDateTime && JSON.parse(cartAppointmentDateTime).slot === slotLabel;
                   const selectedDate = cartAppointmentDateTime ? JSON.parse(cartAppointmentDateTime).date : null;
+                  // Disable logic for past slots on today
+                  let isPastSlot = false;
+                  if (selectedDate === format(new Date(), 'yyyy-MM-dd')) {
+                    const now = new Date();
+                    const [endHour, endMinute] = slot.end.split(':');
+                    const slotEnd = new Date();
+                    slotEnd.setHours(Number(endHour), Number(endMinute), 0, 0);
+                    if (slotEnd <= now) {
+                      isPastSlot = true;
+                    }
+                  }
                   return (
                     <button
                       key={slotLabel}
-                      className={`px-2 py-2 rounded-lg border text-center text-xs font-semibold transition-all duration-150 ${isSelected ? 'bg-green-100 border-green-500 text-green-900 shadow' : 'bg-white border-gray-200 text-gray-700 hover:bg-green-50'}`}
+                      className={`px-2 py-2 rounded-lg border text-center text-xs font-semibold transition-all duration-150 ${isSelected ? 'bg-green-100 border-green-500 text-green-900 shadow' : 'bg-white border-gray-200 text-gray-700 hover:bg-green-50'} ${isPastSlot ? 'opacity-50 cursor-not-allowed' : ''}`}
                       onClick={() => {
-                        if (!selectedDate) return;
+                        if (!selectedDate || isPastSlot) return;
                         setCartAppointmentDateTime(JSON.stringify({ date: selectedDate, slot: slotLabel }));
-                          setTimeout(() => {
-                            const val = JSON.stringify({ date: selectedDate, slot: slotLabel });
-                            if (selectedDate && slotLabel) grandTotalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }, 100);
+                        setTimeout(() => {
+                          const val = JSON.stringify({ date: selectedDate, slot: slotLabel });
+                          if (selectedDate && slotLabel) grandTotalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
                       }}
                       type="button"
-                      disabled={!selectedDate}
+                      disabled={!selectedDate || isPastSlot}
                     >
                       {slotLabel}
                     </button>

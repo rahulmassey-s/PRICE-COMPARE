@@ -55,6 +55,7 @@
                 <li><button class="tab-button" data-tab="manage-data-tab"><i class="fas fa-database"></i> Manage Data (Excel)</button></li>
                 <li><button class="tab-button" data-tab="charts-tab"><i class="fas fa-chart-line"></i> Charts</button></li>
                 <li><button class="tab-button" data-tab="user-activity-tab"><i class="fas fa-user-clock"></i> User Activity</button></li>
+                <li><button class="tab-button" data-tab="push-notification-tab"><i class="fas fa-bell"></i> Push Notification</button></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logout-button" class="btn btn-danger logout-button"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -606,6 +607,103 @@
                             </thead>
                             <tbody id="user-activity-table-body"></tbody>
                         </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Push Notification Tab -->
+            <div id="push-notification-tab" class="tab-content">
+                <section class="dashboard-section card-style">
+                    <h4><i class="fas fa-bell"></i> Push Notification</h4>
+                    <form id="push-notification-form" class="styled-form complex-form grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label for="notification-title">Notification Title</label>
+                            <input type="text" id="notification-title" class="form-control" placeholder="Enter title" required />
+                        </div>
+                        <div class="form-group md:col-span-2">
+                            <label for="notification-body">Message Body</label>
+                            <textarea id="notification-body" class="form-control" rows="3" placeholder="Enter message" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="notification-type">Notification Type</label>
+                            <select id="notification-type" class="form-control">
+                                <option value="reminder">Reminder</option>
+                                <option value="offer">Offer</option>
+                                <option value="alert">Alert</option>
+                                <option value="info">Info</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="notification-target">Target Audience</label>
+                            <select id="notification-target" class="form-control">
+                                <option value="all">All Users</option>
+                                <option value="members">Members Only</option>
+                                <option value="user">Specific User ID</option>
+                            </select>
+                            <input type="text" id="specific-user-id" class="form-control mt-2 hidden" placeholder="Enter User ID" />
+                        </div>
+                        <div class="form-group">
+                            <label for="notification-link">Link (on notification click)</label>
+                            <input type="url" id="notification-link" placeholder="https://example.com/offer">
+                        </div>
+
+                        <!-- New Feature: Notification Image -->
+                        <div class="form-group">
+                            <label for="notification-image-url">Image URL (Optional)</label>
+                            <input type="text" id="notification-image-url" placeholder="Paste image URL here">
+                            <input type="file" id="notification-image-file" accept="image/*" class="file-input">
+                            <button type="button" id="notification-image-upload-btn" class="btn btn-secondary btn-sm">Upload Image</button>
+                            <img id="notification-image-preview" class="image-preview" alt="Notification Image Preview" style="display:none;">
+                        </div>
+
+                        <!-- New Feature: Action Buttons -->
+                        <div class="form-group md:col-span-2">
+                           <label class="block mb-2">Action Buttons (Optional)</label>
+                           <div class="action-buttons-container grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div class="action-button-group p-3 border rounded-lg">
+                                   <label for="notification-action1-title">Button 1 Title</label>
+                                   <input type="text" id="notification-action1-title" placeholder="e.g., View Offer">
+                                   <label for="notification-action1-link" class="mt-2">Button 1 Link</label>
+                                   <input type="url" id="notification-action1-link" placeholder="https://example.com/action1">
+                               </div>
+                               <div class="action-button-group p-3 border rounded-lg">
+                                   <label for="notification-action2-title">Button 2 Title</label>
+                                   <input type="text" id="notification-action2-title" placeholder="e.g., Learn More">
+                                   <label for="notification-action2-link" class="mt-2">Button 2 Link</label>
+                                   <input type="url" id="notification-action2-link" placeholder="https://example.com/action2">
+                               </div>
+                           </div>
+                       </div>
+                        
+                        <div class="form-group">
+                            <label for="notification-schedule">Schedule for Later (Optional)</label>
+                            <input type="datetime-local" id="notification-schedule">
+                        </div>
+                        <div class="form-group flex items-center gap-2">
+                            <input type="checkbox" id="send-now" class="form-checkbox" checked />
+                            <label for="send-now">Send Now</label>
+                        </div>
+                        <div class="form-group md:col-span-2">
+                            <button type="submit" class="btn btn-primary w-full"><i class="fas fa-paper-plane"></i> Send Notification</button>
+                        </div>
+                    </form>
+                    <div class="mt-8">
+                        <h5 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-history"></i> Notification History</h5>
+                        <div class="table-container overflow-x-auto">
+                            <table id="notification-history-table" class="min-w-full table-auto">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Sent Date</th>
+                                        <th>Target Group</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notification-history-body">
+                                    <!-- Notification history rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
             </div>

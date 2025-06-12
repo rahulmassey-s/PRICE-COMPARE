@@ -1,3 +1,16 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
 // Admin Panel JavaScript - app.js
 
 console.log("[DEBUG] app.js loaded");
@@ -3577,6 +3590,8 @@ function switchTab(tabId) {
       "site-logo-preview-img",
       "site-logo-upload-btn",
     );
+  } else if (tabId === "push-notification-tab") {
+    loadNotificationHistory();
   }
   // Manage Data and Charts tabs don't load data on switch by default
 
@@ -5286,4 +5301,158 @@ window.addEventListener('DOMContentLoaded', function() {
     "primary-banner-video-preview",
     "primary-banner-video-upload-btn"
   );
+
+  // Setup for notification image
+  setupImageUpload(
+    "notification-image-file",
+    "notification-image-url",
+    "notification-image-preview",
+    "notification-image-upload-btn"
+  );
 });
+
+// --- Push Notification Admin Logic ---
+const pushNotificationForm = document.getElementById("push-notification-form");
+const notificationTarget = document.getElementById("notification-target");
+const specificUserIdInput = document.getElementById("specific-user-id");
+const notificationHistoryBody = document.getElementById("notification-history-body");
+
+// Show/hide User ID field based on dropdown
+if (notificationTarget && specificUserIdInput) {
+  notificationTarget.addEventListener("change", function () {
+    if (notificationTarget.value === "user") {
+      specificUserIdInput.classList.remove("hidden");
+      specificUserIdInput.required = true;
+    } else {
+      specificUserIdInput.classList.add("hidden");
+      specificUserIdInput.required = false;
+      specificUserIdInput.value = "";
+    }
+  });
+}
+
+// Notification history (local cache)
+let notificationHistory = [];
+
+// Load notification history from Firestore (if available)
+async function loadNotificationHistory() {
+  if (!notificationHistoryBody) return;
+  notificationHistoryBody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+  try {
+    // Try to load from Firestore (collection: 'admin_notifications')
+    const querySnapshot = await firestoreRequest(
+      "getDocs",
+      "admin_notifications",
+      null,
+      null,
+      [{ type: "orderBy", field: "createdAt", direction: "desc" }, { type: "limit", value: 20 }]
+    );
+    notificationHistory = [];
+    if (querySnapshot.empty) {
+      notificationHistoryBody.innerHTML = '<tr><td colspan="4">No notifications sent yet.</td></tr>';
+      return;
+    }
+    notificationHistoryBody.innerHTML = "";
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      notificationHistory.push(data);
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${data.title || "-"}</td>
+        <td>${data.sentDate ? new Date(data.sentDate.seconds * 1000).toLocaleString() : (data.schedule ? new Date(data.schedule.seconds * 1000).toLocaleString() : "-")}</td>
+        <td>${data.target || "-"}</td>
+        <td><span class="badge badge-${data.status === "Sent" ? "success" : data.status === "Failed" ? "danger" : (data.status === 'Scheduled' ? 'info' : 'warning')}">${data.status || "Pending"}</span></td>
+      `;
+      notificationHistoryBody.appendChild(row);
+    });
+  } catch (err) {
+    notificationHistoryBody.innerHTML = '<tr><td colspan="4">Error loading history.</td></tr>';
+    console.error("Error loading notification history:", err);
+  }
+}
+
+// Handle push notification form submit
+if (pushNotificationForm) {
+  pushNotificationForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const title = document.getElementById("notification-title").value.trim();
+    const body = document.getElementById("notification-body").value.trim();
+    const type = document.getElementById("notification-type").value;
+    const target = notificationTarget.value;
+    const userId = specificUserIdInput.value.trim();
+    const schedule = document.getElementById("notification-schedule").value;
+    const link = document.getElementById("notification-link").value.trim();
+    const sendNow = document.getElementById("send-now").checked;
+
+    // New feature data
+    const imageUrl = document.getElementById("notification-image-url").value.trim();
+    const action1Title = document.getElementById("notification-action1-title").value.trim();
+    const action1Link = document.getElementById("notification-action1-link").value.trim();
+    const action2Title = document.getElementById("notification-action2-title").value.trim();
+    const action2Link = document.getElementById("notification-action2-link").value.trim();
+
+    if (!title || !body) {
+      showToast("Title and message body are required.", "error");
+      return;
+    }
+    if (target === "user" && !userId) {
+      showToast("Please enter a User ID.", "error");
+      return;
+    }
+
+    // 1. Show loader and disable form
+    showLoader(true);
+    pushNotificationForm.querySelector('button[type="submit"]').disabled = true;
+
+    // 2. Prepare base notification data
+    const notificationData = {
+      title,
+      body,
+      type,
+      link,
+      target: target === 'user' ? `User: ${userId}` : target.charAt(0).toUpperCase() + target.slice(1),
+      userId: target === 'user' ? userId : null,
+      createdAt: new Date(),
+      // New feature data
+      imageUrl: imageUrl || null,
+      actions: [
+        { title: action1Title, link: action1Link },
+        { title: action2Title, link: action2Link },
+      ].filter(a => a.title && a.link), // Only include actions with both title and link
+    };
+
+    try {
+      if (sendNow) {
+        console.log("Sending notification now:", notificationData);
+        const response = await fetch('http://localhost:3001/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notificationData)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'API request failed');
+
+        // Save notification to Firestore using firestoreRequest, not addDoc/collection
+        await firestoreRequest("addDoc", "admin_notifications", null, { ...notificationData, status: 'Sent', sentDate: new Date() });
+        showToast("Notification sent successfully!");
+      } else {
+        const scheduleDate = new Date(schedule);
+        if (!schedule || isNaN(scheduleDate.getTime())) {
+          showToast("Please select a valid schedule date.", "error");
+          return;
+        }
+        const schedulePayload = { ...notificationData, status: 'Scheduled', schedule: scheduleDate };
+        await firestoreRequest("addDoc", "admin_notifications", null, schedulePayload);
+        showToast("Notification scheduled successfully!");
+      }
+    } catch (error) {
+      showToast("Failed to send notification: " + error.message, "error");
+      console.error("Push notification error:", error);
+    } finally {
+      // 5. Hide loader and re-enable form
+      showLoader(false);
+      pushNotificationForm.querySelector('button[type="submit"]').disabled = false;
+    }
+  });
+}
+// ... existing code ...
