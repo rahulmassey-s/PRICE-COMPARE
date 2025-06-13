@@ -114,22 +114,28 @@ async function sendNotification(tokens, notificationPayload) {
         return { success: false, error: "No tokens found." };
     }
 
+    // Ensure all data fields are strings (FCM requires this)
+    const dataPayload = {
+      title: String(notificationPayload.title || 'New Notification'),
+      body: String(notificationPayload.body || ''),
+      link: String(notificationPayload.link || ''),
+      type: String(notificationPayload.type || 'info'),
+      imageUrl: String(notificationPayload.imageUrl || ''),
+      actions: JSON.stringify(notificationPayload.actions || []),
+    };
+
     const message = {
         tokens: tokens,
         webpush: {
             fcm_options: {
-              link: notificationPayload.link || 'https://price-compare-liart.vercel.app/',
+              link: dataPayload.link || 'https://price-compare-liart.vercel.app/',
             },
         },
-        data: {
-          title: notificationPayload.title || 'New Notification',
-          body: notificationPayload.body || '',
-          link: notificationPayload.link || '',
-          type: notificationPayload.type || 'info',
-          imageUrl: notificationPayload.imageUrl || '',
-          actions: JSON.stringify(notificationPayload.actions || []),
-        },
+        data: dataPayload,
     };
+
+    // Log the final payload for debugging
+    console.log('FCM Payload:', JSON.stringify(message, null, 2));
 
     try {
         console.log(`Attempting to send notification to ${tokens.length} token(s).`);
