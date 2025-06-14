@@ -14,7 +14,14 @@ admin.initializeApp({
 
 // --- Express App Setup ---
 const app = express();
-app.use(cors());
+const corsOptions = {
+  origin: ['https://labpricecompare.netlify.app', 'http://localhost:9002'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(bodyParser.json());
 const PORT = process.env.PORT || 3001;
 
