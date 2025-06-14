@@ -6,37 +6,50 @@ const bodyParser = require('body-parser');
 const { getTokensForTargetGroup, sendNotification } = require('./notification-engine');
 
 // --- Firebase Admin Initialization ---
-// It's crucial that this is initialized before the engine is used.
-// const serviceAccount = require('./serviceAccountKey.json');
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+try {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log('Firebase Admin SDK initialized successfully.');
+} catch (error) {
+  console.error('Firebase Admin SDK initialization failed:', error);
+  // Exit if Firebase can't initialize, as the app is useless without it.
+  process.exit(1);
+}
 
 // --- Express App Setup ---
 const app = express();
+const PORT = process.env.PORT || 3001;
 
 // --- Middleware ---
 
-// Temporarily allow all origins for debugging
+// 1. CORS: Allow all origins. Simple and effective for debugging.
+// We can restrict this later if needed.
 app.use(cors());
 
-// JSON Body Parser
+// 2. Body Parser: To handle JSON payloads.
 app.use(bodyParser.json());
 
-const PORT = process.env.PORT || 3001;
 
-// --- API Endpoint ---
+// --- Routes ---
+
+// 1. Health Check Route: To verify the server is running.
+app.get('/', (req, res) => {
+  res.status(200).send('Notification API Server is up and running!');
+});
+
+// 2. Main Notification API Endpoint
 app.post('/api/send-notification', async (req, res) => {
   const { target, userId, ...payload } = req.body;
   
-  console.log(`Received request to send notification to target: ${target}`);
+  console.log(`Received notification request for target: ${target}`);
 
   try {
     const tokens = await getTokensForTargetGroup(target, userId);
 
     if (!tokens || tokens.length === 0) {
-      console.log('No valid FCM tokens found for the selected target.');
+      console.log('No valid FCM tokens found for the target.');
       return res.status(404).json({ success: false, message: 'No valid FCM tokens found.' });
     }
 
@@ -54,6 +67,7 @@ app.post('/api/send-notification', async (req, res) => {
   }
 });
 
+// --- Start Server ---
 app.listen(PORT, () => {
   console.log(`Push Notification API server running on port ${PORT}`);
 }); 
