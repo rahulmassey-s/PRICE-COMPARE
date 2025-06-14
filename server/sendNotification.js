@@ -15,6 +15,10 @@ admin.initializeApp({
 
 // --- Express App Setup ---
 const app = express();
+
+// --- Middleware ---
+
+// 1. CORS Configuration
 const allowedOrigins = [
   'https://labpricecompare.netlify.app',
   'http://localhost:9002',
@@ -23,30 +27,20 @@ const allowedOrigins = [
   'http://127.0.0.1:3000'
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-};
+}));
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+// 2. JSON Body Parser
 app.use(bodyParser.json());
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+
 const PORT = process.env.PORT || 3001;
 
 // --- API Endpoint ---
