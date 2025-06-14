@@ -1,6 +1,6 @@
 {
-  "name": "Lab Price Compare",
-  "short_name": "LabCompare",
+  "name": "Smart Bharat Health Services",
+  "short_name": "Smart Bharat",
   "description": "Compare lab test prices and get discounts.",
   "icons": [
     {
@@ -21,7 +21,7 @@
     }
   ],
   "theme_color": "#10b981",
-  "background_color": "#fffff",
+  "background_color": "#ffffff",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
