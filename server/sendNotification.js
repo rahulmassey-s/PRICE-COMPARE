@@ -18,27 +18,10 @@ const app = express();
 
 // --- Middleware ---
 
-// 1. CORS Configuration
-const allowedOrigins = [
-  'https://labpricecompare.netlify.app',
-  'http://localhost:9002',
-  'http://localhost:3000',
-  'http://127.0.0.1:9002',
-  'http://127.0.0.1:3000'
-];
+// Temporarily allow all origins for debugging
+app.use(cors());
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
-
-// 2. JSON Body Parser
+// JSON Body Parser
 app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 3001;
