@@ -1,8 +1,9 @@
 // server/sendNotification.js
 const express = require('express');
 const admin = require('firebase-admin');
-const cors = require('cors');
 const bodyParser = require('body-parser');
+// We are removing the 'cors' library and handling it manually for definitive control.
+// const cors = require('cors'); 
 const { getTokensForTargetGroup, sendNotification } = require('./notification-engine');
 
 // --- Firebase Admin Initialization ---
@@ -24,9 +25,26 @@ const PORT = process.env.PORT || 3001;
 
 // --- Middleware ---
 
-// 1. CORS: Allow all origins. Simple and effective for debugging.
-// We can restrict this later if needed.
-app.use(cors());
+// 1. Custom CORS Middleware: Manually set headers to ensure they are always present.
+app.use((req, res, next) => {
+  // Allow any origin for now. This is the most permissive setting.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Allowed methods
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  // Allowed headers
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
+  // Allow credentials - important for some auth flows
+  res.setHeader('Access-Control-Allow-Credentials', true);
+
+  // Handle preflight OPTIONS request.
+  // The browser sends this before a POST/PUT etc. to check if the server allows it.
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204); // 204 No Content - success signal for preflight.
+  }
+
+  // Pass to next middleware
+  next();
+});
 
 // 2. Body Parser: To handle JSON payloads.
 app.use(bodyParser.json());
