@@ -104,6 +104,16 @@ export default function ClientLayout({
 
   const pathname = usePathname(); // Get the current pathname
 
+  const [authOnboardingData, setAuthOnboardingData] = useState<AuthOnboardingData | null>(null);
+
+  const handleOpenAuthModal = (initialState: 'login' | 'signup' | 'forgot-password' = 'login') => {
+    setAuthOnboardingData({ view: initialState, mobile: null });
+  };
+
+  const handleOpenAuthModalWithMobile = (mobile: string) => {
+    setAuthOnboardingData({ view: 'login', mobile: mobile || null });
+  };
+
   const handleAnimationComplete = useCallback(() => {
     setShowIntroAnimation(false);
     setIntroAnimationFinished(true);
@@ -293,11 +303,11 @@ export default function ClientLayout({
   }, [pathname]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((err) => {
-          console.warn('Service worker registration failed:', err);
-        });
+        // navigator.serviceWorker.register('/sw.js').catch((err) => {
+        //   console.error('Service Worker registration failed: ', err);
+        // });
       });
     }
   }, []);
