@@ -462,10 +462,10 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       onClick={() => {
                         if (!selectedDate || isPastSlot) return;
                         setCartAppointmentDateTime(JSON.stringify({ date: selectedDate, slot: slotLabel }));
-                        setTimeout(() => {
-                          const val = JSON.stringify({ date: selectedDate, slot: slotLabel });
-                          if (selectedDate && slotLabel) grandTotalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 100);
+                          setTimeout(() => {
+                            const val = JSON.stringify({ date: selectedDate, slot: slotLabel });
+                            if (selectedDate && slotLabel) grandTotalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
                       }}
                       type="button"
                       disabled={!selectedDate || isPastSlot}

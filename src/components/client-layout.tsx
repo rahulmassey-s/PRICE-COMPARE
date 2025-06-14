@@ -309,57 +309,57 @@ export default function ClientLayout({
   return (
     <>
       <PushNotificationInit />
-      <CartProvider>
-        <div className="flex flex-col min-h-screen overflow-x-hidden" key={pathname}> {/* Added key={pathname} here */}
-          <AppHeader 
-            isCartOpen={isCartOpen} 
-            onCartOpenChange={setIsCartOpen} 
-          />
-          <main className="flex-grow pb-20"> 
-            {children}
-          </main>
-          <BottomNavigation 
-            onCartIconClick={() => setIsCartOpen(true)} 
-          />
-          <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
-            © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
-          </footer>
-        </div>
-        <Toaster />
+    <CartProvider>
+      <div className="flex flex-col min-h-screen overflow-x-hidden" key={pathname}> {/* Added key={pathname} here */}
+        <AppHeader 
+          isCartOpen={isCartOpen} 
+          onCartOpenChange={setIsCartOpen} 
+        />
+        <main className="flex-grow pb-20"> 
+          {children}
+        </main>
+        <BottomNavigation 
+          onCartIconClick={() => setIsCartOpen(true)} 
+        />
+        <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
+          © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
+        </footer>
+      </div>
+      <Toaster />
 
-        <Dialog open={isPostWhatsAppSuccessDialogOpen} onOpenChange={setIsPostWhatsAppSuccessDialogOpen}>
-          <DialogContent className="sm:max-w-md rounded-xl shadow-2xl overflow-hidden p-0">
-            <DialogHeader className="bg-gradient-to-br from-primary to-teal-500 p-6 text-center">
-              <PartyPopper className="h-16 w-16 text-primary-foreground mx-auto animate-success-icon-pop mb-4" />
-              <DialogTitle className="text-2xl font-bold text-primary-foreground">
-                Thank You, {postWhatsAppSuccessData?.name || 'Valued Customer'}!
-              </DialogTitle>
-            </DialogHeader>
-            <div className="p-6 space-y-3 text-center">
-              <DialogDescription className="text-base text-muted-foreground">
-                We hope you've sent your booking details via WhatsApp!
-              </DialogDescription>
-              <p className="text-sm text-muted-foreground">
-                Our team will review your request shortly and contact you to confirm the next steps and payment. We appreciate you choosing us!
-              </p>
-            </div>
-            <DialogFooter className="p-4 bg-muted/50">
-              <Button onClick={() => setIsPostWhatsAppSuccessDialogOpen(false)} className="w-full">Okay, Got it!</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <style jsx global>{`
-          @keyframes successIconPop {
-            0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
-            50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
-            70% { transform: scale(0.9) rotate(-5deg); }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
-          }
-          .animate-success-icon-pop {
-            animation: successIconPop 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
-          }
-        `}</style>
-      </CartProvider>
+      <Dialog open={isPostWhatsAppSuccessDialogOpen} onOpenChange={setIsPostWhatsAppSuccessDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-xl shadow-2xl overflow-hidden p-0">
+          <DialogHeader className="bg-gradient-to-br from-primary to-teal-500 p-6 text-center">
+            <PartyPopper className="h-16 w-16 text-primary-foreground mx-auto animate-success-icon-pop mb-4" />
+            <DialogTitle className="text-2xl font-bold text-primary-foreground">
+              Thank You, {postWhatsAppSuccessData?.name || 'Valued Customer'}!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-3 text-center">
+            <DialogDescription className="text-base text-muted-foreground">
+              We hope you've sent your booking details via WhatsApp!
+            </DialogDescription>
+            <p className="text-sm text-muted-foreground">
+              Our team will review your request shortly and contact you to confirm the next steps and payment. We appreciate you choosing us!
+            </p>
+          </div>
+          <DialogFooter className="p-4 bg-muted/50">
+            <Button onClick={() => setIsPostWhatsAppSuccessDialogOpen(false)} className="w-full">Okay, Got it!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <style jsx global>{`
+        @keyframes successIconPop {
+          0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+          50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+          70% { transform: scale(0.9) rotate(-5deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .animate-success-icon-pop {
+          animation: successIconPop 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+        }
+      `}</style>
+    </CartProvider>
     </>
   );
 }

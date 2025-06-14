@@ -601,8 +601,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                                 </>
                               ) : (
                                 <>
-                                  <svg width="12" height="12" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                  <span className="ml-0.5">Book</span>
+                              <svg width="12" height="12" fill="#fff" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              <span className="ml-0.5">Book</span>
                                 </>
                               )}
                             </Button>
