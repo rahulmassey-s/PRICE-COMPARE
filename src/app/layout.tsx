@@ -1,14 +1,16 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
-import './globals.css';
-import ClientLayout from '@/components/client-layout';
+import '@/app/globals.css';
 import { siteConfig } from '@/config/site';
+import ClientLayout from '@/components/client-layout';
 import AuthOnboardingGuard from '@/components/AuthOnboardingGuard';
+import NotificationHandler from '@/components/notification-handler';
 
 const APP_THEME_COLOR = '#0891b2';
 
 export const metadata: Metadata = {
+  applicationName: siteConfig.name,
   title: siteConfig.name,
   description: siteConfig.description,
   manifest: '/manifest.json',
@@ -18,11 +20,11 @@ export const metadata: Metadata = {
   ],
 };
 
-export const viewport: Viewport = {
-  themeColor: APP_THEME_COLOR,
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
       <head>
@@ -49,13 +51,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ClientLayout>
+          <NotificationHandler />
           <AuthOnboardingGuard>
             {children}
           </AuthOnboardingGuard>
         </ClientLayout>
         <div id="root-portal"></div>
         <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
-          © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
+          © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
         </footer>
       </body>
     </html>
