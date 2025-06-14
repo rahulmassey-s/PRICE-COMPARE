@@ -5424,7 +5424,7 @@ if (pushNotificationForm) {
     try {
       if (sendNow) {
         console.log("Sending notification now:", notificationData);
-        const response = await fetch('https://price-compare-3g98.onrender.com/api/send-notification', {
+        const response = await fetch('https://sbhs-notification-backend.onrender.com/api/send-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(notificationData)
