@@ -210,10 +210,16 @@
                             <input type="number" id="hc-display-order-input" value="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="hc-icon-url-input">Icon URL (Optional):</label>
-                            <input type="text" id="hc-icon-url-input" placeholder="Or paste image URL here">
+                            <label for="hc-icon-name-input">Icon Name (for homepage display):</label>
+                            <select id="hc-icon-name-input">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="hc-icon-url-input">Image URL (optional, for custom icon):</label>
+                            <input type="text" id="hc-icon-url-input" placeholder="Paste image URL here">
                             <input type="file" id="hc-icon-file-input" accept="image/*" class="file-input">
-                            <button type="button" id="hc-icon-upload-btn" class="btn btn-secondary btn-sm">Upload Icon to Cloudinary</button>
+                            <button type="button" id="hc-icon-upload-btn" class="btn btn-secondary btn-sm">Upload Image</button>
                             <img id="hc-icon-preview-img" class="image-preview" alt="Icon Preview" style="display:none;">
                         </div>
                          <div class="form-group checkbox-group">
@@ -741,7 +747,7 @@
                 <input type="hidden" id="edit-test-id-modal-input">
                 <div class="form-group">
                     <label for="edit-test-name-modal-input">Test Name:</label>
-                    <input type="text" id="edit-test-name-modal-input" required>
+                    <input type="text" id="edit-test-name-modal-input" required autofocus>
                 </div>
                 <div class="form-group">
                     <label for="edit-test-description-modal-input">Description:</label>
@@ -750,15 +756,15 @@
                 <div class="form-group">
                     <label for="edit-test-image-url-modal-input">Image URL:</label>
                     <input type="text" id="edit-test-image-url-modal-input" placeholder="Or paste image URL here">
-                     <input type="file" id="edit-test-image-file-modal-input" accept="image/*" class="file-input">
-                     <button type="button" id="edit-test-image-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Image</button>
+                    <input type="file" id="edit-test-image-file-modal-input" accept="image/*" class="file-input">
+                    <button type="button" id="edit-test-image-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Image</button>
                     <img id="edit-test-image-preview-modal-img" class="image-preview" alt="Test Image Preview" style="display:none;">
                 </div>
                 <div class="form-group">
                     <label for="edit-test-tags-modal-input">Tags (comma-separated):</label>
                     <input type="text" id="edit-test-tags-modal-input">
                 </div>
-                 <div class="form-group checkbox-group">
+                <div class="form-group checkbox-row">
                     <input type="checkbox" id="edit-test-is-popular-modal-input"> <label for="edit-test-is-popular-modal-input">Is Popular?</label>
                     <input type="checkbox" id="edit-test-is-package-modal-input"> <label for="edit-test-is-package-modal-input">Is Package?</label>
                     <input type="checkbox" id="edit-test-is-active-modal-input"> <label for="edit-test-is-active-modal-input">Is Active?</label>
@@ -767,15 +773,17 @@
                     <label for="edit-test-banner-text-modal-input">Banner Text:</label>
                     <input type="text" id="edit-test-banner-text-modal-input">
                 </div>
-                <h5><i class="fas fa-pills"></i> Health Concerns for this Test:</h5>
-                <div id="health-concerns-checkboxes-edit" class="checkbox-grid">
-                    <!-- Health concern checkboxes for edit will be loaded here -->
+                <div class="edit-modal-sections">
+                    <div class="edit-modal-section">
+                        <h5>Health Concerns for this Test:</h5>
+                        <div id="health-concerns-checkboxes-edit" class="checkbox-grid"></div>
+                    </div>
+                    <div class="edit-modal-section">
+                        <h5>Lab Prices:</h5>
+                        <div id="lab-prices-container-edit"></div>
+                        <button type="button" id="add-lab-price-row-btn-edit" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Add Lab Price</button>
+                    </div>
                 </div>
-                <h5><i class="fas fa-dollar-sign"></i> Lab Prices:</h5>
-                <div id="lab-prices-container-edit">
-                    <!-- Lab price rows for edit will be loaded here -->
-                </div>
-                <button type="button" id="add-lab-price-row-btn-edit" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Add Lab Price</button>
                 <hr>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Test</button>
             </form>
@@ -793,18 +801,24 @@
                     <input type="text" id="edit-hc-name-modal-input" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-hc-display-order-modal-input">Display Order:</label>
-                    <input type="number" id="edit-hc-display-order-modal-input" required>
+                    <label for="edit-hc-order-modal-input">Display Order:</label>
+                    <input type="number" id="edit-hc-order-modal-input" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-hc-icon-url-modal-input">Icon URL:</label>
-                    <input type="text" id="edit-hc-icon-url-modal-input" placeholder="Or paste image URL here">
+                    <label for="edit-hc-icon-name-modal-input">Icon Name (for homepage display):</label>
+                    <select id="edit-hc-icon-name-modal-input">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-hc-icon-url-modal-input">Image URL (optional, for custom icon):</label>
+                    <input type="text" id="edit-hc-icon-url-modal-input" placeholder="Paste image URL here">
                     <input type="file" id="edit-hc-icon-file-modal-input" accept="image/*" class="file-input">
-                    <button type="button" id="edit-hc-icon-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Icon</button>
+                    <button type="button" id="edit-hc-icon-upload-btn-modal" class="btn btn-secondary btn-sm">Upload Image</button>
                     <img id="edit-hc-icon-preview-modal-img" class="image-preview" alt="Icon Preview" style="display:none;">
                 </div>
                  <div class="form-group checkbox-group">
-                    <input type="checkbox" id="edit-hc-is-active-modal-checkbox"> <label for="edit-hc-is-active-modal-checkbox">Is Active?</label>
+                    <input type="checkbox" id="edit-hc-is-active-modal-input"> <label for="edit-hc-is-active-modal-input">Is Active?</label>
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Health Concern</button>
             </form>

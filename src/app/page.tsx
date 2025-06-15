@@ -21,6 +21,17 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import '../i18n';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle as DialogTitleComponent,
+  DialogDescription as DialogDescriptionComponent,
+  DialogClose,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useCart } from '@/context/CartContext';
 
 const PromotionalBannerCarousel = dynamic(() => import('@/components/promotional-banner-carousel'), {
   loading: () => <Skeleton className="w-full rounded-xl h-[120px] sm:h-[160px] mb-6" />,
@@ -32,27 +43,20 @@ const DynamicLabTestCard = dynamic(() => import('@/components/lab-test-card'), {
   ssr: false
 });
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle as DialogTitleComponent,
-  DialogDescription as DialogDescriptionComponent,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface HomePageProps { }
 
-const healthConcernIconMap: { [key: string]: React.ElementType } = {
-  'full-body-checkups': UserCheck,
-  'diabetes': Droplet,
-  'heart-health': Heart,
-  'fever': Thermometer,
-  'thyroid': Activity,
-  'bone-health': Bone,
-  'brain-health': Brain,
-  'pregnancy': Baby,
+const iconNameToComponentMap: { [key: string]: React.ElementType } = {
+  'user-check': UserCheck,
+  'droplet': Droplet,
+  'heart': Heart,
+  'thermometer': Thermometer,
+  'activity': Activity,
+  'bone': Bone,
+  'brain': Brain,
+  'baby': Baby,
+  'flask-conical': FlaskConical,
   'default': FlaskConical,
 };
 
@@ -91,6 +95,12 @@ export default function HomePage({ }: HomePageProps) {
 
   const [userRole, setUserRole] = useState<'member' | 'non-member' | 'admin'>('non-member');
 
+  // State for multi-lab warning dialog
+  const [isMultiLabDialogOpen, setIsMultiLabDialogOpen] = useState(false);
+  const [pendingCartItem, setPendingCartItem] = useState<any | null>(null);
+
+  const { items: cartItems, addToCart, clearCart } = useCart();
+
   const handleFirestoreError = useCallback((error: any, context: string) => {
     console.error(`Firestore error (${context}):`, error);
     let description = `Could not fetch ${context}. Please try again later.`;
@@ -127,11 +137,9 @@ export default function HomePage({ }: HomePageProps) {
       id: testSlug,
       docId: testDoc.id,
       name: testData.testName,
-      imageUrl: testData.imageUrl || testData.testImageUrl,
+      imageUrl: testData.testImageUrl,
       description: testData.description,
-      bannerText: testData.bannerText, // Ensure bannerText is mapped
       tags: testData.tags,
-      healthConcernSlugs: testData.healthConcernSlugs || [],
     };
   }, []);
 
@@ -163,8 +171,6 @@ export default function HomePage({ }: HomePageProps) {
             labName: priceData.labName,
             price: priceData.price,
             originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
-            memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
-            labDescription: priceData.labDescription || '',
           });
           labPricesMap.set(priceData.testId, currentPrices);
         });
@@ -217,8 +223,6 @@ export default function HomePage({ }: HomePageProps) {
         labName: priceData.labName,
         price: priceData.price,
         originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
-        memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
-        labDescription: priceData.labDescription || '',
       });
     });
 
@@ -227,12 +231,10 @@ export default function HomePage({ }: HomePageProps) {
       id: testSlug,
       docId: testDocSnap.id,
       name: testData.testName,
-      imageUrl: testData.imageUrl || testData.testImageUrl,
+      imageUrl: testData.testImageUrl,
       description: testData.description,
-      bannerText: testData.bannerText, // Ensure bannerText is mapped
       tags: testData.tags,
       prices: labPrices,
-      healthConcernSlugs: testData.healthConcernSlugs || [],
     };
   }, []);
 
@@ -360,20 +362,25 @@ export default function HomePage({ }: HomePageProps) {
         const concernsRef = collection(db, "healthConcerns");
         const q = query(concernsRef, where("isActive", "==", true), orderBy("order", "asc"));
         const querySnapshot = await getDocs(q);
-        const fetchedConcerns: HealthConcern[] = [];
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          fetchedConcerns.push({
-            id: docSnap.id,
-            name: data.name,
-            iconUrl: data.iconUrl,
-            slug: data.slug,
-            order: data.order,
-            isActive: data.isActive,
-          } as HealthConcern);
+        const concerns: HealthConcern[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.name && data.slug) {
+            concerns.push({
+              id: doc.id,
+              name: data.name,
+              slug: data.slug,
+              description: data.description || '',
+              order: data.order || 0,
+              isActive: data.isActive === true,
+              iconName: data.iconName || '',
+              imageUrl: data.imageUrl || '',
+            } as HealthConcern);
+          }
         });
-        console.log("Fetched Health Concerns for Homepage:", fetchedConcerns); // Debug log
-        setDynamicHealthConcerns(fetchedConcerns);
+        concerns.sort((a, b) => a.order - b.order);
+        console.log("Fetched Health Concerns for Homepage:", concerns); // Debug log
+        setDynamicHealthConcerns(concerns);
       } catch (error: any) {
         handleFirestoreError(error, "Health Concerns");
         setDynamicHealthConcerns([]);
@@ -607,66 +614,83 @@ export default function HomePage({ }: HomePageProps) {
     },
   ];
 
-  const renderTestList = (tests: LabTest[], title: string, emptyMessage: string, isLoadingList: boolean, IconComponentProp?: React.ElementType, keyPrefix: string = 'test') => {
+  const renderTestList = (
+    tests: LabTest[],
+    title: string,
+    emptyMessage: string,
+    isLoadingList: boolean,
+    IconComponentProp?: React.ElementType,
+    keyPrefix: string = 'test',
+    layout: 'grid' | 'scroll' = 'scroll'
+  ) => {
     const IconElement = IconComponentProp;
-    return (
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-foreground flex items-center">
-            {IconElement && <IconElement size={22} className="mr-2 text-primary" />}
-            {title}
-            </h2>
-            {title.startsWith("Tests for") && ( // Only show Clear Filter for the filtered list
-                 <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedHealthConcern(null)}
-                    className="text-xs"
-                >
-                    <FilterX className="mr-1.5 h-3.5 w-3.5" /> Clear Filter
-                </Button>
-            )}
-        </div>
 
-        {isLoadingList ? (
-          <div className="flex justify-center items-center py-10">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="ml-3 text-muted-foreground">Loading...</p>
+    const testCardJsx = (test: LabTest, index: number) => (
+      <DynamicLabTestCard
+        key={`${keyPrefix}-${test.docId}-${index}`}
+        test={test}
+        contactDetails={contactDetailsData}
+        onCardClick={handleOpenTestDetailsDialog}
+        userRole={userRole}
+        onAddToCartRequest={handleAddToCartRequest}
+      />
+    );
+
+    const listContent = layout === 'grid' ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {tests.map((test, index) => testCardJsx(test, index))}
+      </div>
+    ) : (
+      <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar relative">
+        {tests.map((test, index) => (
+          <div key={`${keyPrefix}-${test.docId}`} className="w-full min-w-0 sm:min-w-[330px] md:min-w-[350px] max-w-full flex-shrink-0 h-full">
+            {testCardJsx(test, index)}
           </div>
-        ) : tests.length > 0 ? (
-          <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4 popular-tests-scrollbar relative">
-            {tests.map(test => (
-              <div key={`${keyPrefix}-${test.docId}`} className="w-full min-w-0 sm:min-w-[700px] md:min-w-[1050px] max-w-full flex-shrink-0 h-full">
-                <DynamicLabTestCard test={test} contactDetails={contactDetailsData} userRole={userRole} onCardClick={handleOpenTestDetailsDialog} />
+        ))}
+        <div className="pointer-events-none absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-background to-transparent z-10" style={{borderRadius: '0 18px 18px 0'}}></div>
+        <div className="absolute top-1/2 right-4 -translate-y-1/2 z-20 flex items-center">
+          <svg className="w-7 h-7 text-blue-400 animate-bounce-x" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+        <style jsx>{`
+          @keyframes bounce-x {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(8px); }
+          }
+          .animate-bounce-x {
+            animation: bounce-x 1.2s infinite;
+          }
+        `}</style>
+      </div>
+    );
+
+    return (
+      <section className="mb-8" aria-labelledby={`${keyPrefix}-section-title`}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 id={`${keyPrefix}-section-title`} className="text-xl sm:text-2xl font-bold text-foreground flex items-center">
+            {IconElement && <IconElement className="mr-2 h-6 w-6 text-primary" />} {title}
+          </h2>
+        </div>
+        
+        {isLoadingList ? (
+           <div className={layout === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" : "flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4"}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={`${keyPrefix}-skeleton-${index}`} className={layout === 'grid' ? "w-full" : "w-full min-w-0 sm:min-w-[330px] md:min-w-[350px] max-w-full flex-shrink-0 h-full"}>
+                <Skeleton className="w-full h-[480px] rounded-xl" />
               </div>
             ))}
-            {/* Gradient overlay and scroll arrow for horizontal scroll hint */}
-            <div className="pointer-events-none absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-white to-transparent z-10" style={{borderRadius: '0 18px 18px 0'}}></div>
-            <div className="absolute top-1/2 right-4 -translate-y-1/2 z-20 flex items-center">
-              <svg className="w-7 h-7 text-blue-400 animate-bounce-x" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-            <style jsx>{`
-              @keyframes bounce-x {
-                0%, 100% { transform: translateX(0); }
-                50% { transform: translateX(8px); }
-              }
-              .animate-bounce-x {
-                animation: bounce-x 1.2s infinite;
-              }
-            `}</style>
           </div>
+        ) : tests.length > 0 ? (
+          listContent
         ) : (
-          !isLoadingList && (
-            <Alert variant="default" className="shadow-md rounded-xl bg-secondary/50">
-              {IconElement ? <IconElement className="h-5 w-5 text-secondary-foreground" /> : <Info className="h-5 w-5 text-secondary-foreground" />}
-              <AlertTitle className="text-secondary-foreground">{`No ${title.replace(/"/g, '').replace('Popular ','').replace('Package ','')} Available`}</AlertTitle>
-              <AlertDescription className="text-muted-foreground">
-                {emptyMessage}
-              </AlertDescription>
-            </Alert>
-          )
+          <Alert variant="default" className="shadow-md rounded-xl bg-secondary/50">
+            {IconElement ? <IconElement className="h-5 w-5 text-secondary-foreground" /> : <Info className="h-5 w-5 text-secondary-foreground" />}
+            <AlertTitle className="text-secondary-foreground">{`No ${title.replace(/"/g, '').replace('Popular ','').replace('Package ','')} Available`}</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              {emptyMessage}
+            </AlertDescription>
+          </Alert>
         )}
       </section>
     )
@@ -682,6 +706,39 @@ export default function HomePage({ }: HomePageProps) {
       setUserRole('non-member');
     }
   }, []);
+
+  // --- Multi-lab cart logic ---
+  const handleAddToCartRequest = useCallback((itemToAdd: any) => {
+    // Show the awareness pop-up if the cart is not empty, 
+    // contains items from a different lab, and this specific test is not already in the cart.
+    const isNewLab = cartItems.length > 0 && cartItems.some(item => item.labName !== itemToAdd.labName);
+    const isAlreadyMultiLab = new Set(cartItems.map(item => item.labName)).size > 1;
+
+    if (isNewLab && !isAlreadyMultiLab) {
+      setPendingCartItem(itemToAdd);
+      setIsMultiLabDialogOpen(true);
+    } else {
+      // Otherwise, add to cart directly without showing the popup.
+      addToCart(itemToAdd);
+      toast({
+        title: "Added to Cart",
+        description: `${itemToAdd.testName} from ${itemToAdd.labName} added to your cart.`,
+      });
+    }
+  }, [cartItems, addToCart, toast]);
+
+  const handleProceedWithNewLab = useCallback(() => {
+    if (pendingCartItem) {
+      // Just add the pending item to the cart without clearing.
+      addToCart(pendingCartItem);
+      toast({
+        title: "Added to Cart",
+        description: `${pendingCartItem.testName} from ${pendingCartItem.labName} added to your cart.`,
+      });
+    }
+    setIsMultiLabDialogOpen(false);
+    setPendingCartItem(null);
+  }, [pendingCartItem, addToCart, toast]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -811,7 +868,7 @@ export default function HomePage({ }: HomePageProps) {
               ) : dynamicHealthConcerns.length > 0 ? (
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                   {dynamicHealthConcerns.map((concern) => {
-                    const IconComp = healthConcernIconMap[concern.slug] || healthConcernIconMap.default;
+                    const IconComp = (concern.iconName && iconNameToComponentMap[concern.iconName]) || iconNameToComponentMap['default'];
                     const isSelected = selectedHealthConcern?.slug === concern.slug;
                     return (
                       <button
@@ -831,15 +888,16 @@ export default function HomePage({ }: HomePageProps) {
                           "transition-all duration-300 ease-in-out transform group-hover:shadow-lg",
                           isSelected && "border-primary/50 shadow-lg"
                         )}>
-                          {concern.iconUrl && concern.iconUrl.trim() !== '' ? (
+                          {concern.imageUrl && concern.imageUrl.trim() !== '' ? (
                             <Image
-                              src={concern.iconUrl}
+                              src={concern.imageUrl}
                               alt={concern.name}
                               fill
-                              style={{ objectFit: 'cover' }} // Changed from contain to cover
+                              style={{ objectFit: 'cover' }}
                               className="rounded-full group-hover:scale-110 transition-transform duration-300 ease-in-out"
                               sizes="(max-width: 768px) 30vw, (max-width: 1200px) 20vw, 15vw"
                               data-ai-hint={concern.slug || 'health category'}
+                              unoptimized
                             />
                           ) : (
                             <IconComp className="h-7 w-7 sm:h-8 sm:h-8 text-primary transition-colors duration-200 group-hover:text-primary/80" />
@@ -867,7 +925,8 @@ export default function HomePage({ }: HomePageProps) {
                 `${t('no_active_tests_for')} "${selectedHealthConcern.name}". ${t('try_another_category')}`,
                 isLoadingFilteredTests,
                 ListFilter,
-                'filtered'
+                'filtered',
+                'grid'
               )}
             </div>
           )}
@@ -912,8 +971,8 @@ export default function HomePage({ }: HomePageProps) {
             </Card>
           </section>
 
-          {renderTestList(popularLabTests, t('popular_lab_tests'), t('no_popular_lab_tests'), isLoadingPopular, Sparkles, 'popular')}
-          {renderTestList(packageLabTests, t('packages'), t('no_packages_available'), isLoadingPackages, Package, 'package')}
+          {renderTestList(popularLabTests, t('popular_lab_tests'), "No popular tests available right now.", isLoadingPopular, Sparkles, 'popular', 'scroll')}
+          {renderTestList(packageLabTests, t('health_packages'), "No packages available at the moment.", isLoadingPackages, Package, 'package', 'scroll')}
         </div>
 
         <Dialog open={isDetailsDialogOpen} onOpenChange={handleDialogClose}>
@@ -971,6 +1030,39 @@ export default function HomePage({ }: HomePageProps) {
           </DialogContent>
         </Dialog>
 
+        {/* --- Multi-Lab Warning Dialog --- */}
+        <Dialog open={isMultiLabDialogOpen} onOpenChange={setIsMultiLabDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+            <DialogHeader className="text-center p-6">
+              <div className="flex justify-center mb-4">
+                <AlertTriangle className="h-12 w-12 text-amber-500" />
+              </div>
+              <DialogTitleComponent className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                Multiple Labs Involved
+              </DialogTitleComponent>
+              <DialogDescriptionComponent className="pt-2 text-base text-gray-500 dark:text-gray-400">
+                Please be aware: Your selected tests will be processed by different labs.
+              </DialogDescriptionComponent>
+            </DialogHeader>
+            <div className="px-6 pb-6 text-center">
+                <p className="text-gray-600 dark:text-gray-300">Do you wish to proceed?</p>
+            </div>
+            <DialogFooter className="flex justify-center gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setIsMultiLabDialogOpen(false)}>
+                No, Cancel
+              </Button>
+              <Button 
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                onClick={handleProceedWithNewLab}
+              >
+                Yes, Proceed
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <style jsx global>{`
           body { 

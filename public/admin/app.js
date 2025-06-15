@@ -402,7 +402,7 @@ async function loadTests() {
     );
     let rowsAdded = 0;
     for (const testData of testsArray) {
-      testsListCache.push({ id: testData.id, name: testData.testName });
+      testsListCache.push({ ...testData, id: testData.id });
       if (searchValue) {
         const name = (testData.testName || "").toLowerCase().trim();
         let tagsArr = [];
@@ -461,10 +461,18 @@ async function loadTests() {
       row.insertCell().textContent = testData.testName || "N/A";
       const descCell = row.insertCell();
       descCell.className = "test-description-cell";
-      descCell.innerHTML = (testData.description || "N/A").replace(
-        /\n/g,
-        "<br>",
-      );
+      const descHtml = (testData.description || "N/A").replace(/\n/g, "<br>");
+      descCell.innerHTML = `<div class="desc-preview">${descHtml}</div><span class="read-more-link">Read more</span>`;
+      const readMoreLink = descCell.querySelector('.read-more-link');
+      readMoreLink.addEventListener('click', function() {
+        if (descCell.classList.contains('expanded')) {
+          descCell.classList.remove('expanded');
+          readMoreLink.textContent = 'Read more';
+        } else {
+          descCell.classList.add('expanded');
+          readMoreLink.textContent = 'Show less';
+        }
+      });
 
       const imageCell = row.insertCell();
       if (testData.imageUrl) {
@@ -535,31 +543,30 @@ async function loadHealthConcernsForAdmin() {
     querySnapshot.forEach((docSnap) => {
       const hcData = docSnap.data();
       const hcId = docSnap.id;
+      // CORRECTED CACHE: Store the full object for the edit modal
       healthConcernsListCache.push({
         id: hcId,
-        name: hcData.name,
-        slug: hcData.slug,
-        iconUrl: hcData.iconUrl,
-        order: hcData.order,
-        isActive: hcData.isActive,
+        ...hcData,
       });
 
       const row = hcTableBody.insertRow();
       row.insertCell().textContent = hcData.name || "N/A";
 
       const iconCell = row.insertCell();
-      if (hcData.iconUrl) {
+      // CORRECTED: Check for imageUrl
+      if (hcData.imageUrl) {
         const img = document.createElement("img");
-        img.src = hcData.iconUrl;
+        // CORRECTED: Use imageUrl
+        img.src = hcData.imageUrl;
         img.alt = hcData.name || "Icon";
         img.classList.add("health-concern-icon-thumbnail");
         img.onerror = function () {
           this.style.display = "none";
-          iconCell.textContent = "Invalid Icon";
+          iconCell.textContent = "Invalid Img";
         };
         iconCell.appendChild(img);
       } else {
-        iconCell.textContent = "No Icon";
+        iconCell.textContent = hcData.iconName ? `Icon: ${hcData.iconName}` : "No Image";
       }
 
       row.insertCell().textContent =
@@ -1281,26 +1288,31 @@ async function handleAddTestFormSubmit(event) {
 
 async function handleAddHealthConcernFormSubmit(event) {
   event.preventDefault();
-  const nameInput = document.getElementById("hc-name-input");
-  const orderInput = document.getElementById("hc-display-order-input");
-  const iconUrlInput = document.getElementById("hc-icon-url-input");
-  const isActiveCheckbox = document.getElementById("hc-is-active-checkbox");
 
-  if (!nameInput || !orderInput || !iconUrlInput || !isActiveCheckbox) {
+  const nameInput = document.getElementById("hc-name-input");
+  // CORRECTED: Get iconName dropdown and imageUrl input
+  const iconNameInput = document.getElementById("hc-icon-name-input");
+  const imageUrlInput = document.getElementById("hc-icon-url-input"); // Changed from iconUrl
+  const orderInput = document.getElementById("hc-order-input");
+  const isActiveInput = document.getElementById("hc-is-active-input");
+
+  if (!nameInput || !iconNameInput || !imageUrlInput || !orderInput || !isActiveInput) {
     showToast(
-      "Error: Health concern form elements are missing in the HTML.",
+      "Error: One or more health concern form elements are missing.",
       "error",
     );
     return;
   }
-
   const name = nameInput.value.trim();
+  const slug = generateSlug(name);
   const order = parseInt(orderInput.value, 10);
-  const iconUrl = iconUrlInput.value.trim();
-  const isActive = isActiveCheckbox.checked;
+  const isActive = isActiveInput.checked;
+  // CORRECTED: Get values from correct inputs
+  const iconName = iconNameInput.value;
+  const imageUrl = imageUrlInput.value.trim();
 
   if (!name) {
-    showToast("Health Concern name is required.", "error");
+    showToast("Health concern name is required.", "error");
     return;
   }
   if (isNaN(order)) {
@@ -1308,30 +1320,29 @@ async function handleAddHealthConcernFormSubmit(event) {
     return;
   }
 
-  const slug = generateSlug(name);
   const newHcData = {
     name,
     slug,
     order,
-    iconUrl: iconUrl || null,
     isActive,
-    // createdAt and lastUpdatedAt will be handled by firestoreRequest
+    // CORRECTED: Save both iconName and imageUrl
+    iconName: iconName || "default", // Fallback to 'default' if not selected
+    imageUrl: imageUrl || null,
   };
-  console.log("Saving new Health Concern with data:", newHcData);
+  console.log("Saving new Health Concern:", newHcData);
 
   try {
     await firestoreRequest("addDoc", "healthConcerns", null, newHcData);
-    showToast("Health Concern added successfully!", "success");
+    showToast("Health concern added successfully!", "success");
     event.target.reset();
-    const hcIconPreviewImg = document.getElementById("hc-icon-preview-img");
-    if (hcIconPreviewImg) {
-      hcIconPreviewImg.style.display = "none";
-      hcIconPreviewImg.src = "#";
+    const previewImg = document.getElementById("hc-icon-preview-img");
+    if (previewImg) {
+      previewImg.style.display = "none";
+      previewImg.src = "#";
     }
     loadHealthConcernsForAdmin();
   } catch (error) {
-    // Error already shown by firestoreRequest
-    console.error("Error adding health concern:", error);
+    // Error is logged and shown by firestoreRequest
   }
 }
 
@@ -1755,24 +1766,15 @@ function openEditHealthConcernModal(hcData, hcId) {
   const form = document.getElementById("edit-health-concern-form-modal");
   const idInput = document.getElementById("edit-hc-id-modal-input");
   const nameInput = document.getElementById("edit-hc-name-modal-input");
-  const orderInput = document.getElementById(
-    "edit-hc-display-order-modal-input",
-  );
-  const iconUrlInput = document.getElementById("edit-hc-icon-url-modal-input");
+  // CORRECTED: Get iconName dropdown and imageUrl input by new IDs
+  const iconNameInput = document.getElementById("edit-hc-icon-name-modal-input");
+  const imageUrlInput = document.getElementById("edit-hc-icon-url-modal-input"); // Changed from iconUrl
   const iconPreview = document.getElementById("edit-hc-icon-preview-modal-img");
-  const isActiveCheckbox = document.getElementById(
-    "edit-hc-is-active-modal-checkbox",
-  );
-
+  const orderInput = document.getElementById("edit-hc-order-modal-input");
+  const isActiveInput = document.getElementById("edit-hc-is-active-modal-input");
+  
   if (
-    !modal ||
-    !form ||
-    !idInput ||
-    !nameInput ||
-    !orderInput ||
-    !iconUrlInput ||
-    !iconPreview ||
-    !isActiveCheckbox
+    !modal || !form || !idInput || !nameInput || !iconNameInput || !imageUrlInput || !iconPreview || !orderInput || !isActiveInput
   ) {
     console.warn("Edit Health Concern modal elements not all found.");
     showToast("Error: Could not open edit health concern form.", "error");
@@ -1783,15 +1785,20 @@ function openEditHealthConcernModal(hcData, hcId) {
   idInput.value = hcId;
   nameInput.value = hcData.name || "";
   orderInput.value = hcData.order !== undefined ? hcData.order : 0;
-  iconUrlInput.value = hcData.iconUrl || "";
-  if (hcData.iconUrl) {
-    iconPreview.src = hcData.iconUrl;
+  isActiveInput.checked = hcData.isActive === undefined ? true : hcData.isActive;
+
+  // CORRECTED: Populate iconName dropdown and imageUrl input
+  populateIconNameDropdown("edit-hc-icon-name-modal-input"); // Ensure dropdown is populated
+  iconNameInput.value = hcData.iconName || "default";
+  imageUrlInput.value = hcData.imageUrl || "";
+
+  if (hcData.imageUrl) {
+    iconPreview.src = hcData.imageUrl;
     iconPreview.style.display = "block";
   } else {
     iconPreview.src = "#";
     iconPreview.style.display = "none";
   }
-  isActiveCheckbox.checked = hcData.isActive || false;
 
   setupImageUpload(
     "edit-hc-icon-file-modal-input",
@@ -1801,14 +1808,8 @@ function openEditHealthConcernModal(hcData, hcId) {
   );
   openModal("edit-health-concern-modal");
 
-  // Remove any previous event listener before adding
   form.onsubmit = null;
   form.addEventListener("submit", handleEditHealthConcernFormSubmit);
-
-  if (modal) {
-    const content = modal.querySelector('.modal-content');
-    if (content) content.classList.add('dark');
-  }
 }
 
 function openEditOfferModal(offerData, offerId) {
@@ -2375,31 +2376,32 @@ async function handleEditTestFormSubmit(event) {
 async function handleEditHealthConcernFormSubmit(event) {
   event.preventDefault();
   if (!currentEditingHcId) {
-    showToast("No Health Concern selected for editing.", "error");
+    showToast("No health concern selected for editing.", "error");
     return;
   }
 
   const nameInput = document.getElementById("edit-hc-name-modal-input");
-  const orderInput = document.getElementById(
-    "edit-hc-display-order-modal-input",
-  );
-  const iconUrlInput = document.getElementById("edit-hc-icon-url-modal-input");
-  const isActiveCheckbox = document.getElementById(
-    "edit-hc-is-active-modal-checkbox",
-  );
-
-  if (!nameInput || !orderInput || !iconUrlInput || !isActiveCheckbox) {
-    showToast("Error: Edit health concern form elements are missing.", "error");
+  // CORRECTED: Get iconName dropdown and imageUrl input
+  const iconNameInput = document.getElementById("edit-hc-icon-name-modal-input");
+  const imageUrlInput = document.getElementById("edit-hc-icon-url-modal-input"); // Changed from iconUrl
+  const orderInput = document.getElementById("edit-hc-order-modal-input");
+  const isActiveInput = document.getElementById("edit-hc-is-active-modal-input");
+  
+  if (!nameInput || !iconNameInput || !imageUrlInput || !orderInput || !isActiveInput) {
+    showToast("Edit health concern form elements missing.", "error");
     return;
   }
 
   const name = nameInput.value.trim();
+  const slug = generateSlug(name);
   const order = parseInt(orderInput.value, 10);
-  const iconUrl = iconUrlInput.value.trim();
-  const isActive = isActiveCheckbox.checked;
+  const isActive = isActiveInput.checked;
+  // CORRECTED: Get values from correct inputs
+  const iconName = iconNameInput.value;
+  const imageUrl = imageUrlInput.value.trim();
 
   if (!name) {
-    showToast("Health Concern name is required.", "error");
+    showToast("Health concern name is required.", "error");
     return;
   }
   if (isNaN(order)) {
@@ -2407,20 +2409,19 @@ async function handleEditHealthConcernFormSubmit(event) {
     return;
   }
 
-  const slug = generateSlug(name);
   const updatedHcData = {
     name,
     slug,
     order,
-    iconUrl: iconUrl || null,
     isActive,
-    // lastUpdatedAt handled by firestoreRequest
+    // CORRECTED: Save both iconName and imageUrl
+    iconName: iconName || "default",
+    imageUrl: imageUrl || null,
   };
   console.log(
     "Updating Health Concern (ID: " + currentEditingHcId + ") with data:",
     updatedHcData,
   );
-
   try {
     await firestoreRequest(
       "updateDoc",
@@ -2428,7 +2429,7 @@ async function handleEditHealthConcernFormSubmit(event) {
       currentEditingHcId,
       updatedHcData,
     );
-    showToast("Health Concern updated successfully!", "success");
+    showToast("Health concern updated successfully!", "success");
     closeModal("edit-health-concern-modal");
     loadHealthConcernsForAdmin();
   } catch (error) {
@@ -3555,6 +3556,7 @@ function switchTab(tabId) {
     }
   } else if (tabId === "manage-health-concerns-tab") {
     loadHealthConcernsForAdmin();
+    populateIconNameDropdown("hc-icon-name-input");
     setupImageUpload(
       "hc-icon-file-input",
       "hc-icon-url-input",
@@ -3652,7 +3654,7 @@ async function initializeAppMainLogic() {
   try {
     // Robust, delegated event listener for all modal close buttons
     document.addEventListener('click', function(event) {
-        const closeButton = event.target.closest('.close-btn');
+        const closeButton = event.target.closest('.close-modal-btn');
         if (closeButton) {
             const modal = closeButton.closest('.modal');
             if (modal && typeof closeModal === 'function') {
@@ -3680,32 +3682,32 @@ if (
   firebaseAuthFunctions &&
   firebaseFirestoreFunctions
 ) {
-  console.log(
+          console.log(
     "app.js: Firebase services successfully imported from firebase-config.js.",
   );
 
   // Set up the primary authentication state listener
   firebaseAuthFunctions.onAuthStateChanged(authInstance, (user) => {
-    if (user) {
+        if (user) {
       console.log("Auth state changed: User is signed in.", user.uid);
-      // --- Restrict admin access ---
-      if (
-        !allowedAdminUIDs.includes(user.uid) &&
-        !allowedAdminEmails.includes(user.email)
-      ) {
+          // --- Restrict admin access ---
+          if (
+            !allowedAdminUIDs.includes(user.uid) &&
+            !allowedAdminEmails.includes(user.email)
+          ) {
         showToast("You are not authorized to access the admin panel.", "error");
         firebaseAuthFunctions.signOut(authInstance); // Sign out unauthorized user
         // The listener will fire again with user=null, showing the login screen.
-        return;
-      }
+            return;
+          }
       // Add UID to allowlist if not present (for convenience)
       if (!allowedAdminUIDs.includes(user.uid)) {
           allowedAdminUIDs.push(user.uid);
       }
-      showDashboardUI(user);
-    } else {
+          showDashboardUI(user);
+        } else {
       console.log("Auth state changed: No user signed in.");
-      showLoginScreen();
+        showLoginScreen();
     }
   });
 
@@ -4537,6 +4539,14 @@ function openCrmUserProfileModal(userId) {
 
   // Show modal
   modal.style.display = "flex";
+
+  // Attach close handler to the X button
+  const closeBtn = modal.querySelector('.close-modal-btn');
+  if (closeBtn) {
+    closeBtn.onclick = function() {
+      closeModal('crm-user-profile-modal');
+    };
+  }
 }
 
 // --- Wallet Accounts Tab Logic ---
@@ -4958,4 +4968,99 @@ function fetchWithTimeout(resource, options = {}, timeout = 10000) {
       setTimeout(() => reject(new Error('Request timed out')), timeout)
     )
   ]);
+}
+
+// ... existing code ...
+// --- GLOBAL DELEGATED EVENT LISTENER FOR EDIT BUTTONS ---
+document.addEventListener('click', function(event) {
+    const editBtn = event.target.closest('.edit-btn');
+    if (editBtn) {
+        const id = editBtn.getAttribute('data-id');
+        const type = editBtn.getAttribute('data-type');
+        const bannerType = editBtn.getAttribute('data-banner-type'); // For banners
+
+        if (!id || !type) return;
+
+        // Prevent default action for links or buttons
+        event.preventDefault();
+
+        if (type === 'lab') {
+            const labData = labsListCache.find(l => l.id === id);
+            if (labData) openEditLabModal(labData, id);
+            else showToast('Lab data not found in cache.', 'error');
+        } else if (type === 'test') {
+            const testData = testsListCache.find(t => t.id === id);
+            if (testData) openEditTestModal(testData, id);
+            else showToast('Test data not found in cache.', 'error');
+        } else if (type === 'healthConcern') {
+            const hcData = healthConcernsListCache.find(hc => hc.id === id);
+            if (hcData) openEditHealthConcernModal(hcData, id);
+            else showToast('Health Concern data not found in cache.', 'error');
+        } else if (type === 'offer') {
+             firestoreRequest("getDoc", "offers", id).then(docSnap => {
+                if (docSnap.exists()) {
+                    openEditOfferModal(docSnap.data(), id);
+                } else {
+                    showToast('Offer not found.', 'error');
+                }
+            }).catch(err => showToast(`Error fetching offer: ${err.message}`, 'error'));
+        } else if (type === 'prescriptionStatus') {
+            firestoreRequest("getDoc", "prescriptions", id).then(docSnap => {
+                if (docSnap.exists()) {
+                    openUpdatePrescriptionStatusModal(docSnap.data(), id);
+                } else {
+                    showToast('Prescription not found.', 'error');
+                }
+            }).catch(err => showToast(`Error fetching prescription: ${err.message}`, 'error'));
+        } else if (type === 'banner' && bannerType) {
+            const collection = bannerType === 'primary' ? 'promotionalBanners' : 'secondaryPromotionalBanners';
+            firestoreRequest("getDoc", collection, id).then(docSnap => {
+                if (docSnap.exists()) {
+                    openEditBannerModal(docSnap.data(), id, bannerType);
+                } else {
+                    showToast('Banner not found.', 'error');
+                }
+            }).catch(err => showToast(`Error fetching banner: ${err.message}`, 'error'));
+        }
+    }
+});
+
+
+// --- GLOBAL DELEGATED EVENT LISTENER FOR DELETE BUTTONS ---
+document.addEventListener('click', function(event) {
+    const deleteBtn = event.target.closest('.delete-btn');
+    if (deleteBtn) {
+        const id = deleteBtn.getAttribute('data-id');
+        const type = deleteBtn.getAttribute('data-type');
+        const bannerType = deleteBtn.getAttribute('data-banner-type');
+
+        if (!id || !type) return;
+
+        // Prevent default action for links or buttons
+        event.preventDefault();
+
+        deleteItem(id, type, bannerType);
+    }
+});
+
+
+// Remove the duplicated/old/problematic listener block
+// The new listeners above handle all cases including modals.
+// --- REMOVED `initializeAppMainLogic` content that added bad listeners ---
+
+const availableIconNames = [
+  'user-check', 'droplet', 'heart', 'thermometer', 'activity', 
+  'bone', 'brain', 'baby', 'flask-conical', 'default'
+];
+
+function populateIconNameDropdown(selectElementId) {
+  const select = document.getElementById(selectElementId);
+  if (!select) return;
+  select.innerHTML = ''; // Clear existing
+  availableIconNames.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    select.appendChild(option);
+  });
 }

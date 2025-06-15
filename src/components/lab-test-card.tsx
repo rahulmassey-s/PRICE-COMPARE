@@ -29,9 +29,10 @@ interface LabTestCardProps {
   contactDetails: ContactDetails;
   onCardClick?: (test: LabTest) => void;
   userRole?: 'member' | 'non-member' | 'admin';
+  onAddToCartRequest?: (itemToAdd: any) => void;
 }
 
-function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'non-member' }: LabTestCardProps) {
+function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'non-member', onAddToCartRequest }: LabTestCardProps) {
   console.log('LabTestCard received test:', test); 
 
   const [expandedLabPriceId, setExpandedLabPriceId] = useState<string | null>(null);
@@ -146,6 +147,13 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         ? priceInfo.memberPrice
         : undefined,
     };
+    
+    if (onAddToCartRequest) {
+      onAddToCartRequest(itemToAdd);
+      return; // Return early as the handler will show its own toast
+    }
+
+    // Fallback original logic
     addToCart(itemToAdd);
     toast({
       title: "Added to Cart",
@@ -177,7 +185,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         variant: "default",
       });
     }
-  }, [addToCart, test, userRole, minMemberPrice, minNonMemberPrice, toast]);
+  }, [addToCart, test, userRole, minMemberPrice, minNonMemberPrice, toast, onAddToCartRequest]);
 
   const handleRemoveFromCart = useCallback((priceInfo: LabPriceType) => {
     removeFromCart(test.docId, priceInfo.labName);

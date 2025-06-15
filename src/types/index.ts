@@ -31,6 +31,7 @@ export interface UserDetails {
   email: string | null;
   displayName: string | null; // Changed from optional to string | null
   phoneNumber: string | null; // Changed from optional to string | null
+  role?: 'non-member' | 'member' | 'admin'; // Role of the user
   createdAt?: Date; // Firestore Timestamp converted to JS Date
   lastUpdatedAt?: Date; // Firestore Timestamp converted to JS Date
   membershipStartDate?: Date | Timestamp | null; // Added for membership feature
@@ -72,6 +73,17 @@ export interface PromotionalBanner {
   order: number; // For sequencing banners
   createdAt?: Date | Timestamp; // Allow both Date and Timestamp
   lastUpdatedAt?: Date | Timestamp; // Allow both Date and Timestamp
+}
+
+export interface HealthConcern {
+  id: string; // Firestore document ID
+  name: string;
+  slug: string;
+  description?: string;
+  iconName?: string; // For UI, maps to an icon component
+  imageUrl?: string;
+  isActive: boolean;
+  order: number;
 }
 
 // Represents a document in the 'tests' collection (main test definition)
