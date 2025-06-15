@@ -110,14 +110,14 @@ async function getTokensForTargetGroup(target, userId) {
  * Sends a notification payload to a list of tokens and handles failures.
  * @param {Array<string>} tokens - The list of FCM tokens to send to.
  * @param {object} notificationPayload - The data payload for the notification.
- * @returns {Promise<{successCount: number, failureCount: number, errors: Array<object>, staleTokens: Array<string>}>} A detailed report of the send operation.
+ * @returns {Promise<{successCount: number, failureCount: number, responses: Array<object>, errors: Array<object>, staleTokens: Array<string>}>} A detailed report of the send operation.
  */
 async function sendNotification(tokens, notificationPayload) {
     const messaging = admin.messaging(); // Lazy-load the service
 
     if (!tokens || tokens.length === 0) {
         console.log("No tokens provided, skipping notification send.");
-        return { successCount: 0, failureCount: 0, errors: [{error: "No tokens provided"}], staleTokens: [] };
+        return { successCount: 0, failureCount: 0, responses: [], errors: [{error: "No tokens provided"}], staleTokens: [] };
     }
 
     // FCM requires all data payload values to be strings.
@@ -151,6 +151,7 @@ async function sendNotification(tokens, notificationPayload) {
         const report = {
             successCount: response.successCount,
             failureCount: response.failureCount,
+            responses: response.responses,
             errors: [],
             staleTokens: []
         };
@@ -184,6 +185,7 @@ async function sendNotification(tokens, notificationPayload) {
         return { 
             successCount: 0, 
             failureCount: tokens.length, 
+            responses: [],
             errors: [{ error: error.message }], 
             staleTokens: [] 
         };
