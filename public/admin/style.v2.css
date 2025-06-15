@@ -1,0 +1,29 @@
+/* Modal custom styles for better readability */
+.modal-content {
+    background-color: #ffffff;
+    color: #333;
+    border-radius: 8px;
+}
+
+.modal-header {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+    color: #111827;
+}
+
+.close-btn {
+    color: #9ca3af;
+}
+.close-btn:hover {
+    color: #111827;
+}
+
+.table th {
+    color: #374151;
+}
+
+.table td {
+    color: #4b5563;
+} 

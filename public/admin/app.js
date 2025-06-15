@@ -3606,680 +3606,73 @@ function switchTab(tabId) {
 }
 
 function showDashboardUI(user) {
-  // Debug log for troubleshooting
-  console.log("DEBUG: Logged in user:", user.uid, user.email);
-  // --- Allowlist check before rendering dashboard (case-insensitive email) ---
-  if (
-    !allowedAdminUIDs.includes(user.uid) &&
-    !allowedAdminEmails.some(
-      (e) => e.toLowerCase() === (user.email || "").toLowerCase(),
-    )
-  ) {
-    showToast("You are not authorized to access the admin panel.", "error");
-    if (
-      authInstance &&
-      firebaseAuthFunctions &&
-      firebaseAuthFunctions.signOut
-    ) {
-      firebaseAuthFunctions.signOut(authInstance);
-    }
-    showLoginScreen();
-    return;
-  }
   console.log("showDashboardUI called for user:", user.email);
-  if (loaderContainer) loaderContainer.classList.remove("active");
-  if (loginContainer) loginContainer.style.display = "none";
-  if (dashboardContainer) dashboardContainer.style.display = "flex"; // Use flex for sidebar layout
 
-  if (adminUserEmailElement) adminUserEmailElement.textContent = user.email;
+  // Forcefully hide loader/login and show the dashboard.
+  const loader = document.getElementById("loader-container");
+  const login = document.getElementById("login-container");
+  const dashboard = document.getElementById("dashboard-container");
+  const adminUserEmail = document.getElementById("admin-user-email");
 
-  if (!initializeDashboardTabsAndContent()) {
-    console.error("Failed to initialize dashboard tabs. UI may be incomplete.");
-    // showLoader(false) will still be called to hide loader.
-  }
+  if (loader) loader.style.display = "none";
+  if (login) login.style.display = "none";
+  if (dashboard) dashboard.style.display = "flex";
+  if (adminUserEmail) adminUserEmail.textContent = user.email;
 
-  // Load initial data for the default active tab (Manage Labs)
-  // Also pre-load labs for dropdowns if not already cached
-  loadLabs()
-    .then(() => {
-      // Ensure labs are loaded for dropdowns
-      console.log("Labs loaded, now switching to default tab.");
-      const initialActiveTab =
-        document.querySelector(".tab-button.active")?.dataset.tab ||
-        "manage-labs-tab";
-      switchTab(initialActiveTab);
-    })
-    .catch((error) => {
-      console.error("Error loading initial labs for dashboard:", error);
-      showToast("Could not load initial lab data.", "error");
-      const initialActiveTab =
-        document.querySelector(".tab-button.active")?.dataset.tab ||
-        "manage-labs-tab";
-      switchTab(initialActiveTab); // Still try to switch tab
-    });
-
-  // Pre-load health concerns for checkboxes
-  loadHealthConcernsForAdmin()
-    .then(() => {
-      console.log("Health concerns pre-loaded for admin forms.");
-    })
-    .catch((error) => {
-      console.error("Error pre-loading health concerns:", error);
-    });
-
-  // Pre-load tests for offer form dropdowns
-  loadTestsForOfferForm("offer-test-id-input"); // Prime the add offer form's select
-  // Also prime the edit offer form's select if it exists (it might not be in DOM yet)
-  const editOfferTestSelect = document.getElementById(
-    "edit-offer-test-id-modal-input",
-  );
-  if (editOfferTestSelect) {
-    loadTestsForOfferForm("edit-offer-test-id-modal-input");
-  }
-
-  showLoader(false); // Ensure loader is hidden
+  // Initialize tabs and load initial data
+  initializeDashboardTabsAndContent();
+  loadLabs();
+  loadHealthConcernsForAdmin();
+  loadTestsForOfferForm("offer-test-id-input");
+  loadNotificationHistory();
+  setupBookingNotificationListener();
 }
 
 function showLoginScreen() {
   console.log("showLoginScreen called.");
-  if (loaderContainer) loaderContainer.classList.remove("active");
-  if (dashboardContainer) dashboardContainer.style.display = "none";
-  if (loginContainer) loginContainer.style.display = "flex";
-  showLoader(false); // Ensure loader is hidden
+  // Forcefully hide loader and dashboard, and show the login form.
+  const loader = document.getElementById("loader-container");
+  const login = document.getElementById("login-container");
+  const dashboard = document.getElementById("dashboard-container");
+
+  if (loader) {
+    loader.style.display = "none";
+  }
+  if (dashboard) {
+    dashboard.style.display = "none";
+  }
+  if (login) {
+    login.style.display = "flex";
+  }
 }
 
 async function initializeAppMainLogic() {
-  console.log("Attempting to initialize app logic...");
-  showLoader(true);
+  console.log("Initializing app main logic...");
 
-  if (!checkEssentialElements()) {
-    // checkEssentialElements already shows a critical error banner and hides loader
-    return;
-  }
-
-  console.log("Essential HTML elements found.");
-  console.log("Imported Firebase services:", {
-    authInstance,
-    dbInstance,
-    firebaseAuthFunctions,
-    firebaseFirestoreFunctions,
-    firebaseStorageFunctions,
-  });
-
-  if (
-    !authInstance ||
-    !dbInstance ||
-    !firebaseAuthFunctions ||
-    !firebaseFirestoreFunctions
-  ) {
-    const errorMsg =
-      "CRITICAL ERROR: Imported Firebase services (authInstance, dbInstance, or function groups) are not defined. Check firebase-config.js imports/exports.";
-    console.error(errorMsg);
-    if (criticalErrorBanner) {
-      criticalErrorBanner.textContent = errorMsg;
-      criticalErrorBanner.style.display = "block";
-    }
-    showLoader(false);
-    return;
-  }
-  console.log("Firebase services successfully imported and checked in app.js.");
-
-  // Setup general event listeners that are always present
-  if (logoutButton) {
-    logoutButton.addEventListener("click", async () => {
-      try {
-        if (
-          authInstance &&
-          firebaseAuthFunctions &&
-          firebaseAuthFunctions.signOut
-        ) {
-          await firebaseAuthFunctions.signOut(authInstance);
-          console.log("User logged out.");
-          // onAuthStateChanged will handle UI update to login screen
-        } else {
-          console.error(
-            "Auth service or signOut function not available for logout.",
-          );
-          showToast("Logout failed: Auth service unavailable.", "error");
-        }
-      } catch (error) {
-        console.error("Logout error:", error);
-        showToast("Logout failed: " + error.message, "error");
-      }
-    });
-  } else {
-    console.warn("Logout button not found.");
-  }
-
-  document.querySelectorAll(".close-modal-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const modal = btn.closest(".modal");
-      if (modal) closeModal(modal.id);
-    });
-  });
-
-  // Modal closing on escape key
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      document.querySelectorAll(".modal").forEach((modal) => {
-        if (modal.style.display === "flex") {
-          closeModal(modal.id);
-        }
-      });
-    }
-  });
-
-  // Setup static form listeners
-  addLabForm = document.getElementById("add-lab-form");
-  if (addLabForm) addLabForm.addEventListener("submit", handleAddLabFormSubmit);
-  else console.warn("Add Lab form not found.");
-
-  addTestForm = document.getElementById("add-test-form");
-  if (addTestForm)
-    addTestForm.addEventListener("submit", handleAddTestFormSubmit);
-  else console.warn("Add Test form (add-test-form) not found.");
-
-  addHealthConcernForm = document.getElementById("add-health-concern-form");
-  if (addHealthConcernForm)
-    addHealthConcernForm.addEventListener(
-      "submit",
-      handleAddHealthConcernFormSubmit,
-    );
-  else
-    console.warn(
-      "Add Health Concern form (add-health-concern-form) not found.",
-    );
-
-  addOfferForm = document.getElementById("add-offer-form");
-  if (addOfferForm)
-    addOfferForm.addEventListener("submit", handleAddOfferFormSubmit);
-  else console.warn("Add Offer form (add-offer-form) not found.");
-
-  addPrimaryBannerForm = document.getElementById("add-primary-banner-form");
-  if (addPrimaryBannerForm)
-    addPrimaryBannerForm.addEventListener("submit", (e) =>
-      handleAddBannerFormSubmit(e, "primary"),
-    );
-  else console.warn("Add Primary Banner form not found.");
-
-  addSecondaryBannerForm = document.getElementById("add-secondary-banner-form");
-  if (addSecondaryBannerForm)
-    addSecondaryBannerForm.addEventListener("submit", (e) =>
-      handleAddBannerFormSubmit(e, "secondary"),
-    );
-  else console.warn("Add Secondary Banner form not found.");
-
-  siteSettingsForm = document.getElementById("site-settings-form");
-  if (siteSettingsForm)
-    siteSettingsForm.addEventListener("submit", handleSiteSettingsFormSubmit);
-  else console.warn("Site Settings form not found.");
-
-  themeSettingsForm = document.getElementById("theme-settings-form");
-  if (themeSettingsForm)
-    themeSettingsForm.addEventListener("submit", handleThemeSettingsFormSubmit);
-  else console.warn("Theme Settings form not found.");
-
-  // Listeners for edit forms are attached when modals are opened (see openEdit...Modal functions)
-  // Setup for Excel import/export button
-  dashboardExportExcelBtn = document.getElementById(
-    "dashboard-export-excel-btn",
-  );
-  if (dashboardExportExcelBtn) {
-    dashboardExportExcelBtn.addEventListener("click", exportTestsToExcel);
-  } else {
-    console.warn(
-      "Export to Excel button (dashboard-export-excel-btn) not found.",
-    );
-  }
-
-  dashboardImportExcelFile = document.getElementById(
-    "dashboard-import-excel-file",
-  );
-  dashboardImportExcelSubmitBtn = document.getElementById(
-    "dashboard-import-excel-submit-btn",
-  );
-  if (dashboardImportExcelSubmitBtn && dashboardImportExcelFile) {
-    dashboardImportExcelSubmitBtn.addEventListener("click", () => {
-      if (dashboardImportExcelFile.files.length > 0) {
-        handleExcelImport(dashboardImportExcelFile.files[0]);
-      } else {
-        showToast("Please select an Excel file to import.", "info");
-      }
-    });
-  } else {
-    console.warn("Excel import file input or submit button not found.");
-  }
-
-  importDefaultQuickTestsBtn = document.getElementById(
-    "import-quick-tests-btn",
-  );
-  if (importDefaultQuickTestsBtn) {
-    importDefaultQuickTestsBtn.addEventListener(
-      "click",
-      importQuickSelectTests,
-    );
-  } else {
-    console.warn(
-      "Import Default Quick Tests button (import-quick-tests-btn) not found.",
-    );
-  }
-
-  // Setup event delegation for tables (Edit/Delete/View Bookings/Update Status buttons)
-  const mainContentArea = document.querySelector(".main-content");
-  if (mainContentArea) {
-    mainContentArea.addEventListener("click", async (event) => {
-      const targetButton = event.target.closest("button");
-      if (!targetButton) return;
-
-      const id = targetButton.dataset.id;
-      const type = targetButton.dataset.type;
-
-      if (targetButton.classList.contains("edit-btn") && id && type) {
-        console.log(`Edit button clicked for type: ${type}, ID: ${id}`);
-        try {
-          const collectionName =
-            type === "banner"
-              ? targetButton.dataset.bannerType === "primary"
-                ? "promotionalBanners"
-                : "secondaryPromotionalBanners"
-              : type === "healthConcern"
-                ? "healthConcerns"
-                : type === "prescriptionStatus"
-                  ? "prescriptions"
-                  : `${type}s`;
-          const docSnap = await firestoreRequest("getDoc", collectionName, id);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (type === "lab") openEditLabModal(data, id);
-            else if (type === "test") openEditTestModal(data, id);
-            else if (type === "healthConcern")
-              openEditHealthConcernModal(data, id);
-            else if (type === "offer") openEditOfferModal(data, id);
-            else if (type === "prescriptionStatus")
-              openUpdatePrescriptionStatusModal(data, id);
-            else if (type === "banner")
-              openEditBannerModal(data, id, targetButton.dataset.bannerType);
-          } else {
-            showToast(`${type} not found for editing.`, "error");
-          }
-        } catch (error) {
-          showToast(
-            `Error fetching ${type} for editing. ` + error.message,
-            "error",
-          );
-        }
-      } else if (targetButton.classList.contains("delete-btn") && id && type) {
-        console.log(`Delete button clicked for type: ${type}, ID: ${id}`);
-        deleteItem(id, type, targetButton.dataset.bannerType || null);
-      } else if (targetButton.classList.contains("view-bookings-btn") && id) {
-        console.log(`View bookings button clicked for user ID: ${id}`);
-        openUserBookingsModal(id, targetButton.dataset.username || "User");
-      } else if (
-        targetButton.classList.contains("update-booking-status-btn") &&
-        id
-      ) {
-        const selectElement = targetButton.previousElementSibling; // Assumes select is immediately before button
-        if (selectElement && selectElement.tagName === "SELECT") {
-          const newStatus = selectElement.value;
-          console.log(
-            `Update booking status button clicked for ID: ${id}, New Status: ${newStatus}`,
-          );
-          try {
-            await firestoreRequest("updateDoc", "bookings", id, {
-              status: newStatus,
-            });
-            showToast(
-              `Booking ${id} status updated to ${newStatus}.`,
-              "success",
-            );
-            // --- Add notification if status is Confirmed ---
-            if (newStatus === "Confirmed") {
-              // Fetch booking to get userId and test details
-              const bookingSnap = await firestoreRequest(
-                "getDoc",
-                "bookings",
-                id,
-              );
-              if (bookingSnap.exists()) {
-                const booking = bookingSnap.data();
-                if (booking.userId) {
-                  // Extract test names and lab names robustly
-                  let testNames = "N/A";
-                  if (
-                    Array.isArray(booking.items) &&
-                    booking.items.length > 0
-                  ) {
-                    testNames = booking.items
-                      .map((item) => `${item.testName} (${item.labName})`)
-                      .join(", ");
-                  }
-                  // Enhanced message
-                  const message = `✅ Your booking is confirmed!\n\n🧪 Test(s): ${testNames}\n💰 Total: ₹${booking.totalAmount?.toFixed(2) || "0.00"}\n📅 Date: ${booking.bookingDate && booking.bookingDate.toDate ? booking.bookingDate.toDate().toLocaleDateString() : ""}`;
-                  await firestoreRequest("addDoc", "notifications", null, {
-                    userId: booking.userId,
-                    type: "booking_status",
-                    title: "Booking Confirmed",
-                    message: message,
-                    bookingId: id,
-                    testName: testNames,
-                    items: booking.items || [],
-                    totalAmount: booking.totalAmount || 0,
-                    bookingDate: booking.bookingDate || null,
-                    status: "unread",
-                    createdAt:
-                      firebaseFirestoreFunctions &&
-                      firebaseFirestoreFunctions.serverTimestamp
-                        ? firebaseFirestoreFunctions.serverTimestamp()
-                        : new Date(),
-                  });
-                  console.log("Notification sent to user:", booking.userId);
-                }
-              }
-            }
-            // --- Award wallet points if status is Completed ---
-            if (newStatus === "Completed") {
-              // 1. Fetch booking details
-              const bookingSnap = await firestoreRequest(
-                "getDoc",
-                "bookings",
-                id,
-              );
-              if (bookingSnap.exists()) {
-                const booking = bookingSnap.data();
-                const userId = booking.userId;
-                if (userId) {
-                  // 2. Prevent duplicate awarding (check if transaction exists)
-                  const txSnap = await firestoreRequest(
-                    "getDocs",
-                    "walletTransactions",
-                    null,
-                    null,
-                    [
-                      {
-                        type: "where",
-                        field: "userId",
-                        op: "==",
-                        value: userId,
-                      },
-                      {
-                        type: "where",
-                        field: "meta.bookingId",
-                        op: "==",
-                        value: id,
-                      },
-                      {
-                        type: "where",
-                        field: "action",
-                        op: "==",
-                        value: "earn",
-                      },
-                    ],
-                  );
-                  if (!txSnap.empty) {
-                    console.log("Points already awarded for this booking.");
-                  } else {
-                    // 3. Fetch earning rule
-                    let points = 0;
-                    try {
-                      const rulesSnap = await firestoreRequest(
-                        "getDocs",
-                        "walletRules",
-                        null,
-                        null,
-                        [
-                          {
-                            type: "where",
-                            field: "type",
-                            op: "==",
-                            value: "booking",
-                          },
-                        ],
-                      );
-                      let rule = null;
-                      if (!rulesSnap.empty) rule = rulesSnap.docs[0].data();
-                      // Default: 10 points per ₹100 spent
-                      const perRupee = rule?.config?.perRupee || 100;
-                      const value = rule?.value || 10;
-                      points = Math.floor(
-                        (booking.totalAmount / perRupee) * value,
-                      );
-                    } catch (e) {
-                      // Fallback if rules not found
-                      points = Math.floor((booking.totalAmount / 100) * 10);
-                    }
-                    if (points > 0) {
-                      // 4. Add wallet transaction
-                      await firestoreRequest(
-                        "addDoc",
-                        "walletTransactions",
-                        null,
-                        {
-                          userId,
-                          date: new Date(),
-                          action: "earn",
-                          points,
-                          status: "completed",
-                          meta: { bookingId: id },
-                        },
-                      );
-                      // 5. Increment user pointsBalance
-                      const userSnap = await firestoreRequest(
-                        "getDoc",
-                        "users",
-                        userId,
-                      );
-                      if (userSnap.exists()) {
-                        const user = userSnap.data();
-                        const newBalance = (user.pointsBalance || 0) + points;
-                        await firestoreRequest("updateDoc", "users", userId, {
-                          pointsBalance: newBalance,
-                        });
-                      }
-                      showToast(
-                        `User earned ${points} wallet points for this booking!`,
-                        "success",
-                      );
-                    }
-                  }
-                  // --- Referral: Award 400 points to referrer on first completed booking ---
-                  const userSnap = await firestoreRequest(
-                    "getDoc",
-                    "users",
-                    userId,
-                  );
-                  if (userSnap.exists()) {
-                    const user = userSnap.data();
-                    const referrerUid = user.referrerUid;
-                    if (referrerUid) {
-                      // Check if this is the user's first completed booking
-                      const completedBookingsSnap = await firestoreRequest(
-                        "getDocs",
-                        "bookings",
-                        null,
-                        null,
-                        [
-                          {
-                            type: "where",
-                            field: "userId",
-                            op: "==",
-                            value: userId,
-                          },
-                          {
-                            type: "where",
-                            field: "status",
-                            op: "==",
-                            value: "Completed",
-                          },
-                        ],
-                      );
-                      if (completedBookingsSnap.size === 1) {
-                        // This is the first completed booking
-                        // Prevent duplicate awarding (check if referrer already got 400 for this user)
-                        const refTxSnap = await firestoreRequest(
-                          "getDocs",
-                          "walletTransactions",
-                          null,
-                          null,
-                          [
-                            {
-                              type: "where",
-                              field: "userId",
-                              op: "==",
-                              value: referrerUid,
-                            },
-                            {
-                              type: "where",
-                              field: "action",
-                              op: "==",
-                              value: "referral-complete",
-                            },
-                            {
-                              type: "where",
-                              field: "meta.referredUid",
-                              op: "==",
-                              value: userId,
-                            },
-                          ],
-                        );
-                        if (refTxSnap.empty) {
-                          // Award 400 points to referrer
-                          await firestoreRequest(
-                            "addDoc",
-                            "walletTransactions",
-                            null,
-                            {
-                              userId: referrerUid,
-                              date: new Date(),
-                              action: "referral-complete",
-                              points: 400,
-                              status: "completed",
-                              meta: { referredUid: userId, bookingId: id },
-                              createdAt:
-                                firebaseFirestoreFunctions &&
-                                firebaseFirestoreFunctions.serverTimestamp
-                                  ? firebaseFirestoreFunctions.serverTimestamp()
-                                  : new Date(),
-                            },
-                          );
-                          // Update referrer's pointsBalance
-                          const refUserSnap = await firestoreRequest(
-                            "getDoc",
-                            "users",
-                            referrerUid,
-                          );
-                          if (refUserSnap.exists()) {
-                            const refUser = refUserSnap.data();
-                            const refNewPoints =
-                              (refUser.pointsBalance || 0) + 400;
-                            await firestoreRequest(
-                              "updateDoc",
-                              "users",
-                              referrerUid,
-                              { pointsBalance: refNewPoints },
-                            );
-                          }
-                          showToast(
-                            "Referrer awarded 400 points for first completed booking of referred user!",
-                            "success",
-                          );
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            loadAllBookings(); // Refresh the list
-          } catch (error) {
-            showToast(
-              `Failed to update booking status. ${error.message}`,
-              "error",
-            );
-          }
-        } else {
-          console.warn("Could not find status select for booking ID:", id);
-        }
-      }
-    });
-  } else {
-    console.warn("Main content area not found for event delegation.");
-  }
-
-  // Firebase Auth State Listener
-  console.log("Attempting to set up onAuthStateChanged listener...");
   try {
-    if (!firebaseAuthFunctions || !firebaseAuthFunctions.onAuthStateChanged) {
-      console.error(
-        "CRITICAL: firebaseAuthFunctions.onAuthStateChanged is not available!",
-      );
-      showToast(
-        "Authentication service error. Please refresh.",
-        "error",
-        10000,
-      );
-      showLoginScreen(); // Show login, but it might not work
-      showLoader(false);
-      return;
-    }
-    firebaseAuthFunctions.onAuthStateChanged(
-      authInstance,
-      async (user) => {
-        console.log("onAuthStateChanged listener fired.");
-        if (user) {
-          console.log("User is signed in:", user.uid, user.email);
-          // --- Restrict admin access ---
-          if (
-            !allowedAdminUIDs.includes(user.uid) &&
-            !allowedAdminEmails.includes(user.email)
-          ) {
-            showToast(
-              "You are not authorized to access the admin panel.",
-              "error",
-            );
-            if (
-              authInstance &&
-              firebaseAuthFunctions &&
-              firebaseAuthFunctions.signOut
-            ) {
-              await firebaseAuthFunctions.signOut(authInstance);
+    // Robust, delegated event listener for all modal close buttons
+    document.addEventListener('click', function(event) {
+        const closeButton = event.target.closest('.close-btn');
+        if (closeButton) {
+            const modal = closeButton.closest('.modal');
+            if (modal && typeof closeModal === 'function') {
+                closeModal(modal.id);
             }
-            showLoginScreen();
-            return;
-          }
-          showDashboardUI(user);
-        } else {
-          console.log("No user signed in.");
-          showLoginScreen(); // This will also call showLoader(false)
         }
-      },
-      (error) => {
-        console.error("Error in onAuthStateChanged listener itself:", error);
-        showToast(
-          "Authentication state error: " + error.message,
-          "error",
-          5000,
-        );
-        showLoginScreen();
-        showLoader(false);
-      },
-    );
-    console.log("onAuthStateChanged listener successfully attached.");
+    });
+
+    // Chart and other initializations that don't depend on user state
+    await renderCrmSummaryCards();
+    await renderCrmLabBusinessChart();
+    await renderCrmMostBookedTestsChart();
+    await renderCrmActiveUsersPerDayChart();
+
   } catch (error) {
-    console.error(
-      "CRITICAL Error setting up onAuthStateChanged listener:",
-      error,
-    );
-    showToast(
-      "Critical authentication setup error. Please refresh. " + error.message,
-      "error",
-      10000,
-    );
-    showLoginScreen(); // Attempt to show login screen
-    showLoader(false); // Ensure loader is hidden
+    console.error("Main initialization logic failed:", error);
   }
 }
 
-// ----- Main Initialization Logic -----
+// ----- Main Initialization and Auth Handling -----
 if (
   firebaseConfigLoaded &&
   authInstance &&
@@ -4290,7 +3683,33 @@ if (
   console.log(
     "app.js: Firebase services successfully imported from firebase-config.js.",
   );
-  // Defer main app logic until DOM is ready
+
+  // Set up the primary authentication state listener
+  firebaseAuthFunctions.onAuthStateChanged(authInstance, (user) => {
+    if (user) {
+      console.log("Auth state changed: User is signed in.", user.uid);
+      // --- Restrict admin access ---
+      if (
+        !allowedAdminUIDs.includes(user.uid) &&
+        !allowedAdminEmails.includes(user.email)
+      ) {
+        showToast("You are not authorized to access the admin panel.", "error");
+        firebaseAuthFunctions.signOut(authInstance); // Sign out unauthorized user
+        // The listener will fire again with user=null, showing the login screen.
+        return;
+      }
+      // Add UID to allowlist if not present (for convenience)
+      if (!allowedAdminUIDs.includes(user.uid)) {
+          allowedAdminUIDs.push(user.uid);
+      }
+      showDashboardUI(user);
+    } else {
+      console.log("Auth state changed: No user signed in.");
+      showLoginScreen();
+    }
+  });
+
+  // Defer non-critical app logic until DOM is ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeAppMainLogic);
   } else {
@@ -4462,6 +3881,7 @@ async function setupBookingNotificationListener() {
 document.addEventListener("DOMContentLoaded", () => {
   setupBookingNotificationListener();
   updateManageBookingsBadge(newBookingsCount);
+  showLoader(false); // Ensure loader is hidden
 });
 
 // --- CRM DASHBOARD LOGIC ---
@@ -5378,7 +4798,7 @@ async function loadNotificationHistory() {
         <td>${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "N/A"}</td>
         <td>${data.target?.name || "N/A"} ${data.target?.userId || ''}</td>
         <td><span class="badge badge-${statusColor}">${status}</span></td>
-        <td>${report.successCount} / ${report.delivery?.totalSent || (report.successCount + report.failureCount)}</td>
+        <td>${report.successCount} / ${report.successCount + report.failureCount}</td>
       `;
       notificationHistoryBody.appendChild(row);
     });
@@ -5392,7 +4812,7 @@ async function showDeliveryDetails(notificationId) {
   if (!notificationId) return;
 
   const modalBody = document.getElementById('delivery-details-body');
-  modalBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+  modalBody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
   openModal('delivery-details-modal');
 
   try {
@@ -5408,7 +4828,7 @@ async function showDeliveryDetails(notificationId) {
     );
 
     if (querySnapshot.empty) {
-      modalBody.innerHTML = '<tr><td colspan="3">No detailed delivery records found for this notification.</td></tr>';
+      modalBody.innerHTML = '<tr><td colspan="4">No detailed delivery records found for this notification.</td></tr>';
       return;
     }
 
@@ -5421,11 +4841,12 @@ async function showDeliveryDetails(notificationId) {
         <td>${data.userId}</td>
         <td><span class="badge badge-${data.status === 'Success' ? 'success' : 'danger'}">${data.status}</span></td>
         <td>${errorMsg}</td>
+        <td class="token-cell" title="${data.token}">${data.token}</td>
       `;
       modalBody.appendChild(row);
     });
   } catch (err) {
-    modalBody.innerHTML = '<tr><td colspan="3">Error loading delivery details.</td></tr>';
+    modalBody.innerHTML = '<tr><td colspan="4">Error loading delivery details.</td></tr>';
     console.error("Error loading delivery details:", err);
   }
 }
@@ -5483,7 +4904,8 @@ if (pushNotificationForm) {
     try {
       if (sendNow) {
         console.log("Sending notification now:", notificationData);
-        const response = await fetch('https://sbhs-notification-backend.onrender.com/api/send-notification', {
+        const NOTIFICATION_API_URL = 'https://sbhs-notification-backend.onrender.com/api/send-notification';
+        const response = await fetch(NOTIFICATION_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(notificationData)
@@ -5518,12 +4940,22 @@ if (pushNotificationForm) {
       showToast("Failed to send notification: " + error.message, "error");
       console.error("Push notification error:", error);
     } finally {
-      // 5. Hide loader and re-enable form
+      // Always hide loader and re-enable form
       showLoader(false);
       pushNotificationForm.querySelector('button[type="submit"]').disabled = false;
-      // 6. Reload the history to show the latest status
+      // Reload the history to show the latest status
       loadNotificationHistory();
     }
   });
 }
 // ... existing code ...
+
+// Add this helper near the top of the file:
+function fetchWithTimeout(resource, options = {}, timeout = 10000) {
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out')), timeout)
+    )
+  ]);
+}
