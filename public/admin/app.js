@@ -5360,18 +5360,73 @@ async function loadNotificationHistory() {
       const statusColor = data.criticalError ? "danger" : (report.failureCount > 0 ? "warning" : "success");
 
       const row = document.createElement("tr");
+      const notificationId = data.id; // Get the ID from the document data
+
+      // Only make rows with a valid ID clickable to fetch details.
+      if (notificationId) {
+        row.setAttribute('data-doc-id', notificationId);
+        row.style.cursor = 'pointer';
+        row.title = 'Click to see delivery details';
+        row.onclick = () => showDeliveryDetails(notificationId);
+      } else {
+        row.style.cursor = 'default';
+        row.title = 'Detailed report not available for this old notification.';
+      }
+      
       row.innerHTML = `
         <td>${data.requestPayload?.title || "N/A"}</td>
         <td>${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "N/A"}</td>
         <td>${data.target?.name || "N/A"} ${data.target?.userId || ''}</td>
         <td><span class="badge badge-${statusColor}">${status}</span></td>
-        <td>${report.successCount} / ${report.totalSent || (report.successCount + report.failureCount)}</td>
+        <td>${report.successCount} / ${report.delivery?.totalSent || (report.successCount + report.failureCount)}</td>
       `;
       notificationHistoryBody.appendChild(row);
     });
   } catch (err) {
     notificationHistoryBody.innerHTML = '<tr><td colspan="5">Error loading history.</td></tr>';
     console.error("Error loading notification history:", err);
+  }
+}
+
+async function showDeliveryDetails(notificationId) {
+  if (!notificationId) return;
+
+  const modalBody = document.getElementById('delivery-details-body');
+  modalBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+  openModal('delivery-details-modal');
+
+  try {
+    // Construct the path to the sub-collection
+    const subCollectionPath = `notifications/${notificationId}/delivery_details`;
+    
+    const querySnapshot = await firestoreRequest(
+      "getDocs",
+      subCollectionPath,
+      null,
+      null,
+      [] // No specific ordering needed for now
+    );
+
+    if (querySnapshot.empty) {
+      modalBody.innerHTML = '<tr><td colspan="3">No detailed delivery records found for this notification.</td></tr>';
+      return;
+    }
+
+    modalBody.innerHTML = "";
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const errorMsg = data.error ? data.error.code || JSON.stringify(data.error) : 'N/A';
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${data.userId}</td>
+        <td><span class="badge badge-${data.status === 'Success' ? 'success' : 'danger'}">${data.status}</span></td>
+        <td>${errorMsg}</td>
+      `;
+      modalBody.appendChild(row);
+    });
+  } catch (err) {
+    modalBody.innerHTML = '<tr><td colspan="3">Error loading delivery details.</td></tr>';
+    console.error("Error loading delivery details:", err);
   }
 }
 

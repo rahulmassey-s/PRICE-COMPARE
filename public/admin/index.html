@@ -970,6 +970,33 @@
       </div>
     </div>
 
+    <!-- Delivery Details Modal -->
+    <div id="delivery-details-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h5 class="modal-title">Delivery Details</h5>
+                <button type="button" class="close-btn" onclick="closeModal('delivery-details-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Loading details...</p>
+                <div class="table-responsive mt-4">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Status</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delivery-details-body">
+                            <!-- Detailed results will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add print stylesheet and html2pdf.js before </body> -->
     <style>
     @media print {

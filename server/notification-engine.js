@@ -44,25 +44,26 @@ async function cleanupInvalidTokens(tokensToRemove) {
 }
 
 /**
- * Fetches FCM tokens for a given target group.
+ * Fetches FCM tokens for a given target group, associating them with user IDs.
  * @param {string} target - The target audience ('All', 'Members', 'User').
  * @param {string} [userId] - The user's ID, required if target is 'User'.
- * @returns {Promise<Array<string>>} A list of unique, valid FCM tokens.
+ * @returns {Promise<Array<{userId: string, token: string}>>} A list of objects, each with a userId and a token.
  */
 async function getTokensForTargetGroup(target, userId) {
     const db = admin.firestore(); // Lazy-load the service
-    const tokens = new Set();
+    const userTokenPairs = [];
     let usersSnapshot;
 
     try {
         switch (target) {
             case 'All':
-                console.log("Fetching tokens for 'All' users.");
-                usersSnapshot = await db.collection('users').get();
-                break;
             case 'Members':
-                console.log("Fetching tokens for 'Members'.");
-                usersSnapshot = await db.collection('users').where('role', '==', 'member').get();
+                console.log(`Fetching tokens for '${target}' users.`);
+                let query = db.collection('users');
+                if (target === 'Members') {
+                    query = query.where('role', '==', 'member');
+                }
+                usersSnapshot = await query.get();
                 break;
             case 'User':
                 if (!userId) {
@@ -84,19 +85,24 @@ async function getTokensForTargetGroup(target, userId) {
         if (usersSnapshot) {
             usersSnapshot.docs.forEach(doc => {
                 const data = doc.data();
-                if (Array.isArray(data.fcmTokens)) {
-                    data.fcmTokens.forEach(token => token && tokens.add(token));
-                } else if (data.fcmToken) { // Legacy support
-                    tokens.add(data.fcmToken);
-                }
+                const currentUserId = doc.id;
+                // Handle both array of tokens and single legacy token
+                const tokens = Array.isArray(data.fcmTokens) ? data.fcmTokens : (data.fcmToken ? [data.fcmToken] : []);
+                
+                tokens.forEach(token => {
+                    if (token) {
+                        userTokenPairs.push({ userId: currentUserId, token: token });
+                    }
+                });
             });
         }
     } catch (err) {
         console.error(`Error fetching tokens for target ${target}:`, err);
     }
 
-    console.log(`Found ${tokens.size} unique tokens.`);
-    return Array.from(tokens);
+    console.log(`Found ${userTokenPairs.length} user-token pairs.`);
+    // A user might have multiple tokens, so we don't deduplicate here.
+    return userTokenPairs;
 }
 
 

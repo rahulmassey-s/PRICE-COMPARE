@@ -62,34 +62,48 @@ app.post('/api/send-notification', async (req, res) => {
   const { target, userId, ...payload } = req.body;
   
   console.log(`Received notification request for target: ${target}`);
-  const db = admin.firestore(); // Get Firestore instance
+  const db = admin.firestore();
 
   try {
-    const tokens = await getTokensForTargetGroup(target, userId);
-
+    const userTokenPairs = await getTokensForTargetGroup(target, userId);
+    
+    if (userTokenPairs.length === 0) {
+      return res.status(404).json({ success: false, message: 'No recipients found for the target group.' });
+    }
+    
+    const tokens = userTokenPairs.map(pair => pair.token);
     const report = await sendNotification(tokens, payload);
 
-    // Log the entire operation to a new 'notifications' collection
+    // Create the main log entry first to get its ID
+    const logRef = db.collection('notifications').doc();
     const logEntry = {
+      id: logRef.id,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      target: {
-        name: target,
-        userId: userId || null,
-      },
+      target: { name: target, userId: userId || null },
       requestPayload: payload,
       delivery: {
         totalSent: tokens.length,
         successCount: report.successCount,
         failureCount: report.failureCount,
       },
-      // Store errors, but truncate if there are too many to avoid oversized documents
-      errors: report.errors.slice(0, 20), 
     };
+    await logRef.set(logEntry);
     
-    // Asynchronously add the log entry to Firestore
-    db.collection('notifications').add(logEntry).catch(err => {
-      console.error("Failed to write notification log to Firestore:", err);
+    // Now, create the detailed per-user logs in a sub-collection
+    const batch = db.batch();
+    report.responses.forEach((resp, idx) => {
+      const userTokenPair = userTokenPairs[idx];
+      const detailLogRef = logRef.collection('delivery_details').doc(userTokenPair.userId + '_' + userTokenPair.token.slice(-10));
+
+      batch.set(detailLogRef, {
+        userId: userTokenPair.userId,
+        token: userTokenPair.token,
+        status: resp.success ? 'Success' : 'Failure',
+        error: resp.success ? null : resp.error.toJSON(),
+      });
     });
+    
+    await batch.commit();
 
     if (report.successCount > 0) {
       res.status(200).json({ success: true, message: 'Notification sent successfully.', report });
