@@ -690,18 +690,19 @@
                     </form>
                     <div class="mt-8">
                         <h5 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-history"></i> Notification History</h5>
-                        <div class="table-container overflow-x-auto">
-                            <table id="notification-history-table" class="min-w-full table-auto">
+                        <div class="table-responsive">
+                            <table class="table">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
                                         <th>Sent Date</th>
                                         <th>Target Group</th>
                                         <th>Status</th>
+                                        <th>Delivery</th>
                                     </tr>
                                 </thead>
                                 <tbody id="notification-history-body">
-                                    <!-- Notification history rows will be inserted here -->
+                                    <!-- History will be populated by JS -->
                                 </tbody>
                             </table>
                         </div>

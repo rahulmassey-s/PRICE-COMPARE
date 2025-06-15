@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { auth } from '@/lib/firebase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogOut, Mail, User as UserProfileIcon, Edit3, Save, Smartphone, ShoppingBag, CalendarDays, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Loader2, LogOut, Mail, User as UserProfileIcon, Edit3, Save, Smartphone, ShoppingBag, CalendarDays, ExternalLink, AlertTriangle, BellRing } from 'lucide-react';
 import type { UserDetails, Booking } from '@/types';
 import { getOrCreateUserDocument, updateFirestoreUserDetails, getUserBookings } from '@/lib/firebase/firestoreService';
 import { format } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { requestForToken } from '@/lib/firebase-messaging';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -33,6 +34,8 @@ export default function AccountPage() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
+
+  const [isSyncingToken, setIsSyncingToken] = useState(false);
 
   const handleFirestoreError = useCallback((error: any, context: string) => {
     console.error(`Firestore error (${context}):`, error);
@@ -166,6 +169,24 @@ export default function AccountPage() {
   useEffect(() => {
     console.log('firebaseUser state:', firebaseUser);
   }, [firebaseUser]);
+
+  const handleSyncToken = async () => {
+    setIsSyncingToken(true);
+    toast({ title: 'Syncing...', description: 'Attempting to refresh your notification status.' });
+    try {
+      const token = await requestForToken();
+      if (token) {
+        toast({ title: 'Sync Successful', description: 'Your device is ready to receive notifications.' });
+      } else {
+        toast({ title: 'Sync Failed', description: 'Could not get notification token. Please ensure you have granted permission.', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error("Error during manual token sync:", error);
+      toast({ title: 'Sync Error', description: 'An unexpected error occurred.', variant: 'destructive' });
+    } finally {
+      setIsSyncingToken(false);
+    }
+  };
 
   if (isAuthLoading) {
     return (
@@ -394,6 +415,29 @@ export default function AccountPage() {
             {isAuthLoading ? 'Logging out...' : 'Logout'}
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* Notification Settings Card */}
+      <Card className="max-w-lg mx-auto shadow-xl rounded-xl mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BellRing className="h-5 w-5" />
+            Notification Settings
+          </CardTitle>
+          <CardDescription>
+            If you are not receiving notifications, try re-syncing your device.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleSyncToken} disabled={isSyncingToken} className="w-full">
+            {isSyncingToken ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <BellRing className="mr-2 h-4 w-4" />
+            )}
+            Sync Notification Status
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

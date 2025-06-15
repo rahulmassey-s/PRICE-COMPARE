@@ -5337,36 +5337,40 @@ let notificationHistory = [];
 // Load notification history from Firestore (if available)
 async function loadNotificationHistory() {
   if (!notificationHistoryBody) return;
-  notificationHistoryBody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+  notificationHistoryBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
   try {
-    // Try to load from Firestore (collection: 'admin_notifications')
     const querySnapshot = await firestoreRequest(
       "getDocs",
-      "admin_notifications",
+      "notifications", // Fetch from the new 'notifications' collection
       null,
       null,
       [{ type: "orderBy", field: "createdAt", direction: "desc" }, { type: "limit", value: 20 }]
     );
-    notificationHistory = [];
+    
     if (querySnapshot.empty) {
-      notificationHistoryBody.innerHTML = '<tr><td colspan="4">No notifications sent yet.</td></tr>';
+      notificationHistoryBody.innerHTML = '<tr><td colspan="5">No notifications sent yet.</td></tr>';
       return;
     }
+    
     notificationHistoryBody.innerHTML = "";
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      notificationHistory.push(data);
+      const report = data.delivery || { successCount: 0, failureCount: 0 };
+      const status = data.criticalError ? "Critical Error" : (report.failureCount > 0 ? "Partial Failure" : "Sent");
+      const statusColor = data.criticalError ? "danger" : (report.failureCount > 0 ? "warning" : "success");
+
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${data.title || "-"}</td>
-        <td>${data.sentDate ? new Date(data.sentDate.seconds * 1000).toLocaleString() : (data.schedule ? new Date(data.schedule.seconds * 1000).toLocaleString() : "-")}</td>
-        <td>${data.target || "-"}</td>
-        <td><span class="badge badge-${data.status === "Sent" ? "success" : data.status === "Failed" ? "danger" : (data.status === 'Scheduled' ? 'info' : 'warning')}">${data.status || "Pending"}</span></td>
+        <td>${data.requestPayload?.title || "N/A"}</td>
+        <td>${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "N/A"}</td>
+        <td>${data.target?.name || "N/A"} ${data.target?.userId || ''}</td>
+        <td><span class="badge badge-${statusColor}">${status}</span></td>
+        <td>${report.successCount} / ${report.totalSent || (report.successCount + report.failureCount)}</td>
       `;
       notificationHistoryBody.appendChild(row);
     });
   } catch (err) {
-    notificationHistoryBody.innerHTML = '<tr><td colspan="4">Error loading history.</td></tr>';
+    notificationHistoryBody.innerHTML = '<tr><td colspan="5">Error loading history.</td></tr>';
     console.error("Error loading notification history:", err);
   }
 }
@@ -5429,21 +5433,31 @@ if (pushNotificationForm) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(notificationData)
         });
+        
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'API request failed');
 
-        // Save notification to Firestore using firestoreRequest, not addDoc/collection
-        await firestoreRequest("addDoc", "admin_notifications", null, { ...notificationData, status: 'Sent', sentDate: new Date() });
-        showToast("Notification sent successfully!");
+        // The backend now handles ALL logging.
+        
+        // Defensively check for the report object before using it.
+        if (result && result.report) {
+          showToast(`Request Sent: ${result.report.successCount} successful, ${result.report.failureCount} failed.`, "success");
+        } else {
+          showToast('Request sent successfully (report data missing).', 'success');
+          console.warn('API response was successful, but missing the report object:', result);
+        }
+
       } else {
         const scheduleDate = new Date(schedule);
         if (!schedule || isNaN(scheduleDate.getTime())) {
           showToast("Please select a valid schedule date.", "error");
           return;
         }
+        // Scheduling logic needs to be moved to a backend function in the future.
+        // For now, we will leave the old logic but acknowledge it's a future task.
         const schedulePayload = { ...notificationData, status: 'Scheduled', schedule: scheduleDate };
         await firestoreRequest("addDoc", "admin_notifications", null, schedulePayload);
-        showToast("Notification scheduled successfully!");
+        showToast("Notification scheduled successfully! (Note: Delivery report not available for scheduled posts)");
       }
     } catch (error) {
       showToast("Failed to send notification: " + error.message, "error");
@@ -5452,6 +5466,8 @@ if (pushNotificationForm) {
       // 5. Hide loader and re-enable form
       showLoader(false);
       pushNotificationForm.querySelector('button[type="submit"]').disabled = false;
+      // 6. Reload the history to show the latest status
+      loadNotificationHistory();
     }
   });
 }

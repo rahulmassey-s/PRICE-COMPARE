@@ -62,25 +62,51 @@ app.post('/api/send-notification', async (req, res) => {
   const { target, userId, ...payload } = req.body;
   
   console.log(`Received notification request for target: ${target}`);
+  const db = admin.firestore(); // Get Firestore instance
 
   try {
     const tokens = await getTokensForTargetGroup(target, userId);
 
-    if (!tokens || tokens.length === 0) {
-      console.log('No valid FCM tokens found for the target.');
-      return res.status(404).json({ success: false, message: 'No valid FCM tokens found.' });
-    }
+    const report = await sendNotification(tokens, payload);
 
-    const result = await sendNotification(tokens, payload);
+    // Log the entire operation to a new 'notifications' collection
+    const logEntry = {
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      target: {
+        name: target,
+        userId: userId || null,
+      },
+      requestPayload: payload,
+      delivery: {
+        totalSent: tokens.length,
+        successCount: report.successCount,
+        failureCount: report.failureCount,
+      },
+      // Store errors, but truncate if there are too many to avoid oversized documents
+      errors: report.errors.slice(0, 20), 
+    };
+    
+    // Asynchronously add the log entry to Firestore
+    db.collection('notifications').add(logEntry).catch(err => {
+      console.error("Failed to write notification log to Firestore:", err);
+    });
 
-    if (result.success) {
-      res.status(200).json({ success: true, message: 'Notification sent successfully.' });
+    if (report.successCount > 0) {
+      res.status(200).json({ success: true, message: 'Notification sent successfully.', report });
     } else {
-      res.status(500).json({ success: false, message: 'Failed to send notification.', error: result.error });
+      res.status(500).json({ success: false, message: 'Failed to send notification to any recipients.', report });
     }
 
   } catch (error) {
     console.error('Unhandled error in /api/send-notification:', error);
+    // Also log critical failures to Firestore
+     db.collection('notifications').add({
+       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+       target: { name: target, userId: userId || null },
+       requestPayload: payload,
+       criticalError: error.message
+     }).catch(err => console.error("Failed to write CRITICAL notification log:", err));
+
     res.status(500).json({ success: false, message: 'An internal server error occurred.' });
   }
 });

@@ -104,69 +104,83 @@ async function getTokensForTargetGroup(target, userId) {
  * Sends a notification payload to a list of tokens and handles failures.
  * @param {Array<string>} tokens - The list of FCM tokens to send to.
  * @param {object} notificationPayload - The data payload for the notification.
- * @returns {Promise<{success: boolean, error?: string}>}
+ * @returns {Promise<{successCount: number, failureCount: number, errors: Array<object>, staleTokens: Array<string>}>} A detailed report of the send operation.
  */
 async function sendNotification(tokens, notificationPayload) {
     const messaging = admin.messaging(); // Lazy-load the service
 
     if (!tokens || tokens.length === 0) {
         console.log("No tokens provided, skipping notification send.");
-        return { success: false, error: "No tokens found." };
+        return { successCount: 0, failureCount: 0, errors: [{error: "No tokens provided"}], staleTokens: [] };
     }
 
-    // Ensure all data fields are strings (FCM requires this)
-    const dataPayload = {
-      title: String(notificationPayload.title || 'New Notification'),
-      body: String(notificationPayload.body || ''),
-      link: String(notificationPayload.link || ''),
-      type: String(notificationPayload.type || 'info'),
-      imageUrl: String(notificationPayload.imageUrl || ''),
-      actions: JSON.stringify(notificationPayload.actions || []),
-    };
+    // FCM requires all data payload values to be strings.
+    const dataPayload = {};
+    for (const key in notificationPayload) {
+        if (notificationPayload[key] !== null && notificationPayload[key] !== undefined) {
+            dataPayload[key] = String(notificationPayload[key]);
+        }
+    }
+    // Ensure actions is a JSON string if it's an object
+    if (typeof dataPayload.actions === 'object') {
+        dataPayload.actions = JSON.stringify(dataPayload.actions);
+    }
 
     const message = {
         tokens: tokens,
+        data: dataPayload,
         webpush: {
             fcm_options: {
-              link: dataPayload.link || 'https://price-compare-liart.vercel.app/',
+              // The link must be a valid URL. Default to the root if not provided.
+              link: notificationPayload.link && notificationPayload.link.startsWith('http') ? notificationPayload.link : 'https://labpricecompare.netlify.app/',
             },
         },
-        data: dataPayload,
     };
 
-    // Log the final payload for debugging
-    console.log('FCM Payload:', JSON.stringify(message, null, 2));
+    console.log(`Attempting to send notification to ${tokens.length} token(s).`);
 
     try {
-        console.log(`Attempting to send notification to ${tokens.length} token(s).`);
         const response = await messaging.sendEachForMulticast(message);
-        console.log(`FCM response: ${response.successCount} successful, ${response.failureCount} failed.`);
+        
+        const report = {
+            successCount: response.successCount,
+            failureCount: response.failureCount,
+            errors: [],
+            staleTokens: []
+        };
 
         if (response.failureCount > 0) {
-            const tokensToDelete = [];
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
-                    const error = resp.error;
-                    console.error(`Token failure for ${tokens[idx]}:`, error.message);
+                    const errorInfo = resp.error.toJSON();
+                    console.error(`Token failure for ${tokens[idx]}:`, errorInfo);
+                    report.errors.push({ token: tokens[idx], error: errorInfo });
+
                     // Check for errors indicating an invalid or unregistered token
-                    if (error.code === 'messaging/registration-token-not-registered' ||
-                        error.code === 'messaging/invalid-registration-token') {
-                        tokensToDelete.push(tokens[idx]);
+                    if (errorInfo.code === 'messaging/registration-token-not-registered' ||
+                        errorInfo.code === 'messaging/invalid-registration-token') {
+                        report.staleTokens.push(tokens[idx]);
                     }
                 }
             });
-
-            // Asynchronously clean up the invalid tokens
-            if (tokensToDelete.length > 0) {
-               cleanupInvalidTokens(tokensToDelete);
-            }
+        }
+        
+        // Asynchronously clean up the invalid tokens without waiting
+        if (report.staleTokens.length > 0) {
+           cleanupInvalidTokens(report.staleTokens);
         }
 
-        return { success: response.successCount > 0 };
+        console.log(`Notification sent. Report: ${report.successCount} success, ${report.failureCount} failure.`);
+        return report;
 
     } catch (error) {
-        console.error('Critical error sending notification:', error);
-        return { success: false, error: error.message };
+        console.error('Critical error during sendEachForMulticast:', error);
+        return { 
+            successCount: 0, 
+            failureCount: tokens.length, 
+            errors: [{ error: error.message }], 
+            staleTokens: [] 
+        };
     }
 }
 

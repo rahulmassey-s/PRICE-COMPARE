@@ -33,6 +33,7 @@ export interface UserDetails {
   phoneNumber: string | null; // Changed from optional to string | null
   createdAt?: Date; // Firestore Timestamp converted to JS Date
   lastUpdatedAt?: Date; // Firestore Timestamp converted to JS Date
+  membershipStartDate?: Date | Timestamp | null; // Added for membership feature
 }
 
 // Represents an item within a booking
