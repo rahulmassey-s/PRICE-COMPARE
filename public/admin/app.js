@@ -5105,6 +5105,9 @@ document.addEventListener('click', async function(event) {
             type: 'booking-status',
             userId: booking.userId, // or booking.userEmail if your backend supports it
             bookingId: bookingId,
+            // --- FIX ---
+            // Explicitly set the link to the live site's account page
+            link: 'https://labpricecompare.netlify.app/account'
           };
           // Send notification via backend
           await fetch('https://sbhs-notification-backend.onrender.com/api/send-notification', {

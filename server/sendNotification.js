@@ -59,9 +59,15 @@ app.get('/', (req, res) => {
 
 // 2. Main Notification API Endpoint
 app.post('/api/send-notification', async (req, res) => {
-  const { target, userId, ...payload } = req.body;
+  let { target, userId, ...payload } = req.body;
   
-  console.log(`Received notification request for target: ${target}`);
+  // If a specific userId is provided, the conceptual target is always 'User'.
+  // This ensures consistent logging and prevents 'undefined' target names causing crashes.
+  if (userId && !target) {
+    target = 'User';
+  }
+  
+  console.log(`Processing notification request for target: '${target}', userId: '${userId || 'N/A'}'`);
   const db = admin.firestore();
 
   try {
