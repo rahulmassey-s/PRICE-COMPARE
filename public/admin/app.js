@@ -5064,3 +5064,67 @@ function populateIconNameDropdown(selectElementId) {
     select.appendChild(option);
   });
 }
+
+// ... existing code ...
+// --- GLOBAL DELEGATED EVENT LISTENER FOR UPDATE BOOKING STATUS BUTTON ---
+document.addEventListener('click', async function(event) {
+  const updateBtn = event.target.closest('.update-booking-status-btn');
+  if (updateBtn) {
+    event.preventDefault();
+    const bookingId = updateBtn.dataset.id;
+    if (!bookingId) {
+      showToast('Booking ID not found.', 'error');
+      return;
+    }
+    // Find the select element in the same cell
+    const statusSelect = updateBtn.parentElement.querySelector('select.status-select');
+    if (!statusSelect) {
+      showToast('Status select not found.', 'error');
+      return;
+    }
+    const newStatus = statusSelect.value;
+    if (!newStatus) {
+      showToast('Please select a status.', 'error');
+      return;
+    }
+    updateBtn.disabled = true;
+    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    try {
+      await firestoreRequest('updateDoc', 'bookings', bookingId, { status: newStatus });
+      showToast('Booking status updated!', 'success');
+      // --- Send notification to user about status update ---
+      try {
+        // Fetch booking to get user info
+        const bookingDoc = await firestoreRequest('getDoc', 'bookings', bookingId);
+        if (bookingDoc.exists()) {
+          const booking = bookingDoc.data();
+          // Prepare notification payload
+          const notificationPayload = {
+            title: 'Booking Status Updated',
+            body: `Your booking is now "${newStatus}".`,
+            type: 'booking-status',
+            userId: booking.userId, // or booking.userEmail if your backend supports it
+            bookingId: bookingId,
+          };
+          // Send notification via backend
+          await fetch('https://sbhs-notification-backend.onrender.com/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(notificationPayload),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send booking status notification:', err);
+      }
+      // --- End notification logic ---
+      loadAllBookings();
+    } catch (error) {
+      showToast('Failed to update booking status.', 'error');
+      console.error('Error updating booking status:', error);
+    } finally {
+      updateBtn.disabled = false;
+      updateBtn.innerHTML = '<i class="fas fa-save"></i> Update';
+    }
+  }
+});
+// ... existing code ...

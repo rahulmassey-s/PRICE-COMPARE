@@ -54,53 +54,69 @@ async function getTokensForTargetGroup(target, userId) {
     const userTokenPairs = [];
     let usersSnapshot;
 
-    try {
-        switch (target) {
-            case 'All':
-            case 'Members':
-                console.log(`Fetching tokens for '${target}' users.`);
-                let query = db.collection('users');
-                if (target === 'Members') {
-                    query = query.where('role', '==', 'member');
-                }
-                usersSnapshot = await query.get();
-                break;
-            case 'User':
-                if (!userId) {
-                    console.error("User ID is required for 'User' target.");
-                    return [];
-                }
-                console.log(`Fetching token for user: ${userId}`);
-                const userDoc = await db.collection('users').doc(userId).get();
-                if (userDoc.exists) {
-                    usersSnapshot = { docs: [userDoc] };
-                }
-                break;
-            default:
-                console.log(`Unknown target group: ${target}. Defaulting to 'All'.`);
-                usersSnapshot = await db.collection('users').get();
-                break;
+    // If a specific userId is provided, ALWAYS target only that user.
+    // This overrides any 'target' group like 'All' or 'Members'.
+    if (userId) {
+        console.log(`Targeting specific user due to provided userId: ${userId}`);
+        try {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                usersSnapshot = { docs: [userDoc] };
+            } else {
+                console.error(`User with ID ${userId} not found.`);
+                return []; // Return empty if the specific user doesn't exist
+            }
+        } catch (err) {
+            console.error(`Error fetching specific user ${userId}:`, err);
+            return [];
         }
-
-        if (usersSnapshot) {
-            usersSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                const currentUserId = doc.id;
-                // Handle both array of tokens and single legacy token
-                const tokens = Array.isArray(data.fcmTokens) ? data.fcmTokens : (data.fcmToken ? [data.fcmToken] : []);
-                
-                tokens.forEach(token => {
-                    if (token) {
-                        userTokenPairs.push({ userId: currentUserId, token: token });
+    } else {
+        // Original logic for handling target groups if no specific userId is given
+        try {
+            switch (target) {
+                case 'All':
+                case 'Members':
+                    console.log(`Fetching tokens for '${target}' users.`);
+                    let query = db.collection('users');
+                    if (target === 'Members') {
+                        query = query.where('role', '==', 'member');
                     }
-                });
-            });
+                    usersSnapshot = await query.get();
+                    break;
+                case 'User':
+                    // This case is now redundant if userId is handled above, but kept for safety.
+                    if (!userId) {
+                        console.error("User ID is required for 'User' target.");
+                        return [];
+                    }
+                    break; // Should have been handled by the primary userId check
+                default:
+                    console.log(`Unknown target group: ${target}. Defaulting to 'All'.`);
+                    usersSnapshot = await db.collection('users').get();
+                    break;
+            }
+        } catch (err) {
+            console.error(`Error fetching tokens for target group ${target}:`, err);
+            return []; // Return empty on error
         }
-    } catch (err) {
-        console.error(`Error fetching tokens for target ${target}:`, err);
     }
 
-    console.log(`Found ${userTokenPairs.length} user-token pairs.`);
+    if (usersSnapshot) {
+        usersSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const currentUserId = doc.id;
+            // Handle both array of tokens and single legacy token
+            const tokens = Array.isArray(data.fcmTokens) ? data.fcmTokens : (data.fcmToken ? [data.fcmToken] : []);
+            
+            tokens.forEach(token => {
+                if (token) {
+                    userTokenPairs.push({ userId: currentUserId, token: token });
+                }
+            });
+        });
+    }
+
+    console.log(`Found ${userTokenPairs.length} user-token pairs for the operation.`);
     // A user might have multiple tokens, so we don't deduplicate here.
     return userTokenPairs;
 }
