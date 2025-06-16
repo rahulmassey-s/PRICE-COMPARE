@@ -86,20 +86,36 @@ app.post('/api/send-notification', async (req, res) => {
 
     // Create the main log entry first to get its ID
     const logRef = db.collection('notifications').doc();
-    const logEntry = {
-      id: logRef.id,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      target: { name: target, userId: userId || null },
-      requestPayload: payload,
-      delivery: {
-        totalSent: tokens.length,
-        successCount: report.successCount,
-        failureCount: report.failureCount,
-      },
-    };
-    await logRef.set(logEntry);
+    let notificationData;
+
+    // If a userId is present, it's a targeted, user-facing notification.
+    // We save it in the format the client-side app expects.
+    if (userId) {
+      notificationData = {
+        id: logRef.id,
+        userId: userId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'unread', // Mark as unread by default
+        ...payload // Spread the rest of the payload (title, body, link, etc.)
+      };
+    } else {
+      // For broadcasts, we keep the more detailed admin-facing log structure.
+      notificationData = {
+        id: logRef.id,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        target: { name: target, userId: null },
+        requestPayload: payload,
+        delivery: {
+          totalSent: tokens.length,
+          successCount: report.successCount,
+          failureCount: report.failureCount,
+        },
+      };
+    }
     
-    // Now, create the detailed per-user logs in a sub-collection
+    await logRef.set(notificationData);
+    
+    // For admin auditing, we still log the detailed delivery report in a sub-collection.
     const batch = db.batch();
     report.responses.forEach((resp, idx) => {
       const userTokenPair = userTokenPairs[idx];

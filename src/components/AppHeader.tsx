@@ -153,8 +153,10 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
   useEffect(() => {
     if (notifDropdownOpen && notifications.length > 0 && db && firebaseUser) {
       notifications.forEach(n => {
-        if (n.status === 'unread') {
-          updateDoc(doc(db, 'notifications', n.id), { status: 'read' });
+        if (n.status === 'unread' && n.createdAt?.toDate) {
+          updateDoc(doc(db, 'notifications', n.id), { status: 'read' }).catch(err => {
+            console.warn(`Failed to mark notification ${n.id} as read:`, err);
+          });
         }
       });
     }
