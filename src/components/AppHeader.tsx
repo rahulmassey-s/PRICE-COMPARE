@@ -27,6 +27,17 @@ import { useTranslation } from 'react-i18next';
 import '../i18n';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+// --- Define a type for notifications ---
+interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: any; // Using 'any' to accommodate both Firestore Timestamps and JS Date objects
+  status: 'read' | 'unread';
+  link?: string;
+  [key: string]: any; // Allow other properties
+}
+
 interface AppHeaderProps {
   isCartOpen: boolean;
   onCartOpenChange: (isOpen: boolean) => void;
@@ -38,7 +49,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
   const [dynamicSiteName, setDynamicSiteName] = useState<string>(siteConfig.name);
   const [dynamicLogoUrl, setDynamicLogoUrl] = useState<string | null>(null);
   const [theme, setTheme] = useState('light');
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
 
@@ -94,7 +105,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notification[];
       console.log('[DEBUG] Notifications fetched from Firestore:', notifs);
       setNotifications(notifs);
       setUnreadCount(notifs.filter(n => n.status === 'unread').length);
@@ -103,6 +114,40 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
     });
     return () => unsub();
   }, [firebaseUser]);
+
+  // Listen for foreground notifications pushed via window event
+  useEffect(() => {
+    const handleNewNotification = (event: Event) => {
+      // We need to assert the type of event to access detail
+      const customEvent = event as CustomEvent;
+      const newNotificationData = customEvent.detail;
+      
+      console.log('[AppHeader] Caught foreground notification:', newNotificationData);
+
+      // Create a new notification object that matches our type
+      const newNotification: Notification = {
+        id: newNotificationData.bookingId || Date.now().toString(),
+        title: newNotificationData.title || 'Update',
+        body: newNotificationData.body || '',
+        createdAt: new Date(),
+        status: 'unread',
+        link: newNotificationData.link,
+        ...newNotificationData
+      };
+
+      // Add the new notification to the top of the list
+      setNotifications(prevNotifications => [newNotification, ...prevNotifications]);
+
+      // Increment unread count
+      setUnreadCount(prevCount => prevCount + 1);
+    };
+
+    window.addEventListener('new-notification', handleNewNotification);
+
+    return () => {
+      window.removeEventListener('new-notification', handleNewNotification);
+    };
+  }, []); // Empty dependency array means this runs once on mount
 
   // Mark all as read when dropdown opens
   useEffect(() => {

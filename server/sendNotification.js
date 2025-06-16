@@ -25,24 +25,28 @@ const PORT = process.env.PORT || 3001;
 
 // --- Middleware ---
 
-// 1. Custom CORS Middleware: Manually set headers to ensure they are always present.
+// 1. Custom CORS Middleware
 app.use((req, res, next) => {
-  // Allow any origin for now. This is the most permissive setting.
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  // Allowed methods
+  const allowedOrigins = [
+    'https://labpricecompare.netlify.app', // Your live frontend
+    'http://localhost:3000',             // Your local frontend dev server
+    'http://localhost:9002',             // Your local admin panel
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:9002'
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-  // Allowed headers
   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
-  // Allow credentials - important for some auth flows
   res.setHeader('Access-Control-Allow-Credentials', true);
 
-  // Handle preflight OPTIONS request.
-  // The browser sends this before a POST/PUT etc. to check if the server allows it.
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(204); // 204 No Content - success signal for preflight.
+    return res.sendStatus(204);
   }
 
-  // Pass to next middleware
   next();
 });
 
