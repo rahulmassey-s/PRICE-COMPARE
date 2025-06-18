@@ -106,7 +106,6 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
     );
     const unsub = onSnapshot(q, (snap) => {
       const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notification[];
-      console.log('[DEBUG] Notifications fetched from Firestore:', notifs);
       setNotifications(notifs);
       setUnreadCount(notifs.filter(n => n.status === 'unread').length);
     }, (error) => {
@@ -118,47 +117,46 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
   // Listen for foreground notifications pushed via window event
   useEffect(() => {
     const handleNewNotification = (event: Event) => {
-      // We need to assert the type of event to access detail
       const customEvent = event as CustomEvent;
       const newNotificationData = customEvent.detail;
-      
-      console.log('[AppHeader] Caught foreground notification:', newNotificationData);
-
-      // Create a new notification object that matches our type
-      const newNotification: Notification = {
-        id: newNotificationData.bookingId || Date.now().toString(),
-        title: newNotificationData.title || 'Update',
-        body: newNotificationData.body || '',
-        createdAt: new Date(),
-        status: 'unread',
-        link: newNotificationData.link,
-        ...newNotificationData
-      };
-
-      // Add the new notification to the top of the list
-      setNotifications(prevNotifications => [newNotification, ...prevNotifications]);
-
-      // Increment unread count
-      setUnreadCount(prevCount => prevCount + 1);
+      // Prevent duplicate notifications
+      setNotifications(prevNotifications => {
+        if (prevNotifications.some(n => n.id === newNotificationData.bookingId)) {
+          return prevNotifications;
+        }
+        return [
+          {
+            id: newNotificationData.bookingId || Date.now().toString(),
+            title: newNotificationData.title || 'Update',
+            body: newNotificationData.body || '',
+            createdAt: new Date(),
+            status: 'unread',
+            link: newNotificationData.link,
+            ...newNotificationData
+          },
+          ...prevNotifications
+        ];
+      });
     };
-
     window.addEventListener('new-notification', handleNewNotification);
-
     return () => {
       window.removeEventListener('new-notification', handleNewNotification);
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
-  // Mark all as read when dropdown opens
+  // Mark all as read when dropdown opens (optimistic update)
   useEffect(() => {
     if (notifDropdownOpen && notifications.length > 0 && db && firebaseUser) {
-      notifications.forEach(n => {
-        if (n.status === 'unread' && n.createdAt?.toDate) {
-          updateDoc(doc(db, 'notifications', n.id), { status: 'read' }).catch(err => {
-            console.warn(`Failed to mark notification ${n.id} as read:`, err);
+      const unreadIds = notifications.filter(n => n.status === 'unread').map(n => n.id);
+      if (unreadIds.length > 0) {
+        setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, status: 'read' } : n));
+        setUnreadCount(0);
+        unreadIds.forEach(id => {
+          updateDoc(doc(db, 'notifications', id), { status: 'read' }).catch(err => {
+            console.warn(`Failed to mark notification ${id} as read:`, err);
           });
-        }
-      });
+        });
+      }
     }
   }, [notifDropdownOpen, notifications, db, firebaseUser]);
 

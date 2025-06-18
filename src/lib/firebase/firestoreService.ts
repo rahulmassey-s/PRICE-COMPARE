@@ -86,10 +86,15 @@ export async function updateFirestoreUserDetails(
         sanitizedUpdates[typedKey] = updates[typedKey] === undefined ? null : updates[typedKey];
       }
     }
-    await updateDoc(userRef, {
-      ...sanitizedUpdates,
-      lastUpdatedAt: serverTimestamp(),
-    });
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, { ...sanitizedUpdates, createdAt: serverTimestamp(), lastUpdatedAt: serverTimestamp() });
+    } else {
+      await updateDoc(userRef, {
+        ...sanitizedUpdates,
+        lastUpdatedAt: serverTimestamp(),
+      });
+    }
   } catch (error) {
     console.error("Error updating user details in Firestore:", error);
     throw error; // Re-throw to be caught by caller
@@ -286,10 +291,15 @@ export async function redeemPoints(userId: string, pointsToRedeem: number, booki
  */
 export async function setUserOnlineStatus(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    online: true,
-    lastActiveAt: serverTimestamp(),
-  });
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { online: true, createdAt: serverTimestamp(), lastActiveAt: serverTimestamp() });
+  } else {
+    await updateDoc(userRef, {
+      online: true,
+      lastActiveAt: serverTimestamp(),
+    });
+  }
 }
 
 /**
@@ -298,10 +308,15 @@ export async function setUserOnlineStatus(userId: string): Promise<void> {
  */
 export async function setUserOfflineStatus(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    online: false,
-    lastActiveAt: serverTimestamp(),
-  });
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { online: false, createdAt: serverTimestamp(), lastActiveAt: serverTimestamp() });
+  } else {
+    await updateDoc(userRef, {
+      online: false,
+      lastActiveAt: serverTimestamp(),
+    });
+  }
 }
 
 /**
@@ -310,9 +325,14 @@ export async function setUserOfflineStatus(userId: string): Promise<void> {
  */
 export async function updateUserActivity(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    lastActiveAt: serverTimestamp(),
-  });
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { lastActiveAt: serverTimestamp(), createdAt: serverTimestamp() });
+  } else {
+    await updateDoc(userRef, {
+      lastActiveAt: serverTimestamp(),
+    });
+  }
 }
 
 /**
@@ -321,10 +341,15 @@ export async function updateUserActivity(userId: string): Promise<void> {
  */
 export async function incrementUserLoginCount(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    loginCount: (await getDoc(userRef)).data()?.loginCount ? (await getDoc(userRef)).data().loginCount + 1 : 1,
-    lastLoginAt: serverTimestamp(),
-  });
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    await setDoc(userRef, { loginCount: 1, lastLoginAt: serverTimestamp(), createdAt: serverTimestamp() });
+  } else {
+    await updateDoc(userRef, {
+      loginCount: (await getDoc(userRef)).data()?.loginCount ? (await getDoc(userRef)).data().loginCount + 1 : 1,
+      lastLoginAt: serverTimestamp(),
+    });
+  }
 }
 
 /**
@@ -338,7 +363,13 @@ export async function incrementUserLoginCount(userId: string): Promise<void> {
 export async function logUserActivity(userId: string, activityType: string, details: Record<string, any> = {}, userName?: string, userEmail?: string) {
   try {
     if (!userId || !activityType) return;
-    const activityRef = collection(db, 'userActivity');
+    
+    // Create a unique document ID based on timestamp and random string
+    const timestamp = new Date().getTime();
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    const uniqueId = `${userId}_${timestamp}_${randomStr}`;
+    
+    const activityRef = doc(db, 'userActivity', uniqueId);
     const data: any = {
       userId: userId || 'unknown',
       userName: userName || null,
@@ -349,7 +380,9 @@ export async function logUserActivity(userId: string, activityType: string, deta
     };
     // Ensure all fields are defined (no undefined)
     Object.keys(data).forEach(k => { if (data[k] === undefined) data[k] = null; });
-    await addDoc(activityRef, data);
+    
+    // Use setDoc with a specific document ID instead of addDoc
+    await setDoc(activityRef, data);
   } catch (e) {
     // Never throw, just log
     console.error('Failed to log user activity:', e);

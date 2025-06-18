@@ -4,6 +4,33 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow write: if request.auth != null && request.auth.token.admin == true;
     }
-    // ...other rules...
+    
+    // User document rules
+    match /users/{userId} {
+      // Allow read/write access to a user's own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read/write all user documents
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Wallet transactions rules
+    match /walletTransactions/{transactionId} {
+      // Allow users to read their own transactions
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Allow creation of transactions during registration
+      allow create: if request.auth != null;
+      // Allow admins to manage all transactions
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // User activity rules
+    match /userActivity/{activityId} {
+      // Allow users to create activity records
+      allow create: if request.auth != null;
+      // Allow users to read their own activity
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Allow admins to read all activity
+      allow read: if request.auth != null && request.auth.token.admin == true;
+    }
   }
-} 
+}

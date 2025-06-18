@@ -16,14 +16,14 @@ const messaging = firebase.messaging();
 
 // A robust, universal push event handler
 self.addEventListener('push', event => {
-  console.log('[Service Worker] Push Received. Full event:', event);
+  if (self.location.hostname === 'localhost') console.log('[Service Worker] Push Received. Full event:', event);
 
   let data;
   try {
     // Check if data payload exists and is valid JSON
     if (event.data) {
       const rawData = event.data.json();
-      console.log('[Service Worker] Raw payload received:', rawData);
+      if (self.location.hostname === 'localhost') console.log('[Service Worker] Raw payload received:', rawData);
       // We expect the actual notification data to be in a `data` property
       data = rawData.data;
       if (!data) {
@@ -42,7 +42,7 @@ self.addEventListener('push', event => {
     };
   }
   
-  console.log('[Service Worker] Parsed notification data:', data);
+  if (self.location.hostname === 'localhost') console.log('[Service Worker] Parsed notification data:', data);
 
   const title = data.title || 'New Notification';
   const options = {
@@ -71,17 +71,17 @@ self.addEventListener('push', event => {
     console.error('[Service Worker] Could not parse notification actions.', e);
   }
   
-  console.log('[Service Worker] Showing notification with title:', title, 'and options:', options);
+  if (self.location.hostname === 'localhost') console.log('[Service Worker] Showing notification with title:', title, 'and options:', options);
 
   event.waitUntil(
     self.registration.showNotification(title, options)
-      .then(() => console.log('[Service Worker] showNotification promise resolved.'))
+      .then(() => { if (self.location.hostname === 'localhost') console.log('[Service Worker] showNotification promise resolved.'); })
       .catch(err => console.error('[Service Worker] showNotification promise rejected:', err))
   );
 });
 
 self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification click Received.', event);
+  if (self.location.hostname === 'localhost') console.log('[Service Worker] Notification click Received.', event);
 
   const clickedNotification = event.notification;
   clickedNotification.close();
@@ -89,7 +89,7 @@ self.addEventListener('notificationclick', event => {
   // If an action button was clicked, event.action will have the URL.
   // Otherwise, we use the URL from the main data payload.
   const urlToOpen = event.action || clickedNotification.data.url;
-  console.log('[Service Worker] Opening window:', urlToOpen);
+  if (self.location.hostname === 'localhost') console.log('[Service Worker] Opening window:', urlToOpen);
   
   const promiseChain = clients.openWindow(urlToOpen);
   event.waitUntil(promiseChain);

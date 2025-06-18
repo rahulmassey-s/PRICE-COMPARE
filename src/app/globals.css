@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes fadeInSlow {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-fade-in-slow {
+  animation: fadeInSlow 1.5s ease-in-out;
+}
+
 @layer base {
   :root {
     --background: 200 20% 98%; /* Very light, almost white, cool gray */

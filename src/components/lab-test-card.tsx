@@ -521,19 +521,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                     const mainLabName = priceInfo.labName.replace(/\s*lab$/i, '');
             return (
                       <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
-                        <td className="py-2.5 px-2 text-left align-middle font-bold text-blue-700 text-[11px] rounded-l-xl" style={{ lineHeight: 1.2 }}>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="block uppercase font-bold break-words flex items-center gap-1">
-                              <span
-                                className="cursor-pointer hover:underline"
-                                onClick={() => setOpenLabLocation(priceInfo.labName)}
-                                tabIndex={0}
-                                role="button"
-                                aria-label={`Show location for ${mainLabName}`}
-                              >
-                                {mainLabName}
-                              </span>
-                            </span>
+                        <td className="py-2.5 px-2 text-left align-middle font-bold text-blue-700 text-[11px] rounded-l-xl min-w-[110px]" style={{ lineHeight: 1.2 }}>
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="block font-semibold text-[13px] text-blue-800 mb-1" style={{ letterSpacing: '0.5px' }}>{mainLabName}</span>
                             <span className="block text-[10px] text-blue-700 tracking-widest font-semibold uppercase flex items-center gap-1">
                               LAB
                               <button
@@ -552,7 +542,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                         <td className="py-2.5 px-2 text-center align-middle font-bold text-[11px]" style={{ lineHeight: 1.2 }}>
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             {priceInfo.originalPrice && priceInfo.originalPrice > priceInfo.price && (
-                              <span className="block line-through text-gray-400 break-words">₹{priceInfo.originalPrice.toFixed(0)}/-</span>
+                              <span className="block line-through text-gray-400 break-words" style={{ fontSize: '1.1rem' }}>₹{priceInfo.originalPrice.toFixed(0)}/-</span>
                   )}
                 </div>
                         </td>
@@ -563,9 +553,9 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                               userRole === 'member'
                                 ? 'text-orange-700'
                                 : (priceInfo.price === minNonMemberPrice ? 'text-green-700 bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip' : 'text-orange-700')
-                            )}>
+                            )} style={{ fontSize: '1.1rem' }}>
                               ₹{priceInfo.price.toFixed(0)}/-
-                      </span>
+                            </span>
                             {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
                               <span className="mt-0.5 inline-block text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold animate-pulse-best best-tooltip" tabIndex={0} aria-label="Best price" role="tooltip">
                                 <svg className="inline mr-0.5" width="10" height="10" fill="#16a34a" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Best
@@ -581,7 +571,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                               userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice 
                                 ? 'bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip text-green-700' 
                                 : 'text-yellow-800'
-                            )}>
+                            )} style={{ fontSize: '1.1rem' }}>
                               ₹{typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice > 0 ? priceInfo.memberPrice.toFixed(0) : priceInfo.price.toFixed(0)}/-
                             </span>
                             {userRole === 'member' && typeof priceInfo.memberPrice === 'number' && priceInfo.memberPrice === minMemberPrice && (

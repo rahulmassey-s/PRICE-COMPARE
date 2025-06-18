@@ -5089,24 +5089,95 @@ document.addEventListener('click', async function(event) {
     }
     updateBtn.disabled = true;
     updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    let timeoutId = setTimeout(() => {
+      updateBtn.disabled = false;
+      updateBtn.innerHTML = '<i class="fas fa-save"></i> Update';
+      showToast('Update timed out. Please try again.', 'error');
+    }, 15000); // 15 seconds
     try {
       await firestoreRequest('updateDoc', 'bookings', bookingId, { status: newStatus });
       showToast('Booking status updated!', 'success');
+      // --- Referral 400 points logic ---
+      if (newStatus === 'Completed') {
+        // Fetch booking to get user info
+        const bookingDoc = await firestoreRequest('getDoc', 'bookings', bookingId);
+        if (bookingDoc.exists()) {
+          const booking = bookingDoc.data();
+          // Fetch user document to check for referrerUid
+          const userDoc = await firestoreRequest('getDoc', 'users', booking.userId);
+          if (userDoc.exists()) {
+            const user = userDoc.data();
+            const referrerUid = user.referrerUid;
+            if (referrerUid) {
+              // Check if this is the first completed booking for this user
+              const bookingsSnap = await firestoreRequest('getDocs', 'bookings', null, null, [
+                { type: 'where', field: 'userId', op: '==', value: booking.userId },
+                { type: 'where', field: 'status', op: '==', value: 'Completed' }
+              ]);
+              console.log('[Referral Debug] Completed bookings for user:', bookingsSnap.size);
+              if (bookingsSnap.size === 1) {
+                // Check if 400 points already awarded for this referral
+                const txSnap = await firestoreRequest('getDocs', 'walletTransactions', null, null, [
+                  { type: 'where', field: 'userId', op: '==', value: referrerUid },
+                  { type: 'where', field: 'action', op: '==', value: 'referral-complete' },
+                  { type: 'where', field: 'referredUid', op: '==', value: booking.userId }
+                ]);
+                console.log('[Referral Debug] Existing referral-complete tx:', txSnap.size);
+                if (txSnap.empty) {
+                  // Award 400 points to referrer
+                  try {
+                    const txRef = await firestoreRequest('addDoc', 'walletTransactions', null, {
+                      userId: referrerUid,
+                      date: new Date(),
+                      action: 'referral-complete',
+                      points: 400,
+                      status: 'completed',
+                      referredUid: booking.userId, // flat field for easier query
+                      meta: { referredUid: booking.userId },
+                      createdAt: new Date(),
+                    });
+                    // Ensure referrer user doc exists
+                    let refUserDoc = await firestoreRequest('getDoc', 'users', referrerUid);
+                    if (!refUserDoc.exists()) {
+                      await firestoreRequest('setDoc', 'users', referrerUid, { pointsBalance: 400 });
+                      refUserDoc = await firestoreRequest('getDoc', 'users', referrerUid);
+                      console.log('[Referral Debug] Referrer user doc created.');
+                    }
+                    if (refUserDoc.exists()) {
+                      const refUser = refUserDoc.data();
+                      const newPoints = (refUser.pointsBalance || 0) + 400;
+                      await firestoreRequest('setDoc', 'users', referrerUid, { pointsBalance: newPoints }, { merge: true });
+                      console.log('[Referral Debug] 400 points awarded to referrer:', referrerUid, 'New balance:', newPoints);
+                    }
+                  } catch (err) {
+                    console.error('[Referral Debug] Error awarding 400 points:', err);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      // --- End referral logic ---
       // --- Send notification to user about status update ---
       try {
         // Fetch booking to get user info
         const bookingDoc = await firestoreRequest('getDoc', 'bookings', bookingId);
         if (bookingDoc.exists()) {
           const booking = bookingDoc.data();
-          // Prepare notification payload
+          // Prepare a detailed notification payload
+          const testList = (booking.items && booking.items.length > 0)
+            ? booking.items.map(item => `${item.testName} (${item.labName})`).join(', ')
+            : 'N/A';
+          const bookingDate = booking.bookingDate && booking.bookingDate.toDate ? booking.bookingDate.toDate() : null;
+          const formattedDate = bookingDate ? bookingDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+          const formattedTime = bookingDate ? bookingDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
           const notificationPayload = {
-            title: 'Booking Status Updated',
-            body: `Your booking is now "${newStatus}".`,
+            title: `Booking ${newStatus === 'Confirmed' ? 'Confirmed' : newStatus}`,
+            body: `Status: ${newStatus}\nTest(s): ${testList}\nAmount: ₹${booking.totalAmount?.toFixed(2) || 'N/A'}\nDate: ${formattedDate} ${formattedTime}\n\nThank you for booking with Lab Price Compare!`,
             type: 'booking-status',
-            userId: booking.userId, // or booking.userEmail if your backend supports it
+            userId: booking.userId,
             bookingId: bookingId,
-            // --- FIX ---
-            // Explicitly set the link to the live site's account page
             link: 'https://labpricecompare.netlify.app/account'
           };
           // Send notification via backend
@@ -5125,6 +5196,7 @@ document.addEventListener('click', async function(event) {
       showToast('Failed to update booking status.', 'error');
       console.error('Error updating booking status:', error);
     } finally {
+      clearTimeout(timeoutId);
       updateBtn.disabled = false;
       updateBtn.innerHTML = '<i class="fas fa-save"></i> Update';
     }

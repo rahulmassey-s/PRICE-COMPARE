@@ -7,10 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 const ForegroundNotificationHandler = () => {
   const { toast } = useToast();
 
+  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   useEffect(() => {
     const unsubscribe = onMessageListener()
       .then((payload: any) => {
-        console.log('Foreground message received:', payload);
+        if (isDev) console.log('Foreground message received:', payload);
 
         // --- Create and dispatch a custom event ---
         // This allows other components (like AppHeader) to listen for new notifications

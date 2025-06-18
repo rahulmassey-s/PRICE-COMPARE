@@ -137,7 +137,7 @@ export default function HomePage({ }: HomePageProps) {
       id: testSlug,
       docId: testDoc.id,
       name: testData.testName,
-      imageUrl: testData.testImageUrl,
+      imageUrl: testData.imageUrl || testData.testImageUrl,
       description: testData.description,
       tags: testData.tags,
     };
@@ -171,6 +171,8 @@ export default function HomePage({ }: HomePageProps) {
             labName: priceData.labName,
             price: priceData.price,
             originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+            memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
+            labDescription: priceData.labDescription || undefined,
           });
           labPricesMap.set(priceData.testId, currentPrices);
         });
@@ -223,6 +225,8 @@ export default function HomePage({ }: HomePageProps) {
         labName: priceData.labName,
         price: priceData.price,
         originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
+        memberPrice: typeof priceData.memberPrice === 'number' ? priceData.memberPrice : undefined,
+        labDescription: priceData.labDescription || undefined,
       });
     });
 
@@ -231,7 +235,7 @@ export default function HomePage({ }: HomePageProps) {
       id: testSlug,
       docId: testDocSnap.id,
       name: testData.testName,
-      imageUrl: testData.testImageUrl,
+      imageUrl: testData.imageUrl || testData.testImageUrl,
       description: testData.description,
       tags: testData.tags,
       prices: labPrices,

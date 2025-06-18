@@ -5,6 +5,8 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 let requestForToken: any = async () => null;
 let onMessageListener: any = () => new Promise(() => {});
 
+const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 if (
   typeof window !== 'undefined' &&
   (window.location.protocol === 'https:' || window.location.hostname === 'localhost') &&
@@ -38,14 +40,14 @@ if (
       });
       if (currentToken) {
         // Save this token to your DB for sending notifications
-        console.log('FCM Token:', currentToken);
+        if (isDev) console.log('FCM Token:', currentToken);
         const user = auth.currentUser;
         if (user && db) {
           try {
             await updateDoc(doc(db, 'users', user.uid), {
               fcmTokens: arrayUnion(currentToken),
             });
-            console.log('FCM token saved to Firestore for user:', user.uid);
+            if (isDev) console.log('FCM token saved to Firestore for user:', user.uid);
           } catch (err) {
             console.error('Error saving FCM token to Firestore:', err);
           }

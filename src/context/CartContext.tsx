@@ -10,6 +10,8 @@ export interface CartItem {
   labName: string;
   price: number;
   originalPrice?: number;
+  memberPrice?: number;
+  nonMemberPrice?: number;
   quantity: number; 
   appointmentDateTime?: string;
 }

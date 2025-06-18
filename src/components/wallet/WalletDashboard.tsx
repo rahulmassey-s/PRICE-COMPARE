@@ -74,13 +74,13 @@ export default function WalletDashboard() {
   if (loading) return <div className="flex justify-center items-center h-40 text-lg font-semibold text-blue-600 animate-pulse">Loading wallet...</div>;
 
   // Calculate earned, redeemed, expired
-  const earned = transactions.filter(t => t.action === 'earn' || t.action === 'referral').reduce((a, b) => a + b.points, 0);
+  const earned = transactions.filter(t => t.action === 'earn' || t.action === 'referral' || t.action === 'referral-complete').reduce((a, b) => a + b.points, 0);
   const redeemed = transactions.filter(t => t.action === 'redeem').reduce((a, b) => a + Math.abs(b.points), 0);
   const expired = transactions.filter(t => t.action === 'expire').reduce((a, b) => a + Math.abs(b.points), 0);
 
   // Helper for action badge
   const actionBadge = (action: string) => {
-    if (action === 'earn' || action === 'referral') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold"><ArrowDownCircle className="w-4 h-4" /> Earn</span>;
+    if (action === 'earn' || action === 'referral' || action === 'referral-complete') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold"><ArrowDownCircle className="w-4 h-4" /> Earn</span>;
     if (action === 'referral-share') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold"><Gift className="w-4 h-4" /> Referral Share</span>;
     if (action === 'redeem') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold"><ArrowUpCircle className="w-4 h-4" /> Redeem</span>;
     if (action === 'manual-add') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold"><Gift className="w-4 h-4" /> Manual Add</span>;

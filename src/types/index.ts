@@ -32,6 +32,7 @@ export interface UserDetails {
   displayName: string | null; // Changed from optional to string | null
   phoneNumber: string | null; // Changed from optional to string | null
   role?: 'non-member' | 'member' | 'admin'; // Role of the user
+  pointsBalance?: number;
   createdAt?: Date; // Firestore Timestamp converted to JS Date
   lastUpdatedAt?: Date; // Firestore Timestamp converted to JS Date
   membershipStartDate?: Date | Timestamp | null; // Added for membership feature
@@ -91,6 +92,7 @@ export interface FirestoreTest {
   // No 'id' field here as it's the document ID itself.
   testName: string;
   testImageUrl?: string;
+  imageUrl?: string;
   isPopular?: boolean;
   isPackage?: boolean; // Added field for packages
   isActive?: boolean; // Added isActive field
@@ -109,6 +111,7 @@ export interface FirestoreTestLabPrice {
   labName: string; // Denormalized for convenience
   price: number; // Selling price at this lab
   originalPrice?: number; // Optional MRP at this lab
+  memberPrice?: number; // Optional: Member price for this lab/test
   createdAt?: Timestamp; // Firestore Timestamp
   lastUpdatedAt?: Timestamp; // Firestore Timestamp
 }
@@ -121,6 +124,8 @@ export interface CartItem {
   labName: string;
   price: number;
   originalPrice?: number;
+  memberPrice?: number;
+  nonMemberPrice?: number;
   quantity: number;
   appointmentDateTime?: string; // ISO string for selected date and time
 }

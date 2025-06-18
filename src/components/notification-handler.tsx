@@ -5,6 +5,8 @@ import { requestForToken } from '@/lib/firebase-messaging';
 import { auth } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
 
+const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 const NotificationHandler = () => {
   useEffect(() => {
     // This effect runs once when the component mounts.
@@ -13,10 +15,10 @@ const NotificationHandler = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         // If the user is logged in, request the notification token.
-        console.log("User is logged in. Requesting notification token...");
+        if (isDev) console.log("User is logged in. Requesting notification token...");
         requestForToken();
       } else {
-        console.log("No user logged in. Not requesting notification token.");
+        if (isDev) console.log("No user logged in. Not requesting notification token.");
       }
     });
 
