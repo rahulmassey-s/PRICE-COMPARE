@@ -89,13 +89,18 @@ app.post('/api/send-notification', async (req, res) => {
     let notificationData;
 
     // If a userId is present, it's a targeted, user-facing notification.
-    // We save it in the format the client-side app expects.
     if (userId) {
       notificationData = {
         id: logRef.id,
         userId: userId,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         status: 'unread', // Mark as unread by default
+        target: target || 'User',
+        delivery: {
+          totalSent: userTokenPairs.length,
+          successCount: report.successCount || 0,
+          failureCount: report.failureCount || 0,
+        },
         ...payload // Spread the rest of the payload (title, body, link, etc.)
       };
     } else {
@@ -103,13 +108,13 @@ app.post('/api/send-notification', async (req, res) => {
       notificationData = {
         id: logRef.id,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        target: { name: target, userId: null },
-        requestPayload: payload,
+        target: typeof target === 'string' ? target : (target?.name || 'N/A'),
         delivery: {
           totalSent: tokens.length,
-          successCount: report.successCount,
-          failureCount: report.failureCount,
+          successCount: report.successCount || 0,
+          failureCount: report.failureCount || 0,
         },
+        requestPayload: payload,
       };
     }
     

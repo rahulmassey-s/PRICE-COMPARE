@@ -4783,16 +4783,24 @@ async function loadNotificationHistory() {
     }
     
     notificationHistoryBody.innerHTML = "";
+    const notifications = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
+      notifications.push(data);
+    });
+    // Sort by createdAt (sent date) descending
+    notifications.sort((a, b) => {
+      const aTime = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+      const bTime = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+      return bTime - aTime;
+    });
+    notificationHistoryBody.innerHTML = "";
+    notifications.forEach((data) => {
       const report = data.delivery || { successCount: 0, failureCount: 0 };
       const status = data.criticalError ? "Critical Error" : (report.failureCount > 0 ? "Partial Failure" : "Sent");
       const statusColor = data.criticalError ? "danger" : (report.failureCount > 0 ? "warning" : "success");
-
       const row = document.createElement("tr");
-      const notificationId = data.id; // Get the ID from the document data
-
-      // Only make rows with a valid ID clickable to fetch details.
+      const notificationId = data.id;
       if (notificationId) {
         row.setAttribute('data-doc-id', notificationId);
         row.style.cursor = 'pointer';
@@ -4802,11 +4810,12 @@ async function loadNotificationHistory() {
         row.style.cursor = 'default';
         row.title = 'Detailed report not available for this old notification.';
       }
-      
+      const sentDate = data.createdAt && data.createdAt.seconds ? new Date(data.createdAt.seconds * 1000).toLocaleString() : (data.createdAt ? new Date(data.createdAt).toLocaleString() : 'N/A');
+      const targetGroup = data.target?.name || data.target || 'N/A';
       row.innerHTML = `
-        <td>${data.requestPayload?.title || "N/A"}</td>
-        <td>${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : "N/A"}</td>
-        <td>${data.target?.name || "N/A"} ${data.target?.userId || ''}</td>
+        <td>${data.requestPayload?.title || data.title || "N/A"}</td>
+        <td>${sentDate}</td>
+        <td>${targetGroup} ${data.target?.userId || ''}</td>
         <td><span class="badge badge-${statusColor}">${status}</span></td>
         <td>${report.successCount} / ${report.successCount + report.failureCount}</td>
       `;
@@ -4896,13 +4905,14 @@ if (pushNotificationForm) {
 
     // 2. Prepare base notification data
     const notificationData = {
-      title,
-      body,
-      type,
-      link,
+      title: title || 'N/A',
+      body: body || 'N/A',
+      type: type || 'info',
+      link: link || '',
       target: target === 'user' ? `User: ${userId}` : target.charAt(0).toUpperCase() + target.slice(1),
       userId: target === 'user' ? userId : null,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
+      delivery: { successCount: 0, failureCount: 0 },
       // New feature data
       imageUrl: imageUrl || null,
       actions: [
@@ -5202,4 +5212,32 @@ document.addEventListener('click', async function(event) {
     }
   }
 });
+// ... existing code ...
+
+// ... existing code ...
+// --- Delivery Details Modal Scroll & Close Robust Fix ---
+(function() {
+  const deliveryDetailsModal = document.getElementById('delivery-details-modal');
+  if (deliveryDetailsModal) {
+    // Make modal body scrollable
+    const modalBody = deliveryDetailsModal.querySelector('.modal-body');
+    if (modalBody) {
+      modalBody.style.maxHeight = '60vh';
+      modalBody.style.overflowY = 'auto';
+    }
+    // Close button logic
+    const closeBtn = deliveryDetailsModal.querySelector('button.close-btn');
+    if (closeBtn) {
+      closeBtn.onclick = function() {
+        deliveryDetailsModal.style.display = 'none';
+      };
+    }
+    // Also close modal on background click (optional UX)
+    deliveryDetailsModal.addEventListener('click', function(e) {
+      if (e.target === deliveryDetailsModal) {
+        deliveryDetailsModal.style.display = 'none';
+      }
+    });
+  }
+})();
 // ... existing code ...

@@ -63,6 +63,8 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       if (userCredential.user) {
+        // --- Ensure user doc is created before any update or referral logic ---
+        await getOrCreateUserDocument(userCredential.user, mobile);
         // --- Referral logic ---
         let referrerUid = null;
         let referrerUserDoc = null;
@@ -77,7 +79,6 @@ export default function SignupPage() {
           }
         }
         // Create user doc with referrerUid if found
-        await getOrCreateUserDocument(userCredential.user, mobile);
         const userDocRef = doc(db, 'users', userCredential.user.uid);
         await updateDoc(userDocRef, { referrerUid: referrerUid || null, displayName: name });
         // Award 100 points to new user if referred

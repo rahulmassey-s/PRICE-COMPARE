@@ -86,15 +86,7 @@ export async function updateFirestoreUserDetails(
         sanitizedUpdates[typedKey] = updates[typedKey] === undefined ? null : updates[typedKey];
       }
     }
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) {
-      await setDoc(userRef, { ...sanitizedUpdates, createdAt: serverTimestamp(), lastUpdatedAt: serverTimestamp() });
-    } else {
-      await updateDoc(userRef, {
-        ...sanitizedUpdates,
-        lastUpdatedAt: serverTimestamp(),
-      });
-    }
+    await setDoc(userRef, { ...sanitizedUpdates, lastUpdatedAt: serverTimestamp() }, { merge: true });
   } catch (error) {
     console.error("Error updating user details in Firestore:", error);
     throw error; // Re-throw to be caught by caller
@@ -291,15 +283,7 @@ export async function redeemPoints(userId: string, pointsToRedeem: number, booki
  */
 export async function setUserOnlineStatus(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    await setDoc(userRef, { online: true, createdAt: serverTimestamp(), lastActiveAt: serverTimestamp() });
-  } else {
-    await updateDoc(userRef, {
-      online: true,
-      lastActiveAt: serverTimestamp(),
-    });
-  }
+  await setDoc(userRef, { online: true, lastActiveAt: serverTimestamp() }, { merge: true });
 }
 
 /**
@@ -308,15 +292,7 @@ export async function setUserOnlineStatus(userId: string): Promise<void> {
  */
 export async function setUserOfflineStatus(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    await setDoc(userRef, { online: false, createdAt: serverTimestamp(), lastActiveAt: serverTimestamp() });
-  } else {
-    await updateDoc(userRef, {
-      online: false,
-      lastActiveAt: serverTimestamp(),
-    });
-  }
+  await setDoc(userRef, { online: false, lastActiveAt: serverTimestamp() }, { merge: true });
 }
 
 /**
@@ -325,14 +301,7 @@ export async function setUserOfflineStatus(userId: string): Promise<void> {
  */
 export async function updateUserActivity(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    await setDoc(userRef, { lastActiveAt: serverTimestamp(), createdAt: serverTimestamp() });
-  } else {
-    await updateDoc(userRef, {
-      lastActiveAt: serverTimestamp(),
-    });
-  }
+  await setDoc(userRef, { lastActiveAt: serverTimestamp() }, { merge: true });
 }
 
 /**
@@ -342,14 +311,8 @@ export async function updateUserActivity(userId: string): Promise<void> {
 export async function incrementUserLoginCount(userId: string): Promise<void> {
   const userRef = doc(db, 'users', userId);
   const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    await setDoc(userRef, { loginCount: 1, lastLoginAt: serverTimestamp(), createdAt: serverTimestamp() });
-  } else {
-    await updateDoc(userRef, {
-      loginCount: (await getDoc(userRef)).data()?.loginCount ? (await getDoc(userRef)).data().loginCount + 1 : 1,
-      lastLoginAt: serverTimestamp(),
-    });
-  }
+  const currentCount = userSnap.exists() && typeof userSnap.data().loginCount === 'number' ? userSnap.data().loginCount : 0;
+  await setDoc(userRef, { loginCount: currentCount + 1, lastLoginAt: serverTimestamp() }, { merge: true });
 }
 
 /**
