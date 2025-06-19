@@ -5215,29 +5215,32 @@ document.addEventListener('click', async function(event) {
 // ... existing code ...
 
 // ... existing code ...
-// --- Delivery Details Modal Scroll & Close Robust Fix ---
+// --- Delivery Details Modal Scroll & Close Fix ---
 (function() {
   const deliveryDetailsModal = document.getElementById('delivery-details-modal');
-  if (deliveryDetailsModal) {
-    // Make modal body scrollable
-    const modalBody = deliveryDetailsModal.querySelector('.modal-body');
-    if (modalBody) {
-      modalBody.style.maxHeight = '60vh';
-      modalBody.style.overflowY = 'auto';
-    }
-    // Close button logic
-    const closeBtn = deliveryDetailsModal.querySelector('button.close-btn');
-    if (closeBtn) {
-      closeBtn.onclick = function() {
-        deliveryDetailsModal.style.display = 'none';
-      };
-    }
-    // Also close modal on background click (optional UX)
-    deliveryDetailsModal.addEventListener('click', function(e) {
-      if (e.target === deliveryDetailsModal) {
-        deliveryDetailsModal.style.display = 'none';
-      }
-    });
+  if (!deliveryDetailsModal) return;
+  const closeBtn = deliveryDetailsModal.querySelector('.close-btn');
+  const modalBody = deliveryDetailsModal.querySelector('.modal-body');
+  if (modalBody) {
+    modalBody.style.maxHeight = '400px';
+    modalBody.style.overflowY = 'auto';
   }
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      deliveryDetailsModal.style.display = 'none';
+    };
+  }
+  // Close on outside click
+  window.addEventListener('click', function(event) {
+    if (event.target === deliveryDetailsModal) {
+      deliveryDetailsModal.style.display = 'none';
+    }
+  });
+  // Close on Escape key
+  window.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && deliveryDetailsModal.style.display !== 'none') {
+      deliveryDetailsModal.style.display = 'none';
+    }
+  });
 })();
 // ... existing code ...
