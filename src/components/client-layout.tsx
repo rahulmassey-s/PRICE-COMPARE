@@ -19,7 +19,6 @@ import {
   logUserActivity
 } from '@/lib/firebase/firestoreService';
 import { siteConfig } from '@/config/site';
-import PushNotificationInit from '@/components/PushNotificationInit';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
 import OneSignalInit from '@/components/OneSignalInit';
 
@@ -328,7 +327,6 @@ export default function ClientLayout({
   return (
     <>
       <OneSignalInit />
-      <PushNotificationInit />
       <ForegroundNotificationHandler />
       <CartProvider>
         <div className="flex flex-col min-h-screen overflow-x-hidden" key={pathname}>

@@ -5,7 +5,6 @@ import '@/app/globals.css';
 import { siteConfig } from '@/config/site';
 import ClientLayout from '@/components/client-layout';
 import AuthOnboardingGuard from '@/components/AuthOnboardingGuard';
-import NotificationHandler from '@/components/notification-handler';
 
 const APP_THEME_COLOR = '#0891b2';
 
@@ -51,7 +50,6 @@ export default function RootLayout({
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ClientLayout>
-          <NotificationHandler />
           <AuthOnboardingGuard>
             {children}
           </AuthOnboardingGuard>
