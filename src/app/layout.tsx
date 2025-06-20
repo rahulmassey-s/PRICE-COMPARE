@@ -6,6 +6,7 @@ import { siteConfig } from '@/config/site';
 import ClientLayout from '@/components/client-layout';
 import AuthOnboardingGuard from '@/components/AuthOnboardingGuard';
 import NotificationHandler from '@/components/notification-handler';
+import OneSignalInit from '@/components/OneSignalInit';
 
 const APP_THEME_COLOR = '#0891b2';
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         <meta name="fast2sms" content="iBw7FEgOyGibzkD7iepav2yK68TCmLoP" />
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <OneSignalInit />
         <ClientLayout>
           <NotificationHandler />
           <AuthOnboardingGuard>
