@@ -21,6 +21,7 @@ import {
 import { siteConfig } from '@/config/site';
 import PushNotificationInit from '@/components/PushNotificationInit';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
+import OneSignalInit from '@/components/OneSignalInit';
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -326,6 +327,7 @@ export default function ClientLayout({
 
   return (
     <>
+      <OneSignalInit />
       <PushNotificationInit />
       <ForegroundNotificationHandler />
       <CartProvider>
