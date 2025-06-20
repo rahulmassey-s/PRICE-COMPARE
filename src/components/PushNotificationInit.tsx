@@ -15,7 +15,9 @@ export default function PushNotificationInit() {
         Notification.requestPermission().then((permission) => {
           if (permission === "granted") {
             navigator.serviceWorker.register("/firebase-messaging-sw.js").then(() => {
-              requestForToken();
+              navigator.serviceWorker.ready.then(() => {
+                requestForToken();
+              });
             });
           } else if (permission === "denied") {
             toast({
@@ -27,7 +29,9 @@ export default function PushNotificationInit() {
         });
       } else if (Notification.permission === "granted") {
         navigator.serviceWorker.register("/firebase-messaging-sw.js").then(() => {
-          requestForToken();
+          navigator.serviceWorker.ready.then(() => {
+            requestForToken();
+          });
         });
       }
     }

@@ -148,6 +148,12 @@ async function sendNotification(tokens, notificationPayload) {
         dataPayload.actions = JSON.stringify(dataPayload.actions);
     }
 
+    // --- Ensure required fields are always present ---
+    if (!dataPayload.title) dataPayload.title = 'Update';
+    if (!dataPayload.body) dataPayload.body = 'You have a new notification.';
+    if (!dataPayload.icon) dataPayload.icon = '/icons/icon-192x192.png';
+    if (!dataPayload.link) dataPayload.link = '/';
+
     const message = {
         tokens: tokens,
         data: dataPayload,
@@ -159,10 +165,15 @@ async function sendNotification(tokens, notificationPayload) {
         },
     };
 
+    // --- Add robust logging for debugging ---
+    console.log('FCM Payload Sent:', JSON.stringify(message, null, 2));
+
     console.log(`Attempting to send notification to ${tokens.length} token(s).`);
 
     try {
         const response = await messaging.sendEachForMulticast(message);
+        // --- Log FCM response ---
+        console.log('FCM Response:', JSON.stringify(response, null, 2));
         
         const report = {
             successCount: response.successCount,
