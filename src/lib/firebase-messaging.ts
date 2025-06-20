@@ -1,9 +1,9 @@
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { auth, db } from './firebase/client';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 
 let requestForToken: any = async () => null;
-let onMessageListener: any = () => new Promise(() => {});
+let onMessageListener: any = (cb?: (payload: any) => void) => {};
 
 const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
@@ -39,11 +39,12 @@ if (
         serviceWorkerRegistration: await navigator.serviceWorker.ready,
       });
       if (currentToken) {
-        // Save this token to your DB for sending notifications
         if (isDev) console.log('FCM Token:', currentToken);
         const user = auth.currentUser;
         if (user && db) {
           try {
+            // Ensure user doc exists before updating
+            await setDoc(doc(db, 'users', user.uid), {}, { merge: true });
             await updateDoc(doc(db, 'users', user.uid), {
               fcmTokens: arrayUnion(currentToken),
             });
@@ -60,13 +61,13 @@ if (
     }
   };
 
-  onMessageListener = () =>
-    new Promise((resolve) => {
-      if (!messaging) return;
-      onMessage(messaging, (payload: any) => {
-        resolve(payload);
-      });
+  // Persistent foreground notification listener
+  onMessageListener = (cb?: (payload: any) => void) => {
+    if (!messaging) return () => {};
+    return onMessage(messaging, (payload: any) => {
+      if (cb) cb(payload);
     });
+  };
 }
 
 // Helper to force-save a token for manual testing
@@ -74,6 +75,7 @@ export async function saveTokenToFirestore(token: string) {
   const user = auth.currentUser;
   if (user && db) {
     try {
+      await setDoc(doc(db, 'users', user.uid), {}, { merge: true });
       await updateDoc(doc(db, 'users', user.uid), {
         fcmTokens: arrayUnion(token),
       });

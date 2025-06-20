@@ -553,7 +553,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                               userRole === 'member'
                                 ? 'text-orange-700'
                                 : (priceInfo.price === minNonMemberPrice ? 'text-green-700 bg-green-50 px-1.5 py-0.5 rounded-lg ring-2 ring-green-300 animate-pulse-best best-tooltip' : 'text-orange-700')
-                            )} style={{ fontSize: '0.9rem' }}>
+                            )} style={{ fontSize: '0.8rem' }}>
                               ₹{priceInfo.price.toFixed(0)}/-
                             </span>
                             {userRole !== 'member' && priceInfo.price === minNonMemberPrice && (
