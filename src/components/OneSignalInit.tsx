@@ -16,6 +16,10 @@ export default function OneSignalInit() {
           window.OneSignal.push(function() {
             window.OneSignal.init({
               appId: '2d41a703-8645-4875-ab7a-283b4e408458',
+              // Force OneSignal to use your custom service worker
+              serviceWorkerPath: 'sw.js',
+              serviceWorkerUpdaterPath: 'OneSignalSDKUpdaterWorker.js',
+              serviceWorkerParam: { scope: '/' },
               notifyButton: { enable: true },
               // You can add more options here if needed
             });
