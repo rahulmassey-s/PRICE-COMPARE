@@ -20,7 +20,11 @@ import {
 } from '@/lib/firebase/firestoreService';
 import { siteConfig } from '@/config/site';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
-import OneSignalInit from '@/components/OneSignalInit';
+import dynamic from 'next/dynamic';
+
+const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
+  ssr: false,
+});
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -327,9 +331,8 @@ export default function ClientLayout({
   return (
     <>
       <OneSignalInit />
-      <ForegroundNotificationHandler />
       <CartProvider>
-        <div className="flex flex-col min-h-screen overflow-x-hidden" key={pathname}>
+        <div className="relative flex min-h-screen flex-col bg-background">
           <AppHeader 
             isCartOpen={isCartOpen} 
             onCartOpenChange={setIsCartOpen} 
@@ -343,6 +346,7 @@ export default function ClientLayout({
           <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
             © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
           </footer>
+          <ForegroundNotificationHandler />
         </div>
         <Toaster />
 
