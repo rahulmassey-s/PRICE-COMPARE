@@ -1,11 +1,11 @@
 import type {NextConfig} from 'next';
 
-const withPWA = require('@ducanh2912/next-pwa').default({
-  dest: 'public',
-  // Inject OneSignal's service worker script at the top of the generated sw.js
-  importScripts: ['https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'],
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in dev mode for faster reloads
-});
+// const withPWA = require('@ducanh2912/next-pwa').default({
+//   dest: 'public',
+//   // Inject OneSignal's service worker script at the top of the generated sw.js
+//   importScripts: ['https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'],
+//   disable: process.env.NODE_ENV === 'development', // Disable PWA in dev mode for faster reloads
+// });
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -45,4 +45,5 @@ const nextConfig: NextConfig = {
 };
 
 // Wrap the Next.js config with the PWA config
-export default withPWA(nextConfig);
+// export default withPWA(nextConfig);
+export default nextConfig;
