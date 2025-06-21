@@ -11,6 +11,7 @@ export default function OneSignalInit() {
       onLoad={() => {
         window.OneSignal = window.OneSignal || [];
         window.OneSignal.push(function() {
+          console.log('[DEBUG] Initializing OneSignal with App ID:', process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID);
           window.OneSignal.init({
             appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
             subdomainName: process.env.NEXT_PUBLIC_ONESIGNAL_SUBDOMAIN_NAME,
