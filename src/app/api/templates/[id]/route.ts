@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { firestore } from '@/lib/firebase/admin';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
         const id = params.id;
         const templateDoc = await firestore.collection('notification-templates').doc(id).get();
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }){
+export async function PUT(req: Request, { params }: { params: { id: string } }){
    try{
      const id = params.id;
      const body = await req.json();
@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
    }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 }
  
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }){
+export async function DELETE(_req: Request, { params }: { params: { id: string } }){
    try{
      const id = params.id;
      await firestore.collection('notification-templates').doc(id).delete(); 
