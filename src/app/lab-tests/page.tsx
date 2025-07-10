@@ -25,6 +25,7 @@ export interface GroupedTestOffering {
   testImageUrl?: string;
   price: number;
   originalPrice?: number;
+  memberPrice?: number;
 }
 
 export interface LabsWithSelectedTests {
