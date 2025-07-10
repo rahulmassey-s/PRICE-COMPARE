@@ -52,55 +52,69 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
         {navItems.map((item) => {
           const isComparePriceButton = item.label === 'Compare Price';
           const isActive = item.exact ? pathname === item.href : (item.href === '#' ? false : pathname.startsWith(item.href));
-          
-          const LinkComponent = item.action ? 'button' : Link;
-          const linkProps = item.action ? { onClick: item.action } : { href: item.href };
 
-          return (
-            <LinkComponent
-              key={item.label}
-              {...linkProps}
-              className={cn(
-                "flex flex-col items-center justify-center text-center w-1/5 h-full relative group transition-all duration-200 ease-in-out rounded-lg",
-                isActive
-                  ? (isComparePriceButton ? "text-accent-foreground font-semibold" : "text-primary font-semibold")
-                  : "text-muted-foreground hover:text-primary",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-              )}
-            >
-              <div className={cn(
-                "p-2 rounded-full transition-all duration-200 ease-in-out",
-                isActive
-                  ? (isComparePriceButton ? "bg-accent scale-115 shadow-lg" : "bg-primary/15 scale-110")
-                  : "group-hover:bg-primary/10 group-hover:scale-105"
-              )}>
-                {/* Crown badge for member above Account icon */}
+          const commonClassName = cn(
+            "flex flex-col items-center justify-center text-center w-1/5 h-full relative group transition-all duration-200 ease-in-out rounded-lg",
+            isActive
+              ? (isComparePriceButton ? "text-accent-foreground font-semibold" : "text-primary font-semibold")
+              : "text-muted-foreground hover:text-primary",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          );
+
+          const iconContainerClassName = cn(
+            "p-2 rounded-full transition-all duration-200 ease-in-out",
+            isActive
+              ? (isComparePriceButton ? "bg-accent scale-115 shadow-lg" : "bg-primary/15 scale-110")
+              : "group-hover:bg-primary/10 group-hover:scale-105"
+          );
+
+          const iconClassName = cn(
+            "h-5 w-5 sm:h-[22px] sm:w-[22px] mb-0.5",
+            isActive
+              ? (isComparePriceButton ? "text-accent-foreground" : "text-primary")
+              : (isComparePriceButton ? "text-primary group-hover:text-accent-foreground" : ""),
+            item.label === 'Cart' && cartItems.length > 0 && !isActive && "animate-cart-spin",
+            item.label === 'Cart' && cartItems.length > 0 && isActive && "animate-cart-spin text-primary"
+          );
+
+          const labelClassName = cn(
+            "text-[10px] sm:text-[11px] leading-tight mt-0.5",
+             isActive
+              ? (isComparePriceButton ? "text-accent-foreground" : "text-primary")
+              : (isComparePriceButton ? "text-muted-foreground group-hover:text-accent-foreground" : "text-muted-foreground group-hover:text-primary")
+          );
+
+          const content = (
+            <>
+              <div className={iconContainerClassName}>
                 {item.label === 'Account' && userRole === 'member' && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 animate-crown-shimmer">
                     <Crown className="h-5 w-5 text-yellow-600 drop-shadow" style={{ color: '#bfa100' }} />
                   </span>
                 )}
-                <item.icon className={cn(
-                  "h-5 w-5 sm:h-[22px] sm:w-[22px] mb-0.5",
-                  isActive
-                    ? (isComparePriceButton ? "text-accent-foreground" : "text-primary")
-                    : (isComparePriceButton ? "text-primary group-hover:text-accent-foreground" : ""), // Ensure icon color matches text on hover for compare price
-                  item.label === 'Cart' && cartItems.length > 0 && !isActive && "animate-cart-spin",
-                  item.label === 'Cart' && cartItems.length > 0 && isActive && "animate-cart-spin text-primary"
-                )} />
+                <item.icon className={iconClassName} />
               </div>
-              <span className={cn(
-                "text-[10px] sm:text-[11px] leading-tight mt-0.5",
-                 isActive
-                  ? (isComparePriceButton ? "text-accent-foreground" : "text-primary")
-                  : (isComparePriceButton ? "text-muted-foreground group-hover:text-accent-foreground" : "text-muted-foreground group-hover:text-primary")
-              )}>{item.label}</span>
+              <span className={labelClassName}>{item.label}</span>
               {item.label === 'Cart' && cartItems.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 sm:right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold ring-2 ring-card">
                   {cartItems.length > 9 ? '9+' : cartItems.length}
                 </span>
               )}
-            </LinkComponent>
+            </>
+          );
+
+          if (item.action) {
+            return (
+              <button key={item.label} onClick={item.action} className={commonClassName}>
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <Link key={item.label} href={item.href} className={commonClassName}>
+              {content}
+            </Link>
           );
         })}
       </div>
