@@ -16,6 +16,8 @@ export interface LabTest {
   imageUrl?: string; // Optional: URL for the test image
   prices: LabPrice[]; // Represents prices from different labs for THIS test.
   tags?: string[]; // Optional: For search, e.g., ["blood", "cbc"]
+  bannerText?: string; // Optional: Short banner text for UI highlighting
+  healthConcernSlugs?: string[]; // Optional: Related health concern slugs for filtering
 }
 
 export interface ContactDetails {
@@ -98,6 +100,8 @@ export interface FirestoreTest {
   isActive?: boolean; // Added isActive field
   description?: string; // Added description field
   tags?: string[];
+  bannerText?: string;
+  healthConcernSlugs?: string[];
   createdAt?: Timestamp; // Firestore Timestamp
   lastUpdatedAt?: Timestamp; // Firestore Timestamp
 }
