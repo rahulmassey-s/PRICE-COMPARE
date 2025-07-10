@@ -5,7 +5,6 @@ import '@/app/globals.css';
 import { siteConfig } from '@/config/site';
 import ClientLayout from '@/components/client-layout';
 import AuthOnboardingGuard from '@/components/AuthOnboardingGuard';
-import { Analytics } from '@/components/analytics';
 import { Toaster } from '@/components/ui/toaster';
 import { Inter } from 'next/font/google';
 
