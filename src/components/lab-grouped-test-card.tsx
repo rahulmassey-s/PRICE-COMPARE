@@ -99,17 +99,16 @@ export default function LabGroupedTestCard({
     }
   };
 
-  const handleGroupedTestCardClick = (test) => {
+  const handleGroupedTestCardClick = (test: GroupedTestOffering) => {
     try {
       const user = auth.currentUser;
       const userId = user && user.uid ? user.uid : '';
       const userName = user && user.displayName ? user.displayName : null;
       const userEmail = user && user.email ? user.email : null;
-      const testId = test.testDocId || test.id || '';
+      const testId = test.testDocId || '';
       const testName = test.testName || '';
-      const labName = test.labName || '';
       if (userId && testId) {
-        logUserActivity(userId, 'test_view', { testId, testName, labName }, userName, userEmail);
+        logUserActivity(userId, 'test_view', { testId, testName, labName }, userName ?? undefined, userEmail ?? undefined);
       }
     } catch (e) {}
     // ...existing click logic...
@@ -167,7 +166,7 @@ export default function LabGroupedTestCard({
                         {hasMemberPrice ? (
                           <span className="font-bold text-blue-700 text-base flex items-center">
                             <svg className="h-4 w-4 text-yellow-800 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            ₹{test.memberPrice.toFixed(2)}
+                            ₹{test.memberPrice?.toFixed(2)}
                             <span className="ml-2 text-xs text-gray-700 line-through">₹{test.price.toFixed(2)}</span>
                           </span>
                         ) : (

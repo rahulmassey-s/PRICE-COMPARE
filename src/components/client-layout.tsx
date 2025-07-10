@@ -324,7 +324,7 @@ export default function ClientLayout({
           const userName = user && user.displayName ? user.displayName : null;
           const userEmail = user && user.email ? user.email : null;
           if (userId && pathname && !ignore) {
-            logUserActivity(userId, 'page_view', { page: pathname }, userName, userEmail);
+            logUserActivity(userId, 'page_view', { page: pathname }, userName ?? undefined, userEmail ?? undefined);
           }
         } catch (e) {
           // Never throw

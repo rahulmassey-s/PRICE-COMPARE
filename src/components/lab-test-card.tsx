@@ -226,10 +226,8 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       const testId = test.docId || test.id || '';
       const testName = test.name || '';
       const labName = (test.prices && test.prices[0] && test.prices[0].labName) || '';
-      const userNameStr = typeof userName === 'string' ? userName : undefined;
-      const userEmailStr = typeof userEmail === 'string' ? userEmail : undefined;
       if (userId && testId) {
-        logUserActivity(userId, 'test_view', { testId, testName, labName: labName || '' }, userNameStr, userEmailStr);
+        logUserActivity(userId, 'test_view', { testId, testName, labName: labName || '' }, userName ?? undefined, userEmail ?? undefined);
       }
     } catch (e) {}
   };
