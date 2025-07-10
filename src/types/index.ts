@@ -113,6 +113,7 @@ export interface FirestoreTestLabPrice {
   testName: string; // Denormalized for convenience
   labId: string; // Foreign key to 'labs' collection document ID
   labName: string; // Denormalized for convenience
+  labDescription?: string; // Optional: Lab-specific description
   price: number; // Selling price at this lab
   originalPrice?: number; // Optional MRP at this lab
   memberPrice?: number; // Optional: Member price for this lab/test
