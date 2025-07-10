@@ -178,7 +178,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
             price: i.price || 0
           })),
           totalAmount: subtotal || 0
-        }, userName, userEmail);
+        }, userName ?? undefined, userEmail ?? undefined);
       }
     } catch (e) {}
 
