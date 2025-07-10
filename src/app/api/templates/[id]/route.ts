@@ -1,9 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { firestore } from '@/lib/firebase/admin';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+type RouteContext = {
+    params: {
+        id: string;
+    };
+};
+
+export async function GET(request: NextRequest, context: RouteContext) {
     try {
-        const id = params.id;
+        const { id } = context.params;
         const templateDoc = await firestore.collection('notification-templates').doc(id).get();
         
         if (!templateDoc.exists) {
@@ -12,18 +18,26 @@ export async function GET(request: Request, { params }: { params: { id: string }
         
         return NextResponse.json({ id: templateDoc.id, ...templateDoc.data() });
     } catch (error: any) {
-        console.error(`Error fetching template ${params.id}:`, error);
+        console.error(`Error fetching template ${context.params.id}:`, error);
         return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
     }
 }
 
-export async function PUT(req:Request,{ params }:{params:{id:string}}){
-  try{ const body=await req.json(); body.updatedAt=new Date(); await firestore.collection('notification-templates').doc(params.id).set(body,{merge:true});
-    return NextResponse.json({success:true});
-  }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
+export async function PUT(req: NextRequest, context: RouteContext){
+   try{ 
+     const { id } = context.params;
+     const body = await req.json();
+     body.updatedAt = new Date();
+     await firestore.collection('notification-templates').doc(id).set(body,{merge:true});
+     return NextResponse.json({success:true});
+   }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 }
-
-export async function DELETE(_req:Request,{ params }:{params:{id:string}}){
-  try{ await firestore.collection('notification-templates').doc(params.id).delete(); return NextResponse.json({success:true});}
-  catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
+ 
+export async function DELETE(_req: NextRequest, context: RouteContext){
+   try{
+     const { id } = context.params;
+     await firestore.collection('notification-templates').doc(id).delete(); 
+     return NextResponse.json({success:true});
+   }
+    catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 } 
