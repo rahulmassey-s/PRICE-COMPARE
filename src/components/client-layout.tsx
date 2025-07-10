@@ -22,7 +22,6 @@ import {
 import { siteConfig } from '@/config/site';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
 import dynamic from 'next/dynamic';
-import useOneSignalSync from '@/hooks/useOneSignalSync';
 
 const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
   ssr: false,
