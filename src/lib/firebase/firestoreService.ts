@@ -265,8 +265,9 @@ export async function redeemPoints(userId: string, pointsToRedeem: number, booki
   const txRef = collection(db, 'walletTransactions');
   return await runTransaction(db, async (transaction) => {
     const userSnap = await transaction.get(userRef);
-    if (!userSnap.exists) throw new Error('User not found');
+    if (!userSnap.exists()) throw new Error('User not found');
     const user = userSnap.data();
+    if (!user) throw new Error("User data is missing.");
     const currentBalance = user.pointsBalance || 0;
     if (currentBalance < pointsToRedeem) throw new Error('Insufficient points');
     // Deduct points

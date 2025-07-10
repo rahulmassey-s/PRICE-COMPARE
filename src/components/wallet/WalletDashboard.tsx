@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebase/client';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Wallet, ArrowDownCircle, ArrowUpCircle, XCircle, Gift, CheckCircle, Info } from 'lucide-react';
+import type { User } from 'firebase/auth';
 
 /**
  * WalletDashboard: Shows user's wallet summary and transaction history
  */
 export default function WalletDashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [points, setPoints] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,11 +28,12 @@ export default function WalletDashboard() {
         // Fetch transactions
         const q = query(collection(db, 'walletTransactions'), where('userId', '==', u.uid), orderBy('date', 'desc'));
         const txSnap = await getDocs(q);
-        setTransactions(txSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const validDocs = txSnap.docs.filter(doc => doc.exists());
+        setTransactions(validDocs.map(d => ({ id: d.id, ...d.data() })));
         // Referral code (use UID or custom code)
         setReferralCode(u.uid.slice(-8).toUpperCase());
         // Check if referral bonus already awarded
-        const refTx = txSnap.docs.find(d => d.data().action === 'referral-share');
+        const refTx = validDocs.find(d => d.data()?.action === 'referral-share');
         setReferralAwarded(!!refTx);
       }
       setLoading(false);
