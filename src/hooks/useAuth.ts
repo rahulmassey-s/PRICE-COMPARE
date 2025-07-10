@@ -31,7 +31,7 @@ export default function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  const signInWithEmail = useCallback(async (email, password) => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
       return signInWithEmailAndPassword(auth, email, password);
   }, []);
 
