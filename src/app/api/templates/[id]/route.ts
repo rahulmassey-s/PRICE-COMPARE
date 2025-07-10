@@ -1,19 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { NextResponse } from 'next/server';
+import { firestore } from '@/lib/firebase/admin';
 
-export async function GET(_req:NextRequest,{ params }: { params:{ id:string }}) {
-  try{ const doc=await adminDb.collection('notification_templates').doc(params.id).get(); if(!doc.exists) return NextResponse.json({error:'not found'},{status:404});
-    return NextResponse.json({ id:doc.id, ...doc.data() });
-  }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+    try {
+        const id = params.id;
+        const templateDoc = await firestore.collection('notification-templates').doc(id).get();
+        
+        if (!templateDoc.exists) {
+            return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+        }
+        
+        return NextResponse.json({ id: templateDoc.id, ...templateDoc.data() });
+    } catch (error: any) {
+        console.error(`Error fetching template ${params.id}:`, error);
+        return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
+    }
 }
 
-export async function PUT(req:NextRequest,{ params }:{params:{id:string}}){
-  try{ const body=await req.json(); body.updatedAt=new Date(); await adminDb.collection('notification_templates').doc(params.id).set(body,{merge:true});
+export async function PUT(req:Request,{ params }:{params:{id:string}}){
+  try{ const body=await req.json(); body.updatedAt=new Date(); await firestore.collection('notification-templates').doc(params.id).set(body,{merge:true});
     return NextResponse.json({success:true});
   }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 }
 
-export async function DELETE(_req:NextRequest,{ params }:{params:{id:string}}){
-  try{ await adminDb.collection('notification_templates').doc(params.id).delete(); return NextResponse.json({success:true});}
+export async function DELETE(_req:Request,{ params }:{params:{id:string}}){
+  try{ await firestore.collection('notification-templates').doc(params.id).delete(); return NextResponse.json({success:true});}
   catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 } 
