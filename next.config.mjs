@@ -31,7 +31,9 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['firebase-admin'],
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin'],
+  },
   reactStrictMode: true,
 };
 
