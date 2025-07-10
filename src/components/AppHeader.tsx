@@ -26,6 +26,7 @@ import { siteConfig } from '@/config/site';
 import { useTranslation } from 'react-i18next';
 import '../i18n';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import useAuth from '@/hooks/useAuth';
 
 // --- Define a type for notifications ---
 interface Notification {
@@ -58,6 +59,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
   const { items: cartItems } = useCart();
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const { t, i18n } = useTranslation();
+  const { user, signOut, isCheckingAuth } = useAuth();
 
   useEffect(() => {
     if (!db) return;
@@ -126,13 +128,13 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
         }
         return [
           {
-            id: newNotificationData.bookingId || Date.now().toString(),
-            title: newNotificationData.title || 'Update',
-            body: newNotificationData.body || '',
-            createdAt: new Date(),
-            status: 'unread',
-            link: newNotificationData.link,
-            ...newNotificationData
+        id: newNotificationData.bookingId || Date.now().toString(),
+        title: newNotificationData.title || 'Update',
+        body: newNotificationData.body || '',
+        createdAt: new Date(),
+        status: 'unread',
+        link: newNotificationData.link,
+        ...newNotificationData
           },
           ...prevNotifications
         ];
@@ -155,7 +157,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
           updateDoc(doc(db, 'notifications', id), { status: 'read' }).catch(err => {
             console.warn(`Failed to mark notification ${id} as read:`, err);
           });
-        });
+      });
       }
     }
   }, [notifDropdownOpen, notifications, db, firebaseUser]);
@@ -169,7 +171,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
       }
       await firebaseSignOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/login');
+      router.push('/login-otp');
     } catch (error) {
       console.error("Logout error:", error);
       toast({ title: "Logout Failed", description: "Could not log you out.", variant: "destructive" });
@@ -374,11 +376,47 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
             <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400" onClick={toggleTheme} aria-label="Toggle theme">
               {theme === 'light' ? <Moon size={24} className="text-blue-700 group-hover:scale-110 group-hover:text-yellow-500 transition-all duration-200 drop-shadow" /> : <Sun size={24} className="text-yellow-400 group-hover:scale-110 group-hover:text-blue-500 transition-all duration-200 drop-shadow" />}
             </Button>
-            {/* Removed user avatar/profile icon to prevent overlap. User can access account from bottom nav. */}
-            {!authLoading && !firebaseUser && (
-              <Button asChild variant="default" size="sm" className="text-xs sm:text-sm px-2.5 py-1 h-auto sm:px-3">
-                <Link href="/login">Login</Link>
-              </Button>
+            {/* User Account Dropdown */}
+            {authLoading ? (
+              <div className="h-12 w-12 rounded-2xl bg-gray-200 animate-pulse"></div>
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-gray-200 dark:border-gray-700 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900 dark:hover:to-indigo-900 transition-all duration-200 focus:ring-2 focus:ring-purple-400"
+                  >
+                    <Avatar className="h-full w-full">
+                      <AvatarImage src={user.photoURL || ''} alt="User avatar" />
+                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-indigo-500 text-white font-bold text-lg">
+                        {getInitials(user)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/account')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/wallet')}>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    <span>Wallet</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/auth">
+                <Button variant="outline">Login</Button>
+              </Link>
             )}
           </div>
         </div>

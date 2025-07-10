@@ -1,3 +1,4 @@
+// Forcing a file change to break the cache - v1
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
   getAuth,
@@ -10,6 +11,16 @@ import {
   uploadBytes,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+// --- OneSignal Initialization ---
+window.OneSignal = window.OneSignal || [];
+OneSignal.push(function() {
+  OneSignal.init({
+    appId: "5c90bf6a-cfab-4cd6-896b-e6110e417f80", 
+    allowLocalhostAsSecureOrigin: true,
+  });
+});
+// --- End OneSignal Initialization ---
 
 // Admin Panel JavaScript - app.js
 
@@ -1921,8 +1932,8 @@ function openUserBookingsModal(userId, username) {
 
   firestoreRequest("getDocs", "bookings", null, null, [
     { type: "where", field: "userId", op: "==", value: userId },
-    { type: "orderBy", field: "bookingDate", direction: "desc" },
-  ])
+    { type: "orderBy", field: "bookingDate", direction: "desc" }],
+  )
     .then((snapshot) => {
       if (snapshot.empty) {
         contentDiv.innerHTML = "<p>No booking history found for this user.</p>";
@@ -3594,6 +3605,10 @@ function switchTab(tabId) {
     );
   } else if (tabId === "push-notification-tab") {
     loadNotificationHistory();
+  } else if (tabId === "push-history-tab") {
+    loadNotificationHistory();
+  } else if (tabId === "push-templates-tab") {
+    loadTemplates();
   }
   // Manage Data and Charts tabs don't load data on switch by default
 
@@ -3649,7 +3664,73 @@ function showLoginScreen() {
 }
 
 async function initializeAppMainLogic() {
-  console.log("Initializing app main logic...");
+  console.log("DOM content fully loaded. Initializing app logic.");
+  showLoader(true);
+
+  // New: Add event listener for the Create User form
+  const createUserForm = document.getElementById('create-user-form');
+  if (createUserForm) {
+    createUserForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = document.getElementById('new-user-email').value;
+      const password = document.getElementById('new-user-password').value;
+      
+      if (!email || !password) {
+        showToast('Email and password are required.', 'error');
+        return;
+      }
+
+      showLoader(true);
+
+      try {
+        const response = await fetch('/api/create-user-and-notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // IMPORTANT: Replace this with the actual secret key from your .env.local file
+            'x-internal-secret': 'rahul-is-the-best-admin-12345' 
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.details || result.error || 'An unknown error occurred.');
+        }
+
+        showToast(`Successfully created user ${result.userId} and sent welcome notification!`, 'success');
+        createUserForm.reset(); // Clear the form
+      } catch (error) {
+        console.error('Error creating user:', error);
+        showToast(`Failed to create user: ${error.message}`, 'error', 5000);
+      } finally {
+        showLoader(false);
+      }
+    });
+  }
+
+  // Check if Firebase is configured before proceeding
+  const isConfigured = await firebaseConfigLoaded;
+  if (!isConfigured) {
+    console.error(
+      "CRITICAL ERROR: Core Firebase services or configLoaded flag not imported correctly from firebase-config.js. Admin panel cannot initialize."
+    );
+    // Attempt to show error on page even if loader is stuck
+    const criticalBanner = document.getElementById("critical-error-banner");
+    if (criticalBanner) {
+      criticalBanner.textContent = "CRITICAL ERROR: Core Firebase services or configLoaded flag not imported correctly from firebase-config.js. Admin panel cannot initialize.";
+      criticalBanner.style.display = "block";
+    } else {
+      // Fallback if even the banner is missing (should not happen if index.html is correct)
+      document.body.innerHTML =
+        `<div style="color:red; background:black; padding:20px; font-size:18px; position:fixed; top:0; left:0; width:100%; z-index:9999;">${"CRITICAL ERROR: Core Firebase services or configLoaded flag not imported correctly from firebase-config.js. Admin panel cannot initialize."}</div>` +
+        document.body.innerHTML;
+    }
+    const loader = document.getElementById("loader-container");
+    if (loader) loader.style.display = "none";
+    return;
+  }
 
   try {
     // Robust, delegated event listener for all modal close buttons
@@ -4651,6 +4732,9 @@ switchTab = function (tabId) {
   if (tabId === "user-activity-tab") {
     loadUserActivity();
   }
+  if (tabId === "push-history-tab") {
+     loadNotificationHistory();
+  }
 };
 // ... existing code ...
 
@@ -4739,6 +4823,22 @@ window.addEventListener('DOMContentLoaded', function() {
     "notification-image-preview",
     "notification-image-upload-btn"
   );
+
+  // Setup for advanced push image
+  setupImageUpload(
+    "adv-image-file",
+    "adv-image",
+    "adv-image-preview",
+    "adv-image-upload-btn"
+  );
+
+  // Setup for advanced push icon
+  setupImageUpload(
+    "adv-icon-file",
+    "adv-icon",
+    "adv-icon-preview",
+    "adv-icon-upload-btn"
+  );
 });
 
 // --- Push Notification Admin Logic ---
@@ -4795,6 +4895,8 @@ async function loadNotificationHistory() {
       return bTime - aTime;
     });
     notificationHistoryBody.innerHTML = "";
+    const syncLabel=document.getElementById('history-last-sync');
+    if(syncLabel) syncLabel.textContent='';
     notifications.forEach((data) => {
       const report = data.delivery || { successCount: 0, failureCount: 0 };
       const status = data.criticalError ? "Critical Error" : (report.failureCount > 0 ? "Partial Failure" : "Sent");
@@ -4821,6 +4923,7 @@ async function loadNotificationHistory() {
       `;
       notificationHistoryBody.appendChild(row);
     });
+    if(syncLabel) syncLabel.textContent='Last sync: '+ new Date().toLocaleTimeString();
   } catch (err) {
     notificationHistoryBody.innerHTML = '<tr><td colspan="5">Error loading history.</td></tr>';
     console.error("Error loading notification history:", err);
@@ -5171,34 +5274,51 @@ document.addEventListener('click', async function(event) {
       // --- End referral logic ---
       // --- Send notification to user about status update ---
       try {
+        console.log('[DEBUG] Starting notification process for booking:', bookingId);
         // Fetch booking to get user info
         const bookingDoc = await firestoreRequest('getDoc', 'bookings', bookingId);
         if (bookingDoc.exists()) {
-          const booking = bookingDoc.data();
+          console.log('[DEBUG] Booking document found.');
+          const bookingData = bookingDoc.data();
+          console.log('[DEBUG] Booking data:', bookingData);
+
           // Prepare a detailed notification payload
-          const testList = (booking.items && booking.items.length > 0)
-            ? booking.items.map(item => `${item.testName} (${item.labName})`).join(', ')
-            : 'N/A';
-          const bookingDate = booking.bookingDate && booking.bookingDate.toDate ? booking.bookingDate.toDate() : null;
-          const formattedDate = bookingDate ? bookingDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-          const formattedTime = bookingDate ? bookingDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+          const testNames = (bookingData.items && bookingData.items.length > 0)
+            ? bookingData.items.map(item => item.testName).join(', ')
+            : 'your recent order';
+          
           const notificationPayload = {
-            title: `Booking ${newStatus === 'Confirmed' ? 'Confirmed' : newStatus}`,
-            body: `Status: ${newStatus}\nTest(s): ${testList}\nAmount: ₹${booking.totalAmount?.toFixed(2) || 'N/A'}\nDate: ${formattedDate} ${formattedTime}\n\nThank you for booking with Lab Price Compare!`,
-            type: 'booking-status',
-            userId: booking.userId,
-            bookingId: bookingId,
-            link: 'https://labpricecompare.netlify.app/account'
+            heading: `Booking ${newStatus}`,
+            message: `Your booking for ${testNames} is now ${newStatus}.`,
+            target: 'external',
+            externalIds: [bookingData.userId],
+            launchUrl: 'https://labpricecompare.netlify.app/account' // 'link' se 'launchUrl' kar diya
           };
+          console.log('[DEBUG] Prepared notification payload:', notificationPayload);
+
           // Send notification via backend
-          await fetch('https://sbhs-notification-backend.onrender.com/api/send-notification', {
+          const response = await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(notificationPayload),
           });
+
+          console.log('[DEBUG] Notification API response status:', response.status);
+          const result = await response.json();
+          console.log('[DEBUG] Notification API response body:', result);
+
+          if (!response.ok) {
+            throw new Error(result.message || `API request failed with status ${response.status}`);
+          }
+
+        } else {
+          console.log('[DEBUG] Booking document NOT found for ID:', bookingId);
         }
       } catch (err) {
+        console.error('--- NOTIFICATION FAILED ---');
         console.error('Failed to send booking status notification:', err);
+        // Do not show an error toast to the admin, as the primary action (status update) was successful.
+        // Just log it to the console.
       }
       // --- End notification logic ---
       loadAllBookings();
@@ -5244,3 +5364,136 @@ document.addEventListener('click', async function(event) {
   });
 })();
 // ... existing code ...
+
+// ... near top after existing event listeners in initializeAppMainLogic
+  // ADVANCED PUSH FORM
+  const advForm = document.getElementById('advanced-push-form');
+  if (advForm) {
+    const targetSel = document.getElementById('adv-target');
+    const externalWrap = document.getElementById('adv-external-ids-wrap');
+    targetSel.addEventListener('change', () => {
+      externalWrap.style.display = targetSel.value === 'external' ? 'block' : 'none';
+    });
+
+    const btnContainer = document.getElementById('buttons-container');
+    document.getElementById('add-button-row').onclick = () => {
+      const idx = btnContainer.children.length;
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 mb-2';
+      row.innerHTML = `<input type="text" placeholder="Button Text" class="flex-1 btn-text"/>`+
+                      `<input type="text" placeholder="Button URL" class="flex-1 btn-url"/>`+
+                      `<button type="button" class="btn btn-danger btn-sm remove-btn">X</button>`;
+      row.querySelector('.remove-btn').onclick = ()=>row.remove();
+      btnContainer.appendChild(row);
+    };
+
+    advForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showLoader(true);
+      try {
+        const payload = {
+          heading: document.getElementById('adv-title').value,
+          message: document.getElementById('adv-message').value,
+          imageUrl: document.getElementById('adv-image').value,
+          iconUrl: document.getElementById('adv-icon').value,
+          launchUrl: document.getElementById('adv-link').value,
+          target: targetSel.value,
+          schedule: document.getElementById('adv-schedule').value,
+        };
+        if (payload.target === 'external') {
+          payload.externalIds = document.getElementById('adv-external-ids').value.split(',').map(s=>s.trim()).filter(Boolean);
+        }
+        // buttons
+        const buttons=[];
+        btnContainer.querySelectorAll('div').forEach((row,i)=>{
+          const text=row.querySelector('.btn-text').value;
+          const url=row.querySelector('.btn-url').value;
+          if(text&&url) buttons.push({id:`btn${i+1}`,text,url});
+        });
+        payload.buttons = buttons;
+
+        const res = await fetch('/api/send-notification',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-internal-secret':'rahul-is-the-best-admin-12345'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error||'Failed');
+        showToast('Notification queued successfully','success');
+        advForm.reset(); btnContainer.innerHTML='';
+      }catch(err){
+        showToast(err.message,'error',5000);
+      }finally{showLoader(false);}  
+    });
+  }
+// ... existing code ...
+
+// ... existing code ...
+// --- Push Templates ---
+async function loadTemplates(){
+  const tbody=document.getElementById('templates-table-body');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="5">Loading...</td></tr>';
+  try{
+    const res=await fetch('/api/templates');
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed');
+    const templates=data.templates||[];
+    if(templates.length===0){
+      tbody.innerHTML='<tr><td colspan="5">No templates.</td></tr>';
+      return;
+    }
+    tbody.innerHTML='';
+    templates.forEach(t=>{
+      const row=document.createElement('tr');
+      const activeLabel=t.active? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-danger">No</span>';
+      row.innerHTML=`<td>${t.title}</td><td>${t.target}</td><td>${t.scheduleCron||'-'}</td><td>${activeLabel}</td><td>-</td>`;
+      tbody.appendChild(row);
+    });
+  }catch(err){
+    console.error('Error loading templates',err);
+    tbody.innerHTML='<tr><td colspan="5">Error loading templates</td></tr>';
+  }
+}
+// ... existing code ...
+// Remove the IIFE that redefines switchTab and just use the main switchTab function.
+// ... existing code ...
+
+// Add Template Modal Logic
+document.getElementById('add-template-btn').onclick = function() {
+  document.getElementById('add-template-modal').style.display = 'block';
+};
+document.getElementById('close-add-template-modal').onclick = function() {
+  document.getElementById('add-template-modal').style.display = 'none';
+};
+window.onclick = function(event) {
+  if (event.target == document.getElementById('add-template-modal')) {
+    document.getElementById('add-template-modal').style.display = 'none';
+  }
+};
+document.getElementById('add-template-form').onsubmit = async function(e) {
+  e.preventDefault();
+  const title = document.getElementById('template-title-input').value;
+  const body = document.getElementById('template-body-input').value;
+  const target = document.getElementById('template-target-input').value;
+  const scheduleCron = document.getElementById('template-cron-input').value;
+  const active = document.getElementById('template-active-input').checked;
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, body, target, scheduleCron, active })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to add template');
+    showToast('Template added successfully', 'success');
+    document.getElementById('add-template-modal').style.display = 'none';
+    loadTemplates();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+
+
+

@@ -5,13 +5,18 @@ import '@/app/globals.css';
 import { siteConfig } from '@/config/site';
 import ClientLayout from '@/components/client-layout';
 import AuthOnboardingGuard from '@/components/AuthOnboardingGuard';
+import { Analytics } from '@/components/analytics';
+import { Toaster } from '@/components/ui/toaster';
+import { Inter } from 'next/font/google';
 
 const APP_THEME_COLOR = '#0891b2';
 
+const inter = Inter({ subsets: ['latin'] });
+
 export const metadata: Metadata = {
   applicationName: siteConfig.name,
-  title: siteConfig.name,
-  description: siteConfig.description,
+  title: 'Smart Bharat',
+  description: 'Your one-stop solution for affordable lab tests.',
   manifest: '/manifest.json',
   icons: [
     { rel: 'apple-touch-icon', url: '/icons/icon-192x192.png' },
@@ -25,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* PWA Meta Tags */}
         <meta name="application-name" content={siteConfig.name} />
@@ -37,7 +42,7 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
         <meta name="msapplication-TileColor" content={APP_THEME_COLOR} />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="theme-color" content={APP_THEME_COLOR} />
+        <meta name="theme-color" content="#ffffff" />
         <link rel="manifest" href="/manifest.json" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://firestore.googleapis.com" crossOrigin="anonymous" />
@@ -48,7 +53,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <meta name="fast2sms" content="iBw7FEgOyGibzkD7iepav2yK68TCmLoP" />
       </head>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased ${inter.className}`}>
         <ClientLayout>
           <AuthOnboardingGuard>
             {children}

@@ -32,6 +32,15 @@ export async function getOrCreateUserDocument(user: FirebaseAuthUser, mobileNumb
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const userData = userSnap.data();
+      // If phoneNumber missing and mobileNumber provided, update
+      if ((userData.phoneNumber === undefined || userData.phoneNumber === null || userData.phoneNumber === '') && mobileNumber) {
+        try {
+          await updateDoc(userRef, { phoneNumber: mobileNumber, lastUpdatedAt: serverTimestamp() });
+          userData.phoneNumber = mobileNumber;
+        } catch (err) {
+          console.error('Failed to update phoneNumber on existing user doc', err);
+        }
+      }
       // Convert Firestore Timestamps to JS Date objects
       return {
         uid: user.uid,

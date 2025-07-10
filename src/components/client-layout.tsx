@@ -16,11 +16,13 @@ import {
   setUserOfflineStatus,
   updateUserActivity,
   incrementUserLoginCount,
-  logUserActivity
+  logUserActivity,
+  getOrCreateUserDocument,
 } from '@/lib/firebase/firestoreService';
 import { siteConfig } from '@/config/site';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
 import dynamic from 'next/dynamic';
+import useOneSignalSync from '@/hooks/useOneSignalSync';
 
 const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
   ssr: false,
@@ -104,6 +106,7 @@ export default function ClientLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // useOneSignalSync(); // ❌ REMOVED: This hook was causing a conflict by re-initializing OneSignal.
   const [isLoadingIntroState, setIsLoadingIntroState] = useState(true);
   const [showIntroAnimation, setShowIntroAnimation] = useState(true);
   const [introAnimationFinished, setIntroAnimationFinished] = useState(false);
@@ -257,26 +260,47 @@ export default function ClientLayout({
       handleOffline();
     };
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && user.uid) {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
         userId = user.uid;
-        try {
-          await setUserOnlineStatus(userId);
-          isOnline = true;
-          await incrementUserLoginCount(userId);
-        } catch (e) {}
+        handleOnline();
         setupActivityListeners();
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        incrementUserLoginCount(user.uid);
+
+        // --- OneSignal Integration ---
+        window.OneSignal?.push(() => {
+          // 1. Set External User ID using the new method
+          window.OneSignal.setExternalUserId(user.uid);
+
+          // 2. Fetch profile and set Data Tags
+          getOrCreateUserDocument(user).then(profile => {
+            console.log('[DEBUG] Profile received from Firestore:', profile);
+            if (profile) {
+              const tags = {
+                name: profile.displayName || '',
+                mobile: profile.phoneNumber || '',
+                user_type: profile.role === 'member' ? 'member' : 'non-member',
+              };
+              window.OneSignal.sendTags(tags);
+              console.log('[OneSignal] User tags sent:', tags);
+            }
+          }).catch(err => console.error("Error fetching user profile for OneSignal tags:", err));
+        });
+        // --- End of OneSignal Integration ---
+
       } else {
         if (userId) {
-          setUserOfflineStatus(userId).catch(() => {});
+          handleOffline();
+          removeActivityListeners();
+           // --- OneSignal Logout ---
+          window.OneSignal?.push(() => {
+            // Remove External User ID on logout
+            window.OneSignal.removeExternalUserId();
+            console.log('[OneSignal] User logged out, external ID removed.');
+          });
+          // --- End of OneSignal Logout ---
         }
         userId = null;
-        isOnline = false;
-        removeActivityListeners();
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     });
 
@@ -286,7 +310,7 @@ export default function ClientLayout({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (activityTimeout) clearTimeout(activityTimeout);
-      unsubscribe();
+      unsub();
     };
   }, []);
 

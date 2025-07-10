@@ -1,40 +1,38 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
+/** @type {import('next').NextConfig} */
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+});
+
+const nextConfig = {
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('firebase-admin');
+    }
+    return config;
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'picsum.photos', // Standard placeholder
+        hostname: 'res.cloudinary.com',
         port: '',
         pathname: '/**',
       },
-      { // Add Cloudinary hostname
+      {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: `/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dvgilt12w'}/**`, // Use env var or fallback
-      },
-      { // Add Unsplash hostname
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: 'placehold.co',
         port: '',
         pathname: '/**',
       },
     ],
   },
-  env: {
-    // Make Cloudinary config available client-side if needed elsewhere (already using NEXT_PUBLIC_)
-    // NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    // NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
-  }
+  serverExternalPackages: ['firebase-admin'],
+  reactStrictMode: true,
 };
 
-export default nextConfig;
+module.exports = withPWA(nextConfig);

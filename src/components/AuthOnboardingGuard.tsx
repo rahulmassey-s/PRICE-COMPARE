@@ -3,15 +3,19 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import OnboardingStepper from '@/components/OnboardingStepper';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
+import useAuth from '@/hooks/useAuth';
+
+const publicPaths = ['/auth']; // The new unified auth page
 
 export default function AuthOnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { user, isOnboardingComplete, isCheckingAuth } = useAuth();
   const pathname = usePathname();
+  const router = useRouter(); // Initialize router
   const [isClient, setIsClient] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [redirected, setRedirected] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -19,10 +23,14 @@ export default function AuthOnboardingGuard({ children }: { children: React.Reac
 
   useEffect(() => {
     if (!isClient) return;
+
+    // Check if onboarding has been seen
     const onboardingSeen = localStorage.getItem('onboardingSeen');
     if (!onboardingSeen) {
       setShowOnboarding(true);
     }
+
+    // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setIsLoggedIn(!!user);
       setIsAuthChecked(true);
@@ -31,34 +39,41 @@ export default function AuthOnboardingGuard({ children }: { children: React.Reac
   }, [isClient]);
 
   useEffect(() => {
-    const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(pathname);
-    if (!isLoggedIn && !showOnboarding && !redirected && isClient && isAuthChecked && !isAuthPage) {
-      setRedirected(true);
-      window.location.href = '/login';
+    if (isCheckingAuth) {
+      return;
     }
-  }, [isLoggedIn, showOnboarding, redirected, isClient, isAuthChecked, pathname]);
 
-  // SSR/CSR hydration fix
-  if (!isClient) return null;
+    const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+    
+    if (!user && !isPublicPath) {
+      router.replace('/auth');
+    } else if (user && !isOnboardingComplete) {
+      // Handle onboarding logic if needed in the future
+      // For now, we assume login means onboarding is done or not required.
+    } else if (user && isPublicPath) {
+      router.replace('/');
+    }
+  }, [user, isOnboardingComplete, isCheckingAuth, pathname, router]);
 
-  // If on login, signup, or forgot-password page, skip guard and never redirect
-  if (['/login','/signup','/forgot-password'].includes(pathname)) {
-    return <>{children}</>;
+  // --- Render Logic ---
+  if (isCheckingAuth) {
+    // Show a loading state until everything is initialized
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
-
-  if (!isAuthChecked) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
-  if (!isLoggedIn) {
-    if (showOnboarding) {
+  
+  // If we are showing the one-time onboarding, render it and nothing else.
+  if (showOnboarding) {
       return <OnboardingStepper onFinish={() => {
         localStorage.setItem('onboardingSeen', 'true');
         setShowOnboarding(false);
       }} />;
-    }
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  return <>{children}</>;
+  // If user is logged in OR on the OTP login page, show the children.
+  if (user || publicPaths.some(path => pathname.startsWith(path))) {
+      return <>{children}</>;
+  }
+
+  // Fallback loading state, should be rare
+  return <div className="flex h-screen items-center justify-center">Loading...</div>;
 } 

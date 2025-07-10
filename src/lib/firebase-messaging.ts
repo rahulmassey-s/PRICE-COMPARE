@@ -66,7 +66,7 @@ if (
     if (!messaging) return () => {};
     return onMessage(messaging, (payload: any) => {
       if (cb) cb(payload);
-    });
+      });
   };
 }
 
