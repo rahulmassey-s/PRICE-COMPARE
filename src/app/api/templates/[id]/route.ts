@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firestore } from '@/lib/firebase/admin';
 
-type RouteContext = {
-    params: {
-        id: string;
-    };
-};
-
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const { id } = context.params;
+        const id = params.id;
         const templateDoc = await firestore.collection('notification-templates').doc(id).get();
         
         if (!templateDoc.exists) {
@@ -18,14 +12,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
         
         return NextResponse.json({ id: templateDoc.id, ...templateDoc.data() });
     } catch (error: any) {
-        console.error(`Error fetching template ${context.params.id}:`, error);
+        console.error(`Error fetching template ${params.id}:`, error);
         return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
     }
 }
 
-export async function PUT(req: NextRequest, context: RouteContext){
-   try{ 
-     const { id } = context.params;
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }){
+   try{
+     const id = params.id;
      const body = await req.json();
      body.updatedAt = new Date();
      await firestore.collection('notification-templates').doc(id).set(body,{merge:true});
@@ -33,9 +27,9 @@ export async function PUT(req: NextRequest, context: RouteContext){
    }catch(err:any){ return NextResponse.json({error:err.message},{status:500}); }
 }
  
-export async function DELETE(_req: NextRequest, context: RouteContext){
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }){
    try{
-     const { id } = context.params;
+     const id = params.id;
      await firestore.collection('notification-templates').doc(id).delete(); 
      return NextResponse.json({success:true});
    }
