@@ -48,6 +48,19 @@ export async function POST(request: Request) {
             password: password,
             displayName: name,
         });
+        
+        // --- Step 3: Create user document in Firestore ---
+        const firestore = admin.firestore();
+        await firestore.collection('users').doc(userRecord.uid).set({
+            uid: userRecord.uid,
+            displayName: name,
+            email: email,
+            phoneNumber: fullPhoneNumber,
+            role: 'non-member', // Default role
+            pointsBalance: 0, // Default points
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
         return NextResponse.json({ success: true, uid: userRecord.uid });
 
