@@ -7,11 +7,9 @@
     {
       "source": "functions",
       "codebase": "default",
-      "main": "lib/index.js",
-      "runtime": "nodejs20",
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      "main": "index.js",
+      "runtime": "nodejs18",
+      "predeploy": []
     }
   ],
   "hosting": {
