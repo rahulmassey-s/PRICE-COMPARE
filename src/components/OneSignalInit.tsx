@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useAuth from '@/hooks/useAuth';
+import { getOrCreateUserDocument } from '@/lib/firebase/firestoreService'; // Import the service
 
 const OneSignalInit = () => {
     const { user } = useAuth();
@@ -79,22 +80,37 @@ const OneSignalInit = () => {
             console.log(`%c[OneSignal Status Check] Current Permission: ${permission}`, 'color: #007bff; font-weight: bold;');
 
             if (user?.uid) {
-                const externalId = await OneSignal.getExternalUserId();
-                if (externalId === user.uid) {
-                    console.log(`[LOGIN] User ${user.uid} is already identified. No action needed.`);
-                } else {
-                    console.log(`[LOGIN] User detected. Identifying as ${user.uid}`);
-                    await OneSignal.setExternalUserId(user.uid);
+                try {
+                    const externalId = await OneSignal.getExternalUserId();
+                    if (externalId !== user.uid) {
+                        console.log(`[LOGIN] User detected. Identifying as ${user.uid}`);
+                        await OneSignal.setExternalUserId(user.uid);
+                        console.log(`[LOGIN] Successfully set external user ID to ${user.uid}.`);
+
+                        // Now, fetch profile and set tags
+                        const profile = await getOrCreateUserDocument(user);
+                        if (profile) {
+                            const tags = {
+                                name: profile.displayName || '',
+                                mobile: profile.phoneNumber || '',
+                                user_type: profile.role === 'member' ? 'member' : 'non-member',
+                            };
+                            await OneSignal.sendTags(tags);
+                            console.log('[OneSignal] User tags sent:', tags);
+                        }
+                    } else {
+                        console.log(`[LOGIN] User ${user.uid} is already identified. No action needed.`);
+                    }
 
                     const isSubscribed = await OneSignal.isPushNotificationsEnabled();
                     console.log(`[LOGIN] User registered with OneSignal. Permission: ${permission}, Subscribed: ${isSubscribed}`);
-
+                    
                     if (permission === 'default' && !isSubscribed) {
                         console.log('[LOGIN] Permission is "default" and user not subscribed, showing subscribe prompt.');
                         OneSignal.showSlidedownPrompt();
-                    } else {
-                        console.log(`[LOGIN] Subscription prompt not shown. Permission: ${permission}, Subscribed: ${isSubscribed}`);
                     }
+                } catch (e) {
+                    console.error("[OneSignal] Error processing user identification:", e);
                 }
             } else {
                 const externalId = await OneSignal.getExternalUserId();

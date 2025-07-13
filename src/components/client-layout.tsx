@@ -259,57 +259,52 @@ export default function ClientLayout({
       handleOffline();
     };
 
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         userId = user.uid;
-        handleOnline();
+        setUserOnlineStatus(userId).catch(() => {});
+        incrementUserLoginCount(userId).catch(() => {});
+        isOnline = true;
         setupActivityListeners();
-        incrementUserLoginCount(user.uid);
+        safeUpdateUserActivity(); // Initial update
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('beforeunload', handleBeforeUnload);
 
-        // --- OneSignal Integration ---
-        window.OneSignal?.push(() => {
-          // 1. Set External User ID using the new method
-          window.OneSignal.setExternalUserId(user.uid);
-
-          // 2. Fetch profile and set Data Tags
-          getOrCreateUserDocument(user).then(profile => {
-            console.log('[DEBUG] Profile received from Firestore:', profile);
-            if (profile) {
-              const tags = {
-                name: profile.displayName || '',
-                mobile: profile.phoneNumber || '',
-                user_type: profile.role === 'member' ? 'member' : 'non-member',
-              };
-              window.OneSignal.sendTags(tags);
-              console.log('[OneSignal] User tags sent:', tags);
-            }
-          }).catch(err => console.error("Error fetching user profile for OneSignal tags:", err));
-        });
-        // --- End of OneSignal Integration ---
-
+        // Fetch user document for logging
+        try {
+          const userDoc = await getOrCreateUserDocument(user);
+          console.log('[DEBUG] Profile received from Firestore:', userDoc); // Debug log
+          logUserActivity(
+            user.uid,
+            'session_start',
+            { userAgent: navigator.userAgent },
+            user.displayName ?? undefined,
+            user.email ?? undefined
+          );
+        } catch (error) {
+          console.error('[DEBUG] Failed to process user for logging:', error);
+        }
       } else {
         if (userId) {
-          handleOffline();
-          removeActivityListeners();
-           // --- OneSignal Logout ---
-          window.OneSignal?.push(() => {
-            // Remove External User ID on logout
-            window.OneSignal.removeExternalUserId();
-            console.log('[OneSignal] User logged out, external ID removed.');
-          });
-          // --- End of OneSignal Logout ---
+          setUserOfflineStatus(userId).catch(() => {});
         }
         userId = null;
+        isOnline = false;
+        removeActivityListeners();
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
       }
     });
 
     return () => {
+      unsubscribe();
       if (userId) setUserOfflineStatus(userId).catch(() => {});
       removeActivityListeners();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (activityTimeout) clearTimeout(activityTimeout);
-      unsub();
     };
   }, []);
 
