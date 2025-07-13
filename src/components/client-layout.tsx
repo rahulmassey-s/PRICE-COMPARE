@@ -237,17 +237,18 @@ export default function ClientLayout({
     }
 
     window.OneSignal.push(async () => {
-        const isInitialized = await window.OneSignal.isInitialized();
-        if (!isInitialized) {
-            console.log('[OneSignal] Initializing SDK...');
-            await window.OneSignal.init({
-                appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
-                subdomainName: process.env.NEXT_PUBLIC_ONESIGNAL_SUBDOMAIN_NAME,
-                allowLocalhostAsSecureOrigin: true,
-            });
-        }
+        console.log('[OneSignal] Pushing initialization and identification logic to the queue...');
         
-        console.log(`[OneSignal] Now processing user: ${user ? user.uid : 'Logged Out'}`);
+        // The SDK is designed to handle multiple init calls safely.
+        // The first one will initialize; subsequent calls are ignored.
+        // This removes the need for the faulty 'isInitialized' check.
+        await window.OneSignal.init({
+            appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
+            subdomainName: process.env.NEXT_PUBLIC_ONESIGNAL_SUBDOMAIN_NAME,
+            allowLocalhostAsSecureOrigin: true,
+        });
+
+        console.log(`[OneSignal] SDK is ready. Now processing user: ${user ? user.uid : 'Logged Out'}`);
 
         if (user && user.uid) {
             const externalId = await window.OneSignal.getExternalUserId();
