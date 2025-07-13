@@ -13,25 +13,40 @@ const APP_THEME_COLOR = '#0891b2';
 const inter = Inter({ subsets: ['latin'] });
 
 const oneSignalCleanupScript = `
-  const purgeFlag = 'onesignal_db_purged_v4';
-  if (typeof window !== 'undefined' && 'indexedDB' in window && !localStorage.getItem(purgeFlag)) {
-    console.log('[Direct Cleanup] Purge flag not found. Deleting OneSignal IndexedDB.');
-    const deleteRequest = indexedDB.deleteDatabase('OneSignal');
-    
-    // Set flag immediately to prevent loops if reload is slow
+  const purgeFlag = 'onesignal_nuke_v1'; // Use a new flag to ensure this runs
+  if (typeof window !== 'undefined' && !localStorage.getItem(purgeFlag)) {
+    console.log('[SCORCHED EARTH CLEANUP] Running aggressive cleanup script.');
+    // Set flag immediately to prevent loops.
     localStorage.setItem(purgeFlag, 'true');
 
-    deleteRequest.onsuccess = () => {
-      console.log('[Direct Cleanup] DB deleted. Reloading.');
-      window.location.reload();
-    };
-    deleteRequest.onerror = (e) => {
-      console.error('[Direct Cleanup] DB deletion error.', e);
-    };
-    deleteRequest.onblocked = (e) => {
-      console.warn('[Direct Cleanup] DB deletion blocked. Reloading to try again.', e);
-      window.location.reload();
-    };
+    // Step 1: Forcefully unregister all service workers to release any locks.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        if (!registrations.length) {
+            console.log('[SCORCHED EARTH CLEANUP] No service workers found to unregister.');
+            return;
+        }
+        for (let registration of registrations) {
+          registration.unregister();
+          console.log('[SCORCHED EARTH CLEANUP] Service Worker unregistered.');
+        }
+      });
+    }
+
+    // Step 2: Delete the corrupted IndexedDB.
+    if ('indexedDB' in window) {
+      console.log('[SCORCHED EARTH CLEANUP] Deleting OneSignal IndexedDB...');
+      const deleteRequest = indexedDB.deleteDatabase('OneSignal');
+      deleteRequest.onsuccess = function () { console.log('[SCORCHED EARTH CLEANUP] DB deleted successfully.'); };
+      deleteRequest.onerror = function () { console.error('[SCORCHED EARTH CLEANUP] DB could not be deleted.'); };
+      deleteRequest.onblocked = function () { console.warn('[SCORCHED EARTH CLEANUP] DB deletion was blocked.'); };
+    }
+
+    // Step 3: Force a hard reload after a short delay to ensure the async cleanup operations have started.
+    setTimeout(function() {
+      console.log('[SCORCHED EARTH CLEANUP] Triggering hard reload for a clean start.');
+      window.location.reload(true); // 'true' forces a reload from the server, bypassing cache.
+    }, 500);
   }
 `;
 
