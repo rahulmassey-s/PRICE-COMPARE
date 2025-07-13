@@ -21,11 +21,12 @@ import {
 } from '@/lib/firebase/firestoreService';
 import { siteConfig } from '@/config/site';
 import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
-import dynamic from 'next/dynamic';
+// The OneSignalInit component is no longer needed, so we remove the dynamic import.
+// import dynamic from 'next/dynamic';
 
-const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
-  ssr: false,
-});
+// const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
+//   ssr: false,
+// });
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
 const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -207,7 +208,79 @@ export default function ClientLayout({
     };
   }, [introAnimationFinished, checkPendingSuccessMessage]);
 
-  // --- USER PRESENCE & ACTIVITY TRACKING ---
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isOnline, setIsOnline] = useState(true);
+
+  // --- OneSignal SDK Initialization and User Identification ---
+  const initializeAndIdentifyOneSignal = useCallback(async (user: any) => {
+    // Guard to ensure this only runs on the client
+    if (typeof window === 'undefined' || !window.OneSignal) {
+        // First, load the script if it doesn't exist
+        if (!document.getElementById('onesignal-sdk-script')) {
+            console.log('[OneSignal] Loading SDK script...');
+            const script = document.createElement('script');
+            script.id = 'onesignal-sdk-script';
+            script.src = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
+            script.async = true;
+            document.head.appendChild(script);
+
+            script.onload = () => {
+                console.log('[OneSignal] SDK script loaded. Re-running identification.');
+                initializeAndIdentifyOneSignal(user); // Re-run this function once the script is loaded
+            };
+            return; // Exit for now, the onload will trigger the logic again
+        }
+        // If the script is there but window.OneSignal isn't ready, wait a bit and retry.
+        // This can happen due to race conditions.
+        setTimeout(() => initializeAndIdentifyOneSignal(user), 1000);
+        return;
+    }
+
+    window.OneSignal.push(async () => {
+        const isInitialized = await window.OneSignal.isInitialized();
+        if (!isInitialized) {
+            console.log('[OneSignal] Initializing SDK...');
+            await window.OneSignal.init({
+                appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
+                subdomainName: process.env.NEXT_PUBLIC_ONESIGNAL_SUBDOMAIN_NAME,
+                allowLocalhostAsSecureOrigin: true,
+            });
+        }
+        
+        console.log(`[OneSignal] Now processing user: ${user ? user.uid : 'Logged Out'}`);
+
+        if (user && user.uid) {
+            const externalId = await window.OneSignal.getExternalUserId();
+            if (externalId !== user.uid) {
+                console.log(`[OneSignal] User detected. Identifying as ${user.uid}`);
+                await window.OneSignal.setExternalUserId(user.uid);
+                
+                const profile = await getOrCreateUserDocument(user);
+                if (profile) {
+                    const tags = {
+                        name: profile.displayName || '',
+                        mobile: profile.phoneNumber || '',
+                        user_type: profile.role === 'member' ? 'member' : 'non-member',
+                    };
+                    await window.OneSignal.sendTags(tags);
+                    console.log('[OneSignal] User tags sent:', tags);
+                }
+            } else {
+                console.log(`[OneSignal] User ${user.uid} is already identified.`);
+            }
+        } else {
+            const externalId = await window.OneSignal.getExternalUserId();
+            if (externalId) {
+                console.log('[OneSignal] User logged out. Removing external user ID.');
+                await window.OneSignal.removeExternalUserId();
+            }
+        }
+    });
+  }, []);
+
+
+  // --- USER AUTHENTICATION LISTENER ---
+  // This now also handles OneSignal identification.
   useEffect(() => {
     let userId: string | null = null;
     let activityTimeout: NodeJS.Timeout | null = null;
@@ -260,6 +333,9 @@ export default function ClientLayout({
     };
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Initialize or identify the user with OneSignal
+      initializeAndIdentifyOneSignal(user);
+
       if (user) {
         userId = user.uid;
         setUserOnlineStatus(userId).catch(() => {});
@@ -362,7 +438,7 @@ export default function ClientLayout({
 
   return (
     <>
-      <OneSignalInit />
+      {/* The OneSignalInit component has been removed from here */}
       <CartProvider>
         <div className="relative flex min-h-screen flex-col bg-background">
           <AppHeader 
