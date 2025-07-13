@@ -215,12 +215,9 @@ export default function ClientLayout({
 
   // --- OneSignal SDK Initialization and User Identification ---
   const initializeAndIdentifyOneSignal = useCallback(async (user: any) => {
-    // STEP 1 of 2 ("THE CLEANER"): All OneSignal logic is temporarily disabled
-    // to allow the cleanup script in layout.tsx to run without interference.
-    // This function will be re-enabled in the next deployment.
-    return;
+    // STEP 2 of 2 ("THE RE-ACTIVATION"): OneSignal logic is now re-enabled.
+    // The cleanup script in layout.tsx has cleared out any corrupt data.
 
-    /*
     // Guard to ensure this only runs on the client
     if (typeof window === 'undefined' || !window.OneSignal) {
         // First, load the script if it doesn't exist
@@ -285,7 +282,6 @@ export default function ClientLayout({
             }
         }
     });
-    */
   }, []);
 
 
@@ -344,7 +340,7 @@ export default function ClientLayout({
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       // Initialize or identify the user with OneSignal
-      // initializeAndIdentifyOneSignal(user); // Temporarily disabled for the "Cleaner" deployment.
+      initializeAndIdentifyOneSignal(user); // Re-enabled for the "Re-activation" deployment.
 
       if (user) {
         userId = user.uid;
