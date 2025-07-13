@@ -8,7 +8,8 @@ const { getTokensForTargetGroup, sendNotification } = require('./notification-en
 
 // --- Firebase Admin Initialization ---
 try {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  // Standardize to use the same variable name as the rest of the app
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });

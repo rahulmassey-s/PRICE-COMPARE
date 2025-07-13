@@ -3,20 +3,21 @@ import * as admin from 'firebase-admin';
 import * as OneSignal from 'onesignal-node';
 
 // Initialize Firebase Admin SDK
-try {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
+function initializeFirebaseAdmin() {
     if (!admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
+        try {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+            });
+        } catch (e) {
+            console.error('Firebase Admin initialization error:', e);
+            throw new Error('Could not initialize Firebase Admin SDK.');
+        }
     }
-} catch (error) {
-    console.error('Firebase Admin initialization error:', error);
 }
+initializeFirebaseAdmin();
+
 
 // Initialize OneSignal Client
 const oneSignalClient = new OneSignal.Client(

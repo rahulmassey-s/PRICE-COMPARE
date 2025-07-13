@@ -273,87 +273,55 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
               </Tooltip>
             </TooltipProvider>
             {/* Notification Bell - Enhanced */}
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
-                aria-label="Notifications"
-                onClick={() => setNotifDropdownOpen(v => !v)}
-              >
-                <Bell size={28} className="text-yellow-500 group-hover:scale-110 group-hover:text-blue-600 transition-all duration-200 drop-shadow" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-blue-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-                <span className="sr-only">Notifications</span>
-              </Button>
-              {/* Dropdown */}
-              {notifDropdownOpen && (
-                <div
-                  className="fixed"
-                  style={{
-                    zIndex: 1000,
-                    top: 60,
-                    right: 8,
-                    minWidth: 180,
-                    width: 'min(95vw, 360px)',
-                    maxWidth: 360,
-                    borderRadius: 16,
-                    boxShadow: '0 8px 32px #2563ebcc, 0 2px 8px #2563eb22',
-                    overflowX: 'hidden',
-                    overflowWrap: 'break-word',
-                    background: '#fff',
-                    border: '1.5px solid #e0e7ef',
-                  }}
+            <DropdownMenu onOpenChange={setNotifDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-amber-200 dark:border-amber-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-amber-100 hover:to-yellow-100 dark:hover:from-amber-900 dark:hover:to-yellow-900 transition-all duration-200 focus:ring-2 focus:ring-amber-400"
                 >
-                  <div className="font-bold text-base mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200"><Bell size={18} /> Notifications</div>
-                  {notifications.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">No notifications</div>}
-                  <ul className="max-h-72 overflow-y-auto divide-y divide-blue-200 dark:divide-blue-800">
-                    {notifications.slice(0, 10).map(n => {
-                      // --- Enhanced extraction of test/lab/amount/date ---
-                      let testNames = '';
-                      let labNames = '';
-                      if (n.items && Array.isArray(n.items) && n.items.length > 0) {
-                        testNames = n.items.map(item => item.testName).join(', ');
-                        labNames = [...new Set(n.items.map(item => item.labName))].join(', ');
-                      } else if (n.testName) {
-                        testNames = n.testName;
-                      } else if (n.message) {
-                        const match = n.message.match(/Test\(s\): ([^\n]+)/);
-                        if (match) testNames = match[1];
-                      }
-                      const totalAmount = n.totalAmount || (n.message && n.message.match(/Total: ₹([\d.]+)/) ? n.message.match(/Total: ₹([\d.]+)/)[1] : '');
-                      const bookingDate = n.bookingDate?.toDate ? n.bookingDate.toDate() : (n.createdAt?.toDate ? n.createdAt.toDate() : null);
-                      return (
-                        <li key={n.id} className={`py-3 px-2 rounded-lg mb-2 ${n.status === 'unread' ? 'bg-blue-100 dark:bg-blue-800' : 'bg-transparent'} shadow-sm`} style={{ listStyle: 'none' }}>
-                          <div className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-1 flex items-center gap-2">
-                            <Bell size={14} className="text-blue-500 dark:text-blue-200" /> {n.title}
-                          </div>
-                          <div className="text-xs text-blue-800 dark:text-blue-200 mb-1">
-                            {testNames && <><span className="font-bold">Test:</span> {testNames}<br /></>}
-                            {labNames && <><span className="font-bold">Lab:</span> {labNames}<br /></>}
-                            {totalAmount && <><span className="font-bold">Amount:</span> ₹{totalAmount}<br /></>}
-                            {bookingDate && <><span className="font-bold">Date:</span> {bookingDate.toLocaleDateString()}<br /></>}
-                            {!testNames && n.message && <span>{n.message.replace(/#\w+/g, '').trim()}</span>}
-                          </div>
-                          <div className="text-[11px] text-right text-blue-700 dark:text-blue-300 mt-1">{n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString() : ''}</div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
+                  <Bell size={28} className="text-amber-600 group-hover:scale-110 group-hover:text-yellow-500 transition-all duration-200 drop-shadow" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-blue-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-80" align="end">
+                <DropdownMenuLabel className="flex justify-between items-center">
+                  <Bell size={18} /> Notifications
+                  {unreadCount > 0 && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications.length > 0 ? (
+                  notifications.map(notif => (
+                    <DropdownMenuItem key={notif.id} className={`flex items-start gap-3 p-3 ${notif.status === 'unread' ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                      <div className={`mt-1 h-2.5 w-2.5 rounded-full ${notif.status === 'unread' ? 'bg-blue-500' : 'bg-transparent'}`} />
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground">{notif.body}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleString() : new Date(notif.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Language Switcher - Enhanced */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400">
-                        <Languages size={26} className="text-purple-600 group-hover:scale-110 group-hover:text-blue-600 transition-all duration-200 drop-shadow" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-green-200 dark:border-green-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-green-100 hover:to-teal-100 dark:hover:from-green-900 dark:hover:to-teal-900 transition-all duration-200 focus:ring-2 focus:ring-green-400">
+                        <Languages size={28} className="text-green-600 group-hover:text-teal-500 transition-all duration-200 drop-shadow" />
                         <span className="sr-only">Change language</span>
                       </Button>
                     </DropdownMenuTrigger>
@@ -368,55 +336,61 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">{t('language')}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+
             {/* Theme Switcher - Enhanced */}
-            <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-blue-200 dark:border-blue-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-blue-100 hover:to-green-100 dark:hover:from-blue-900 dark:hover:to-green-900 transition-all duration-200 focus:ring-2 focus:ring-blue-400" onClick={toggleTheme} aria-label="Toggle theme">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-purple-200 dark:border-purple-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900 dark:hover:to-indigo-900 transition-all duration-200 focus:ring-2 focus:ring-purple-400" onClick={toggleTheme} aria-label="Toggle theme">
               {theme === 'light' ? <Moon size={24} className="text-blue-700 group-hover:scale-110 group-hover:text-yellow-500 transition-all duration-200 drop-shadow" /> : <Sun size={24} className="text-yellow-400 group-hover:scale-110 group-hover:text-blue-500 transition-all duration-200 drop-shadow" />}
             </Button>
-            {/* User Account Dropdown */}
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Toggle Theme</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* User Profile / Login */}
             {authLoading ? (
-              <div className="h-12 w-12 rounded-2xl bg-gray-200 animate-pulse"></div>
-            ) : user ? (
+              <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+            ) : firebaseUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-gray-200 dark:border-gray-700 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900 dark:hover:to-indigo-900 transition-all duration-200 focus:ring-2 focus:ring-purple-400"
-                  >
-                    <Avatar className="h-full w-full">
-                      <AvatarImage src={user.photoURL || ''} alt="User avatar" />
-                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-indigo-500 text-white font-bold text-lg">
-                        {getInitials(user)}
-                      </AvatarFallback>
+                  <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0">
+                    <Avatar className="h-11 w-11 border-2 border-primary/50 hover:border-primary transition-all">
+                      <AvatarImage src={firebaseUser.photoURL || ''} alt={firebaseUser.displayName || 'User'} />
+                      <AvatarFallback>{getInitials(firebaseUser)}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{firebaseUser.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{firebaseUser.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => router.push('/account')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>My Account</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/wallet')}>
                     <Wallet className="mr-2 h-4 w-4" />
-                    <span>Wallet</span>
+                    <span>My Wallet</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/admin')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin Panel</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
+                  <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/auth">
-                <Button variant="outline">Login</Button>
-              </Link>
+              <Button onClick={() => router.push('/login-otp')}>Login</Button>
             )}
           </div>
         </div>

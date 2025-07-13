@@ -85,9 +85,15 @@ const OneSignalInit = () => {
                 } else {
                     console.log(`[LOGIN] User detected. Identifying as ${user.uid}`);
                     await OneSignal.setExternalUserId(user.uid);
-                    if (permission === 'default') {
-                        console.log('[LOGIN] Permission is "default", showing subscribe prompt.');
+
+                    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+                    console.log(`[LOGIN] User registered with OneSignal. Permission: ${permission}, Subscribed: ${isSubscribed}`);
+
+                    if (permission === 'default' && !isSubscribed) {
+                        console.log('[LOGIN] Permission is "default" and user not subscribed, showing subscribe prompt.');
                         OneSignal.showSlidedownPrompt();
+                    } else {
+                        console.log(`[LOGIN] Subscription prompt not shown. Permission: ${permission}, Subscribed: ${isSubscribed}`);
                     }
                 }
             } else {
