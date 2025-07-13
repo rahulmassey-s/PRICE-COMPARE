@@ -332,15 +332,29 @@ export default function ClientLayout({
     }
   }, [pathname]);
 
+  // Effect to clean up old PWA service workers from previous versions
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        // navigator.serviceWorker.register('/sw.js').catch((err) => {
-        //   console.error('Service Worker registration failed: ', err);
-        // });
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          // Check if there's an active worker and its script URL is not the OneSignal one.
+          // This will target old service workers from 'next-pwa' (e.g., sw.js, me.js).
+          if (registration.active && !registration.active.scriptURL.includes('OneSignalSDKWorker.js')) {
+            registration.unregister().then(unregistered => {
+              if (unregistered) {
+                console.log(`[SW Cleanup] Unregistered conflicting service worker: ${registration.active?.scriptURL}`);
+                // Force a reload to ensure the new service worker takes control immediately.
+                window.location.reload();
+              }
+            });
+          }
+        }
+      }).catch(error => {
+        console.error('[SW Cleanup] Error during service worker cleanup:', error);
       });
     }
   }, []);
+
 
   if (isLoadingIntroState) {
     return <SplashScreen />;
