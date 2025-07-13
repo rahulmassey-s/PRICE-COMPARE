@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
-import withPWA from 'next-pwa';
+// PWA configuration has been removed to prevent service worker conflicts.
+// import withPWA from 'next-pwa';
 
-const pwaConfig = {
-  dest: 'public',
-  register: false,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-};
+// const pwaConfig = {
+//   dest: 'public',
+//   register: false,
+//   skipWaiting: true,
+//   disable: process.env.NODE_ENV === 'development',
+// };
 
 const nextConfig = {
   webpack: (config, { isServer }) => {
@@ -37,4 +38,4 @@ const nextConfig = {
   reactStrictMode: true,
 };
 
-export default withPWA(pwaConfig)(nextConfig); 
+export default nextConfig; 
