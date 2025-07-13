@@ -211,33 +211,7 @@ export default function ClientLayout({
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [isOnline, setIsOnline] = useState(true);
 
-  // --- One-time cleanup for corrupted IndexedDB ---
-  useEffect(() => {
-    const purgeFlag = 'onesignal_db_purged_v3'; // Increment flag version to re-trigger if needed
-    if (typeof window !== 'undefined' && 'indexedDB' in window && !localStorage.getItem(purgeFlag)) {
-      console.log(`[Cleanup] Purge flag '${purgeFlag}' not found. Attempting to delete potentially corrupt OneSignal IndexedDB.`);
-      
-      // Set flag immediately to prevent reload loops
-      localStorage.setItem(purgeFlag, 'true');
-      
-      const deleteRequest = indexedDB.deleteDatabase('OneSignal');
-
-      deleteRequest.onsuccess = () => {
-        console.log('[Cleanup] OneSignal DB deleted successfully. Reloading page for a clean start.');
-        window.location.reload();
-      };
-      
-      deleteRequest.onerror = (event) => {
-        console.error('[Cleanup] Could not delete OneSignal DB.', event);
-        // Don't reload, but the issue might persist for this user.
-      };
-
-      deleteRequest.onblocked = (event) => {
-        console.warn('[Cleanup] Deleting OneSignal DB was blocked. This can happen if the site is open in another tab. Reloading to try and fix.', event);
-        window.location.reload();
-      };
-    }
-  }, []); // Empty dependency array ensures this runs only once per client.
+  // The one-time cleanup script has been moved to layout.tsx for earlier execution.
 
   // --- OneSignal SDK Initialization and User Identification ---
   const initializeAndIdentifyOneSignal = useCallback(async (user: any) => {

@@ -12,6 +12,29 @@ const APP_THEME_COLOR = '#0891b2';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const oneSignalCleanupScript = `
+  const purgeFlag = 'onesignal_db_purged_v4';
+  if (typeof window !== 'undefined' && 'indexedDB' in window && !localStorage.getItem(purgeFlag)) {
+    console.log('[Direct Cleanup] Purge flag not found. Deleting OneSignal IndexedDB.');
+    const deleteRequest = indexedDB.deleteDatabase('OneSignal');
+    
+    // Set flag immediately to prevent loops if reload is slow
+    localStorage.setItem(purgeFlag, 'true');
+
+    deleteRequest.onsuccess = () => {
+      console.log('[Direct Cleanup] DB deleted. Reloading.');
+      window.location.reload();
+    };
+    deleteRequest.onerror = (e) => {
+      console.error('[Direct Cleanup] DB deletion error.', e);
+    };
+    deleteRequest.onblocked = (e) => {
+      console.warn('[Direct Cleanup] DB deletion blocked. Reloading to try again.', e);
+      window.location.reload();
+    };
+  }
+`;
+
 export const metadata: Metadata = {
   applicationName: siteConfig.name,
   title: 'Smart Bharat',
@@ -31,6 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: oneSignalCleanupScript }} />
         {/* PWA Meta Tags */}
         <meta name="application-name" content={siteConfig.name} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
