@@ -1,4 +1,25 @@
-require("dotenv").config();
+const path = require('path');
+const fs = require('fs'); // Import the file system module
+
+const envPath = path.resolve(__dirname, '.env');
+
+// --- Start of Diagnostic Code ---
+console.log(`[DIAGNOSTIC] Looking for .env file at: ${envPath}`);
+if (fs.existsSync(envPath)) {
+    console.log('[DIAGNOSTIC] .env file FOUND.');
+} else {
+    console.error('[DIAGNOSTIC] CRITICAL ERROR: .env file NOT FOUND at the expected path.');
+}
+// --- End of Diagnostic Code ---
+
+require('dotenv').config({ path: envPath });
+
+// --- Start of Diagnostic Code ---
+console.log(`[DIAGNOSTIC] Is VAPID_PUBLIC_KEY set? ${!!process.env.VAPID_PUBLIC_KEY}`);
+console.log(`[DIAGNOSTIC] Is FIREBASE_SERVICE_ACCOUNT_KEY set? ${!!process.env.FIREBASE_SERVICE_ACCOUNT_KEY}`);
+// --- End of Diagnostic Code ---
+
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -17,7 +38,14 @@ app.use(bodyParser.json());
 // IMPORTANT: This requires a FIREBASE_SERVICE_ACCOUNT_KEY environment variable.
 // The value should be the full JSON string of your service account key.
 try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!serviceAccountString || serviceAccountString.trim() === '') {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is not set or is empty in the .env file.");
+    }
+    // The following line is the fix: It ensures the private_key is correctly formatted.
+    const formattedString = serviceAccountString.replace(/\\n/g, '\\n');
+    const serviceAccount = JSON.parse(formattedString);
+
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
     });
@@ -67,10 +95,12 @@ app.post("/subscribe", async (req, res) => {
 
     try {
         const userRef = db.collection("users").doc(userId);
-        await userRef.update({
+        // Use set with merge: true. This creates the doc if it doesn't exist,
+        // or updates it if it does. This is safer than .update().
+        await userRef.set({
             pushSubscriptions: admin.firestore.FieldValue.arrayUnion(subscription),
-        });
-        res.status(201).json({ message: "Subscription saved." });
+        }, { merge: true });
+        res.status(201).json({ message: "Subscription saved or updated." });
     } catch (error) {
         console.error("Error saving subscription:", error);
         res.status(500).json({ error: "Failed to save subscription." });

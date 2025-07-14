@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notification Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; }
+        #log { border: 1px solid #ccc; padding: 10px; margin-top: 20px; background-color: #fff; min-height: 100px; white-space: pre-wrap; }
+        button { font-size: 16px; padding: 10px 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Push Notification Test Page</h1>
+    <p>Open the developer console (F12) to see detailed logs.</p>
+    <button id="subscribeButton">Subscribe to Notifications</button>
+    <h3>Log:</h3>
+    <div id="log"></div>
+
+    <script>
+        const log = (message) => {
+            console.log(message);
+            document.getElementById('log').textContent += message + '\n';
+        };
+
+        const SERVER_URL = 'http://localhost:4000';
+        // IMPORTANT: For a real app, get this from your authentication system (e.g., Firebase Auth)
+        const MOCK_USER_ID = 'test_user_123'; 
+
+        async function subscribe() {
+            log('Starting subscription process...');
+            
+            // 1. Register the Service Worker
+            if (!('serviceWorker' in navigator)) {
+                log('Service workers are not supported.');
+                return;
+            }
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                log('Service Worker registered successfully.');
+            } catch (error) {
+                log('Service Worker registration failed: ' + error);
+                return;
+            }
+
+            // 2. Request Notification Permission
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                log('Notification permission not granted.');
+                return;
+            }
+            log('Notification permission granted.');
+
+            try {
+                // 3. Get the VAPID Public Key from our server
+                const response = await fetch(`${SERVER_URL}/vapid-public-key`);
+                const vapidPublicKey = await response.text();
+                log('Fetched VAPID Public Key from server.');
+
+                // 4. Get the push subscription
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: vapidPublicKey
+                });
+                log('Push subscription created successfully.');
+
+                // 5. Send the subscription to the backend
+                log('Sending subscription to the server...');
+                await fetch(`${SERVER_URL}/subscribe`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: MOCK_USER_ID,
+                        subscription: subscription
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                log('Subscription sent to server successfully!');
+                log('--- TEST COMPLETE ---');
+
+            } catch (error) {
+                log('An error occurred: ' + error.message);
+            }
+        }
+
+        document.getElementById('subscribeButton').addEventListener('click', subscribe);
+    </script>
+</body>
+</html> 
