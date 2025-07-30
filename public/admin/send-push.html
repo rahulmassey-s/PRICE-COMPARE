@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Push Notification - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.v2.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .styled-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .status-message {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+            font-weight: 500;
+        }
+        .status-message.success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+        .btn-secondary {
+             background-color: #6c757d;
+             border-color: #6c757d;
+             color: #fff;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-paper-plane"></i> Send Push Notification</h1>
+            <a href="/admin/index.html" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <!-- Send to a specific user -->
+        <div class="form-wrapper card-style">
+            <h3>Send a Direct Push Notification to a Specific User</h3>
+            <form id="send-direct-notification-form">
+                <div class="form-group">
+                    <label for="user-id">User ID (Firebase UID):</label>
+                    <input type="text" id="user-id" placeholder="Enter the Firebase UID of the user">
+                </div>
+                <div class="form-group">
+                    <label for="direct-title">Notification Title:</label>
+                    <input type="text" id="direct-title" value="New Offer Just for You!" required>
+                </div>
+                <div class="form-group">
+                    <label for="direct-body">Notification Body:</label>
+                    <textarea id="direct-body" rows="3" required>Check out our latest discounts on health packages.</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="direct-icon-url">Icon URL (Optional):</label>
+                    <input type="text" id="direct-icon-url" placeholder="https://example.com/icon.png">
+                </div>
+                <div class="form-group">
+                    <label for="direct-open-url">URL to Open on Click (Optional):</label>
+                    <input type="text" id="direct-open-url" placeholder="/offers">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-user"></i> Send to User</button>
+            </form>
+        </div>
+
+        <hr class="separator">
+
+        <!-- Broadcast to all users -->
+        <div class="form-wrapper card-style">
+            <h3>Broadcast a Push Notification to All Users</h3>
+            <form id="send-broadcast-notification-form">
+                <div class="form-group">
+                    <label for="broadcast-title">Notification Title:</label>
+                    <input type="text" id="broadcast-title" value="Important Announcement" required>
+                </div>
+                <div class="form-group">
+                    <label for="broadcast-body">Notification Body:</label>
+                    <textarea id="broadcast-body" rows="3" required>A new feature is now live on our platform!</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="broadcast-icon-url">Icon URL (Optional):</label>
+                    <input type="text" id="broadcast-icon-url" placeholder="https://example.com/icon.png">
+                </div>
+                <div class="form-group">
+                    <label for="broadcast-open-url">URL to Open on Click (Optional):</label>
+                    <input type="text" id="broadcast-open-url" placeholder="/announcements">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-users"></i> Send to All Users</button>
+            </form>
+        </div>
+
+        <div id="response-message" class="response-message"></div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const sendPushForm = document.getElementById('send-push-form');
+        if (sendPushForm) {
+          sendPushForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const statusDiv = document.getElementById('send-push-status');
+            const submitButton = sendPushForm.querySelector('button[type="submit"]');
+            const userId = document.getElementById('push-user-id').value;
+            const title = document.getElementById('push-title').value;
+            const body = document.getElementById('push-body').value;
+            const icon = document.getElementById('push-icon-url').value;
+            const url = document.getElementById('push-url').value;
+            
+            // This should point to your deployed server, or localhost for testing
+            const VAPID_SERVER_URL = 'http://localhost:4000'; 
+            const payload = { title, body, icon, url };
+
+            if (!userId || !title || !body) {
+              statusDiv.textContent = 'User ID, Title, and Body are required.';
+              statusDiv.className = 'status-message error';
+              statusDiv.style.display = 'block';
+              return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            statusDiv.style.display = 'none';
+
+            try {
+              // Note: This endpoint is on your Node.js server, NOT a Firebase Function
+              const response = await fetch(`${VAPID_SERVER_URL}/send-push-to-user`, {
+                method: 'POST',
+                body: JSON.stringify({ userId, payload }),
+                headers: { 'Content-Type': 'application/json' },
+              });
+              const result = await response.json();
+              if (response.ok) {
+                statusDiv.textContent = `Success: ${result.message}`;
+                statusDiv.className = 'status-message success';
+                sendPushForm.reset(); // Clear the form on success
+              } else {
+                throw new Error(result.error || `Request failed with status ${response.status}`);
+              }
+            } catch (error) {
+              statusDiv.textContent = `Error: ${error.message}`;
+              statusDiv.className = 'status-message error';
+            } finally {
+              submitButton.disabled = false;
+              submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Notification';
+              statusDiv.style.display = 'block';
+            }
+          });
+        }
+      });
+    </script>
+    <script>
+        // --- Direct Notification Form ---
+        document.getElementById('send-direct-notification-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const userId = document.getElementById('user-id').value;
+            const title = document.getElementById('direct-title').value;
+            const body = document.getElementById('direct-body').value;
+            const icon = document.getElementById('direct-icon-url').value;
+            const url = document.getElementById('direct-open-url').value;
+            const responseDiv = document.getElementById('response-message');
+
+            if (!userId) {
+                responseDiv.textContent = 'Error: User ID is required for direct notifications.';
+                responseDiv.className = 'response-message error';
+                return;
+            }
+
+            try {
+                responseDiv.textContent = 'Sending...';
+                responseDiv.className = 'response-message';
+                const res = await fetch('http://localhost:4000/send-notification', {
+                    method: 'POST',
+                    body: JSON.stringify({ userId, title, body, icon, url }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    responseDiv.textContent = 'Successfully sent notification to user!';
+                    responseDiv.className = 'response-message success';
+                } else {
+                    responseDiv.textContent = `Error: ${data.message}`;
+                    responseDiv.className = 'response-message error';
+                }
+            } catch (error) {
+                console.error('Failed to send direct notification:', error);
+                responseDiv.textContent = 'An error occurred. Check the console.';
+                responseDiv.className = 'response-message error';
+            }
+        });
+
+        // --- Broadcast Notification Form ---
+        document.getElementById('send-broadcast-notification-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const title = document.getElementById('broadcast-title').value;
+            const body = document.getElementById('broadcast-body').value;
+            const icon = document.getElementById('broadcast-icon-url').value;
+            const url = document.getElementById('broadcast-open-url').value;
+            const responseDiv = document.getElementById('response-message');
+        
+            try {
+                responseDiv.textContent = 'Sending broadcast...';
+                responseDiv.className = 'response-message';
+                const res = await fetch('http://localhost:4000/send-to-all', {
+                    method: 'POST',
+                    body: JSON.stringify({ title, body, icon, url }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    responseDiv.textContent = `Broadcast sent! Message: ${data.message}`;
+                    responseDiv.className = 'response-message success';
+                } else {
+                    responseDiv.textContent = `Error: ${data.message}`;
+                    responseDiv.className = 'response-message error';
+                }
+            } catch (error) {
+                console.error('Failed to send broadcast notification:', error);
+                responseDiv.textContent = 'A network error occurred. Check the console.';
+                responseDiv.className = 'response-message error';
+            }
+        });
+    </script>
+</body>
+</html> 

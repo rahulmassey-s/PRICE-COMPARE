@@ -45,23 +45,20 @@
             </div>
             <ul id="sidebar-tabs-nav" class="tabs-nav">
                 <li><button class="tab-button" data-tab="crm-dashboard-tab"><i class="fas fa-chart-pie"></i> CRM Dashboard</button></li>
-                <li><button class="tab-button active" data-tab="manage-labs-tab"><i class="fas fa-flask"></i> Manage Labs</button></li>
+                <li><button class="tab-button" data-tab="manage-labs-tab"><i class="fas fa-flask"></i> Manage Labs</button></li>
                 <li><button class="tab-button" data-tab="manage-tests-tab"><i class="fas fa-vial"></i> Manage Tests</button></li>
                 <li><button class="tab-button" data-tab="manage-health-concerns-tab"><i class="fas fa-heartbeat"></i> Manage Health Concerns</button></li>
                 <li><button class="tab-button" data-tab="manage-offers-tab"><i class="fas fa-tags"></i> Manage Offers</button></li>
                 <li><button class="tab-button" data-tab="view-prescriptions-tab"><i class="fas fa-file-prescription"></i> View Prescriptions</button></li>
                 <li><button class="tab-button" data-tab="manage-users-tab"><i class="fas fa-users-cog"></i> Manage Users</button></li>
                 <li><button class="tab-button" data-tab="wallet-accounts-tab"><i class="fas fa-wallet"></i> Wallet Accounts</button></li>
-                <li><button class="tab-button" data-tab="manage-bookings-tab"><i class="fas fa-calendar-check"></i> Manage Bookings</button></li>
+                <li><button class="tab-button" data-tab="manage-bookings-tab"><i class="fas fa-calendar-check"></i> Manage Bookings <span id="bookings-badge" class="sidebar-badge" style="display:none;">0</span></button></li>
                 <li><button class="tab-button" data-tab="manage-banners-tab"><i class="fas fa-images"></i> Manage Banners</button></li>
                 <li><button class="tab-button" data-tab="site-settings-tab"><i class="fas fa-cog"></i> Site Settings</button></li>
                 <li><button class="tab-button" data-tab="manage-data-tab"><i class="fas fa-database"></i> Manage Data (Excel)</button></li>
                 <li><button class="tab-button" data-tab="charts-tab"><i class="fas fa-chart-line"></i> Charts</button></li>
                 <li><button class="tab-button" data-tab="user-activity-tab"><i class="fas fa-user-clock"></i> User Activity</button></li>
-                <li><a href="/admin" target="_blank" class="tab-button"><i class="fas fa-bell"></i> Push Notification</a></li>
-                <li><a href="#" class="tab-button" data-tab="push-advanced-tab"><i class="fas fa-bell"></i> Advanced Push</a></li>
-                <li><button class="tab-button" data-tab="push-history-tab"><i class="fas fa-history"></i> Push History</button></li>
-                <li><button class="tab-button" data-tab="push-templates-tab"><i class="fas fa-swatchbook"></i> Push Templates</button></li>
+                <li><a href="/admin/send-push.html" class="tab-button"><i class="fas fa-paper-plane"></i> Send Push Notification</a></li>
             </ul>
             <div class="sidebar-footer">
                 <button id="logout-button" class="btn btn-danger logout-button"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -73,9 +70,27 @@
             <div id="crm-dashboard-tab" class="tab-content">
                 <section class="dashboard-section card-style">
                     <h4><i class="fas fa-chart-pie"></i> CRM Dashboard</h4>
-                    <div id="crm-summary-cards" class="crm-summary-cards"></div>
-                    <div id="crm-charts-row" class="crm-charts-row"></div>
-                    <div id="crm-tables-row" class="crm-tables-row"></div>
+                    <div id="crm-summary-cards" class="crm-summary-cards">
+                        <div class="summary-card">
+                            <h5>Total Users</h5>
+                            <p id="total-users">0</p>
+                        </div>
+                        <div class="summary-card">
+                            <h5>Total Bookings</h5>
+                            <p id="total-bookings">0</p>
+                        </div>
+                        <div class="summary-card">
+                            <h5>Total Labs</h5>
+                            <p id="total-labs">0</p>
+                        </div>
+                        <div class="summary-card">
+                            <h5>Total Tests</h5>
+                            <p id="total-tests">0</p>
+                        </div>
+                    </div>
+                    <div class="chart-container" style="margin-top: 2rem;">
+                        <canvas id="bookings-chart"></canvas>
+                    </div>
                 </section>
             </div>
 
@@ -112,6 +127,28 @@
                         </table>
                     </div>
                 </section>
+            </div>
+
+            <!-- Edit Lab Modal -->
+            <div id="editLabModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center;">
+              <div style="background:#fff; padding:24px; border-radius:8px; min-width:320px; max-width:90vw; margin:auto; position:relative;">
+                <h3>Edit Lab</h3>
+                <form id="editLabForm">
+                  <div style="margin-bottom:12px;">
+                    <label for="editLabName">Lab Name:</label><br>
+                    <input type="text" id="editLabName" name="editLabName" style="width:100%; padding:6px;" required>
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <label for="editLabLocation">Location (Optional):</label><br>
+                    <input type="text" id="editLabLocation" name="editLabLocation" style="width:100%; padding:6px;">
+                  </div>
+                  <input type="hidden" id="editLabRowIndex">
+                  <div style="display:flex; gap:12px; justify-content:flex-end;">
+                    <button type="button" id="cancelEditLabBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </div>
+                </form>
+              </div>
             </div>
 
             <!-- Manage Tests Tab -->
@@ -368,7 +405,7 @@
                                     <th>Last Active</th>
                                     <th>Login Count</th>
                                     <th>Last Login</th>
-                                    <th>Role</th>
+                                    <th>Member Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -382,21 +419,23 @@
             <div id="wallet-accounts-tab" class="tab-content">
                 <section class="dashboard-section card-style">
                     <h4><i class="fas fa-wallet"></i> Wallet Accounts</h4>
-                    <div class="form-group" style="max-width:350px;margin-bottom:16px;">
-                        <input type="text" id="wallet-accounts-search-input" class="form-control" placeholder="Search by name, email, phone...">
-                    </div>
                     <div class="table-container">
-                        <table id="wallet-accounts-table">
+                        <table id="wallets-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>Wallet ID</th>
+                                    <th>User ID</th>
+                                    <th>User Name</th>
                                     <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Points</th>
+                                    <th>Mobile</th>
+                                    <th>Balance</th>
+                                    <th>Last Updated</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="wallet-accounts-table-body"></tbody>
+                            <tbody id="wallets-table-body">
+                                <!-- Wallet data will be loaded here -->
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -411,11 +450,11 @@
                             <thead>
                                 <tr>
                                     <th>Booking ID</th>
-                                    <th>User Name</th>
-                                    <th>User Contact</th>
-                                    <th>Booking Date</th>
-                                    <th>Total Amount</th>
-                                    <th>Items</th>
+                                    <th>User Details</th>
+                                    <th>Test Details</th>
+                                    <th>Lab & Timing</th>
+                                    <th>Pricing</th>
+                                    <th>Booking Info</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -611,28 +650,17 @@
             <!-- Charts Tab -->
             <div id="charts-tab" class="tab-content">
                 <section class="dashboard-section card-style">
-                    <h4><i class="fas fa-chart-line"></i> Analytics & Charts</h4>
-                    <p>Charts and analytics will be displayed here in a future update.</p>
+                    <h4><i class="fas fa-chart-line"></i> Analytics Charts</h4>
+                    <p>Additional charts and analytics can be added here.</p>
                 </section>
             </div>
 
             <!-- User Activity Tab -->
             <div id="user-activity-tab" class="tab-content">
                 <section class="dashboard-section card-style">
-                    <h4><i class="fas fa-user-clock"></i> User Activity Analytics</h4>
-                    <div class="table-container">
-                        <table id="user-activity-table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Activity</th>
-                                    <th>Test/Page</th>
-                                    <th>Details</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody id="user-activity-table-body"></tbody>
-                        </table>
+                    <h4><i class="fas fa-user-clock"></i> User Activity Stream</h4>
+                    <div id="user-activity-content" class="activity-stream">
+                        <!-- Activity items will be loaded here -->
                     </div>
                 </section>
             </div>
@@ -1070,11 +1098,12 @@
       margin: 0 auto 12px auto;
     }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 
     <script type="module" src="firebase-config.js"></script>
+    <script src="billing-config.js"></script>
     <script type="module" src="app.js" defer></script>
-
+    
     <!-- Add Template Modal -->
     <div id="add-template-modal" class="modal">
       <div class="modal-content card-style">
@@ -1103,6 +1132,102 @@
           </div>
           <button type="submit" class="btn btn-primary">Add Template</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Lab Price Modal -->
+    <div id="lab-price-modal" class="modal">
+      <div class="modal-content card-style" style="max-width: 400px;">
+        <span class="close-modal-btn" id="close-lab-price-modal">&times;</span>
+        <h4 id="lab-price-modal-title">Add/Edit Lab Price</h4>
+        <form id="lab-price-form">
+          <div class="form-group">
+            <label for="lab-select">Lab</label>
+            <select id="lab-select" required></select>
+          </div>
+          <div class="form-group">
+            <label for="lab-price-input">Price (₹)</label>
+            <input type="number" id="lab-price-input" required placeholder="Enter price">
+          </div>
+          <div class="form-group">
+            <label for="lab-original-price-input">Original Price (₹)</label>
+            <input type="number" id="lab-original-price-input" placeholder="Original price (optional)">
+          </div>
+          <div class="form-group">
+            <label for="lab-member-price-input">Member Price (₹)</label>
+            <input type="number" id="lab-member-price-input" placeholder="Member price (optional)">
+          </div>
+          <input type="hidden" id="lab-price-id-input">
+          <button type="submit" class="btn btn-primary" id="lab-price-save-btn">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Wallet Points Modal -->
+    <div id="wallet-points-modal" class="modal">
+      <div class="modal-content card-style" style="max-width: 500px;">
+        <span class="close-modal-btn" id="close-wallet-points-modal">&times;</span>
+        <h4 id="wallet-points-modal-title">Manage Wallet Points</h4>
+        <form id="wallet-points-form">
+          <div class="form-group">
+            <label for="wallet-user-name">User Name:</label>
+            <input type="text" id="wallet-user-name" readonly>
+          </div>
+          <div class="form-group">
+            <label for="wallet-user-id">User ID:</label>
+            <input type="text" id="wallet-user-id" readonly>
+          </div>
+          <div class="form-group">
+            <label for="wallet-current-balance">Current Balance:</label>
+            <input type="text" id="wallet-current-balance" readonly>
+          </div>
+          <div class="form-group">
+            <label for="wallet-action-type">Action:</label>
+            <select id="wallet-action-type" required>
+              <option value="add">Add Points</option>
+              <option value="deduct">Deduct Points</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wallet-points-amount">Points Amount:</label>
+            <input type="number" id="wallet-points-amount" required min="1" placeholder="Enter points amount">
+          </div>
+          <div class="form-group">
+            <label for="wallet-reason">Reason:</label>
+            <textarea id="wallet-reason" required rows="3" placeholder="Enter reason for this action (e.g., Bonus for referral, Refund for cancelled booking, etc.)"></textarea>
+          </div>
+          <input type="hidden" id="wallet-user-email">
+          <button type="submit" class="btn btn-primary" id="wallet-points-save-btn">Update Points</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Wallet Transaction History Modal -->
+    <div id="wallet-transaction-history-modal" class="modal">
+      <div class="modal-content card-style" style="max-width: 800px; max-height: 80vh;">
+        <span class="close-modal-btn" id="close-wallet-transaction-history-modal">&times;</span>
+        <h4 id="wallet-transaction-history-modal-title">Wallet Transaction History</h4>
+        <div class="user-info-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <h5 id="transaction-history-user-name">User: Loading...</h5>
+          <p id="transaction-history-user-email">Email: Loading...</p>
+          <p id="transaction-history-current-balance">Current Balance: Loading...</p>
+        </div>
+        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+          <table id="wallet-transaction-history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Action</th>
+                <th>Points</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="wallet-transaction-history-table-body">
+              <!-- Transaction history will be loaded here -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 </body>

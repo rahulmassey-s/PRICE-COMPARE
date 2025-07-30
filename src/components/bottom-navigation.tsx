@@ -52,20 +52,20 @@ export default function BottomNavigation({ onCartIconClick }: BottomNavigationPr
         {navItems.map((item) => {
           const isComparePriceButton = item.label === 'Compare Price';
           const isActive = item.exact ? pathname === item.href : (item.href === '#' ? false : pathname.startsWith(item.href));
-
+          
           const commonClassName = cn(
-            "flex flex-col items-center justify-center text-center w-1/5 h-full relative group transition-all duration-200 ease-in-out rounded-lg",
-            isActive
-              ? (isComparePriceButton ? "text-accent-foreground font-semibold" : "text-primary font-semibold")
-              : "text-muted-foreground hover:text-primary",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                "flex flex-col items-center justify-center text-center w-1/5 h-full relative group transition-all duration-200 ease-in-out rounded-lg",
+                isActive
+                  ? (isComparePriceButton ? "text-accent-foreground font-semibold" : "text-primary font-semibold")
+                  : "text-muted-foreground hover:text-primary",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           );
 
           const iconContainerClassName = cn(
-            "p-2 rounded-full transition-all duration-200 ease-in-out",
-            isActive
-              ? (isComparePriceButton ? "bg-accent scale-115 shadow-lg" : "bg-primary/15 scale-110")
-              : "group-hover:bg-primary/10 group-hover:scale-105"
+                "p-2 rounded-full transition-all duration-200 ease-in-out",
+                isActive
+                  ? (isComparePriceButton ? "bg-accent scale-115 shadow-lg" : "bg-primary/15 scale-110")
+                  : "group-hover:bg-primary/10 group-hover:scale-105"
           );
 
           const iconClassName = cn(

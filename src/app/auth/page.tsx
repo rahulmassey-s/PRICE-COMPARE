@@ -78,13 +78,14 @@ export default function AuthPage() {
         }
     };
 
-    const handleLogin = async () => {
+    const handleLogin = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         setIsLoading(true);
         const email = `+91${mobile}@smartbharat.com`;
         try {
             await signInWithEmail(email, password);
             toast({ title: 'Success!', description: "You're logged in." });
-            router.push('/');
+            await router.push('/');
         } catch (error: any) {
              toast({ title: 'Login Failed', description: 'Incorrect password. Please try again.', variant: 'destructive' });
         } finally {
@@ -172,24 +173,24 @@ export default function AuthPage() {
                 )}
 
                 {step === 'login' && (
-                    <>
+                    <form onSubmit={handleLogin}>
                         <h2 className="text-2xl font-bold text-center">Welcome Back!</h2>
                         <p className="text-center text-gray-600 dark:text-gray-400">Login to account with +91 {mobile}</p>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                             <div className="relative">
+                            <div className="relative">
                                 <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"/>
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3">
                                     {showPassword ? <EyeOff className="h-5 w-5 text-gray-400"/> : <Eye className="h-5 w-5 text-gray-400"/>}
                                 </button>
                             </div>
                         </div>
-                        <Button onClick={handleLogin} disabled={isLoading} className="w-full">
+                        <Button type="submit" disabled={isLoading} className="w-full">
                             {isLoading ? 'Logging in...' : 'Login'}
                         </Button>
-                         <Button variant="link" onClick={() => handleSendOtp('reset-password')} className="w-full">Forgot Password?</Button>
-                         <Button variant="link" onClick={() => { setMobile(''); setStep('enter-mobile'); }} className="w-full">Use another number</Button>
-                    </>
+                        <Button variant="link" onClick={() => handleSendOtp('reset-password')} className="w-full">Forgot Password?</Button>
+                        <Button variant="link" onClick={() => { setMobile(''); setStep('enter-mobile'); }} className="w-full">Use another number</Button>
+                    </form>
                 )}
                 
                 {step === 'signup' && (

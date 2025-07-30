@@ -14,7 +14,7 @@ import {
   Timestamp,
   serverTimestamp
 } from './client'; // Use client-side Firebase setup
-import { runTransaction } from 'firebase/firestore';
+import { runTransaction, onSnapshot } from 'firebase/firestore';
 import type { UserDetails, Booking, BookingItem } from '@/types';
 
 /**
@@ -360,5 +360,25 @@ export async function logUserActivity(userId: string, activityType: string, deta
     // Never throw, just log
     console.error('Failed to log user activity:', e);
   }
+}
+
+/**
+ * Subscribes to real-time updates for the 'labs' collection.
+ * @param callback Function to call with the array of labs whenever data changes.
+ * @returns Unsubscribe function to stop listening.
+ */
+export function subscribeToLabsRealtime(callback: (labs: Array<{ id: string; name: string; location?: string }>) => void) {
+  const labsRef = collection(db, 'labs');
+  return onSnapshot(labsRef, (snapshot) => {
+    const labs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        location: data.location || '',
+      };
+    });
+    callback(labs);
+  });
 }
 

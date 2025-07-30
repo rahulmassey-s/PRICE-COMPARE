@@ -107,6 +107,74 @@ app.post("/subscribe", async (req, res) => {
     }
 });
 
+// Endpoint to send a push directly to a user (for testing)
+app.post("/send-push-to-user", async (req, res) => {
+    const { userId, payload } = req.body;
+
+    if (!userId || !payload) {
+        return res.status(400).json({ error: "Missing userId or payload." });
+    }
+
+    try {
+        const userSnap = await db.collection("users").doc(userId).get();
+        if (!userSnap.exists) {
+            return res.status(404).json({ error: "User not found." });
+        }
+        const user = userSnap.data();
+
+        if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+            return res.status(400).json({ error: "User has no subscriptions." });
+        }
+
+        const subscriptions = user.pushSubscriptions;
+        const payloadString = JSON.stringify(payload);
+
+        // Use Promise.allSettled to handle individual push failures
+        const pushResults = await Promise.allSettled(
+            subscriptions.map(sub => webpush.sendNotification(sub, payloadString))
+        );
+
+        const validSubscriptions = [];
+        let hadFailures = false;
+
+        pushResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                validSubscriptions.push(subscriptions[index]);
+            } else { // status is 'rejected'
+                hadFailures = true;
+                const error = result.reason;
+                console.error(`Failed to send to one subscription:`, error.body || error.message);
+                // If the subscription is expired (410), we'll remove it by not adding it to the valid list.
+                // For other errors, we keep it, assuming it might be a temporary issue.
+                if (error.statusCode !== 410) {
+                    validSubscriptions.push(subscriptions[index]);
+                }
+            }
+        });
+
+        // If any subscriptions were removed, update the user in Firestore
+        if (validSubscriptions.length < subscriptions.length) {
+            console.log(`Pruning ${subscriptions.length - validSubscriptions.length} expired subscriptions for user ${userId}.`);
+            await db.collection("users").doc(userId).update({
+                pushSubscriptions: validSubscriptions
+            });
+        }
+
+        // If there were failures but none were due to expired subscriptions, return an error
+        if (hadFailures && validSubscriptions.length === subscriptions.length) {
+            return res.status(500).json({ error: "Some push notifications failed to send." });
+        }
+        
+        res.status(200).json({ message: "Push notifications processed successfully." });
+
+    } catch (error) {
+        // This outer catch is for issues like the user not being found or Firestore errors
+        console.error("Error in send-push-to-user endpoint:", error);
+        res.status(500).json({ error: "Failed to send push notification." });
+    }
+});
+
+
 // Endpoint to start a journey
 app.post("/start-journey", async (req, res) => {
     const { userId, journeyId } = req.body;
@@ -185,11 +253,33 @@ async function processScheduledPush(docId, pushData) {
             canSend = false;
         }
 
-        if (canSend && user.pushSubscriptions) {
-            const pushPromises = user.pushSubscriptions.map(sub =>
-                webpush.sendNotification(sub, JSON.stringify(message))
+        if (canSend && user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+            const subscriptions = user.pushSubscriptions;
+            const payloadString = JSON.stringify(message);
+
+            const pushResults = await Promise.allSettled(
+                subscriptions.map(sub => webpush.sendNotification(sub, payloadString))
             );
-            await Promise.all(pushPromises);
+
+            const validSubscriptions = [];
+            pushResults.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    validSubscriptions.push(subscriptions[index]);
+                } else { // rejected
+                    const error = result.reason;
+                    console.error(`[CRON] Failed to send to one subscription for user ${userId}:`, error.body || error.message);
+                    if (error.statusCode !== 410) {
+                        validSubscriptions.push(subscriptions[index]);
+                    }
+                }
+            });
+
+            if (validSubscriptions.length < subscriptions.length) {
+                console.log(`[CRON] Pruning ${subscriptions.length - validSubscriptions.length} expired subscriptions for user ${userId}.`);
+                await db.collection("users").doc(userId).update({
+                    pushSubscriptions: validSubscriptions
+                });
+            }
         }
     } catch (error) {
         console.error(`Failed to process push for user ${userId}:`, error);
@@ -197,6 +287,52 @@ async function processScheduledPush(docId, pushData) {
         await db.collection("scheduled_notifications").doc(docId).delete();
     }
 }
+
+// --- Unified Notification Function ---
+async function sendUnifiedNotification({ userId, title, body, icon, url, image, actions, type = 'booking', status = 'sent' }) {
+    // 1. Write to Firestore
+    await db.collection('notifications').add({
+        title,
+        body,
+        icon,
+        image,
+        actions,
+        url: url || '/',
+        userId,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        type,
+        status
+    });
+    // 2. Send push notification to all user subscriptions
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists) return;
+    const user = userSnap.data();
+    if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) return;
+    const payload = JSON.stringify({ title, body, icon, image, actions, data: { url: url || '/', actions } });
+    await Promise.allSettled(
+        user.pushSubscriptions.map(sub => webpush.sendNotification(sub, payload))
+    );
+}
+
+// --- Example: After booking status update, call sendUnifiedNotification ---
+// Replace this with your actual booking update logic
+app.post('/update-booking-status', async (req, res) => {
+    const { userId, bookingId, newStatus } = req.body;
+    // 1. Update booking status in your DB (not shown here)
+    // 2. Send notification
+    await sendUnifiedNotification({
+        userId,
+        title: 'Booking Status Updated',
+        body: `Your booking status is now: ${newStatus}`,
+        icon: '',
+        url: '',
+        image: '',
+        actions: [],
+        type: 'booking',
+        status: 'sent'
+    });
+    res.status(200).json({ success: true, message: 'Booking status updated and notification sent.' });
+});
 
 // --- START SERVER ---
 app.listen(port, () => {

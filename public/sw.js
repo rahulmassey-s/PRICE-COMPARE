@@ -1,65 +1,49 @@
-// public/sw.js
+// This is the service worker that will handle incoming push notifications.
+console.log('[Service Worker] File loaded.');
 
-self.addEventListener("push", (event) => {
-  console.log("[Service Worker] Push Received.");
-
-  // Default payload if something goes wrong
-  let payload = {
-    title: "New Notification",
-    body: "You have a new message from SBHS.",
-    icon: "/icons/icon-192x192.png", // Default icon
-    image: null,
-    actions: []
-  };
-
+self.addEventListener('push', function(event) {
+  let data = {};
   try {
-    // Attempt to parse the data from the push event
-    if (event.data) {
-      const data = event.data.json();
-      payload = { ...payload, ...data }; // Merge received data with defaults
-    }
+    data = event.data.json();
   } catch (e) {
-    console.error("[Service Worker] Error parsing push data:", e);
+    console.error('[Service Worker] Failed to parse push data:', e);
+    return;
   }
-
+  // Strictly validate image URL
+  let image = undefined;
+  if (data.image && typeof data.image === 'string' && data.image.startsWith('https://')) {
+    image = data.image;
+  }
+  // Use actions array if present and valid
+  let actions = Array.isArray(data.actions) ? data.actions.filter(a => a && a.action && a.title) : undefined;
   const options = {
-    body: payload.body,
-    icon: payload.icon,
-    badge: "/icons/icon-192x192.png", // Badge is for Android status bar
-    image: payload.image, // Large image shown in the notification
-    actions: payload.actions, // e.g., [{ action: 'explore', title: 'See More' }]
+    body: data.body,
+    icon: data.icon,
+    image: image,
+    actions: actions,
     data: {
-        // You can add custom data to handle clicks
-        url: payload.url || '/', // URL to open on click
+      url: data.data?.url,
+      actions: actions
     }
   };
-
-  event.waitUntil(self.registration.showNotification(payload.title, options));
+  console.log('[Service Worker] Notification options:', options);
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
 });
 
-
-self.addEventListener("notificationclick", (event) => {
-  console.log("[Service Worker] Notification click Received.");
-
-  // Close the notification
+self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-
-  // Handle the action
-  const urlToOpen = event.notification.data.url;
-
-  event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientsArr) => {
-      // If a window is already open, focus it
-      const hadWindowToFocus = clientsArr.some((windowClient) =>
-        windowClient.url === urlToOpen ? (windowClient.focus(), true) : false
-      );
-
-      // Otherwise, open a new window
-      if (!hadWindowToFocus) {
-        clients.openWindow(urlToOpen).then((windowClient) =>
-          windowClient ? windowClient.focus() : null
-        );
-      }
-    })
-  );
+  if (event.action) {
+    // Find the action by event.action and open its URL
+    const actionObj = event.notification.data?.actions?.find(a => a.action === event.action);
+    if (actionObj && actionObj.url) {
+      event.waitUntil(clients.openWindow(actionObj.url));
+      return;
+    }
+  }
+  // Default click
+  if (event.notification.data && event.notification.data.url) {
+    event.waitUntil(clients.openWindow(event.notification.data.url));
+  }
 }); 

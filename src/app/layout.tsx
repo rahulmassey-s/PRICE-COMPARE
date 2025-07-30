@@ -13,7 +13,7 @@ const APP_THEME_COLOR = '#0891b2';
 const inter = Inter({ subsets: ['latin'] });
 
 const oneSignalCleanupScript = `
-  const purgeFlag = 'onesignal_nuke_v1'; // Use a new flag to ensure this runs
+  const purgeFlag = 'onesignal_nuke_v2'; // <--- CHANGED: New flag to force the script to run again.
   if (typeof window !== 'undefined' && !localStorage.getItem(purgeFlag)) {
     console.log('[SCORCHED EARTH CLEANUP] Running aggressive cleanup script.');
     // Set flag immediately to prevent loops.

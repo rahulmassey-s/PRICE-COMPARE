@@ -168,6 +168,7 @@ export default function HomePage({ }: HomePageProps) {
           }
           const currentPrices = labPricesMap.get(priceData.testId) || [];
           currentPrices.push({
+            labId: priceData.labId || '',
             labName: priceData.labName,
             price: priceData.price,
             originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,
@@ -222,6 +223,7 @@ export default function HomePage({ }: HomePageProps) {
         return;
       }
       labPrices.push({
+        labId: priceData.labId || '',
         labName: priceData.labName,
         price: priceData.price,
         originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,

@@ -8,8 +8,8 @@ import { CartProvider } from '@/context/CartContext';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { usePathname, useRouter } from 'next/navigation'; // Import usePathname and useRouter
-import { onAuthStateChanged } from 'firebase/auth';
+import { usePathname, useRouter } from 'next/navigation';
+import { onAuthStateChanged, User } from 'firebase/auth'; // Import User type
 import { auth } from '@/lib/firebase/client';
 import {
   setUserOnlineStatus,
@@ -20,22 +20,98 @@ import {
   getOrCreateUserDocument,
 } from '@/lib/firebase/firestoreService';
 import { siteConfig } from '@/config/site';
-import ForegroundNotificationHandler from '@/components/ForegroundNotificationHandler';
-// The OneSignalInit component is no longer needed, so we remove the dynamic import.
-// import dynamic from 'next/dynamic';
 
-// const OneSignalInit = dynamic(() => import('@/components/OneSignalInit'), {
-//   ssr: false,
-// });
+// Cleaned up: All OneSignal, ForegroundNotificationHandler, and related logic is removed.
 
 const SESSION_STORAGE_KEY_BOOKING_PENDING_MSG = 'bookingFinalizedForSuccessMessage';
-const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const PENDING_MSG_TIMEOUT_MS = 5 * 60 * 1000;
 
-// Define the type for auth modal state
 type AuthOnboardingData = {
   view: 'login' | 'signup' | 'forgot-password' | 'otp';
-  mobile: string | null; // Keep it simple: string or null
+  mobile: string | null;
 };
+
+// --- Start: Custom Push Notification Logic ---
+const VAPID_SERVER_URL = process.env.NEXT_PUBLIC_VAPID_SERVER_URL || 'http://localhost:4000';
+
+async function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+const subscribeToPushNotifications = async (user: User) => {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Push messaging is not supported');
+    return;
+  }
+  try {
+    console.log('[Push] Starting subscription process...');
+    const swRegistration = await navigator.serviceWorker.register('/sw.js');
+    console.log('[Push] Service Worker registered.');
+    
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      console.log('[Push] Requesting notification permission...');
+      permission = await Notification.requestPermission();
+    }
+    
+    if (permission !== 'granted') {
+      console.warn('[Push] Notification permission not granted.');
+      return;
+    }
+    console.log('[Push] Notification permission granted.');
+    
+    // Unsubscribe from any old subscription to be safe, though the layout cleaner should handle this.
+    const existingSubscription = await swRegistration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('[Push] Found existing subscription. Unsubscribing as a safeguard...');
+      await existingSubscription.unsubscribe();
+      console.log('[Push] Unsubscribed successfully.');
+    }
+
+    // Get VAPID key from our server
+    const response = await fetch(`${VAPID_SERVER_URL}/vapid-public-key`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch VAPID public key from server.');
+    }
+    const vapidPublicKey = await response.text();
+    const applicationServerKey = await urlBase64ToUint8Array(vapidPublicKey);
+
+    // Create a new subscription
+    const newSubscription = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    });
+    console.log('[Push] New subscription created:', newSubscription);
+
+    // Send the new subscription to our server
+    await fetch(`${VAPID_SERVER_URL}/subscribe`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: user.uid,
+        subscription: newSubscription,
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log('[Push] Subscription sent to server.');
+  } catch (error) {
+    console.error('Failed to subscribe to push notifications:', error);
+  }
+};
+// --- End: Custom Push Notification Logic ---
+
 
 function SplashScreen() {
   const router = useRouter();
@@ -106,7 +182,6 @@ export default function ClientLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // useOneSignalSync(); // ❌ REMOVED: This hook was causing a conflict by re-initializing OneSignal.
   const [isLoadingIntroState, setIsLoadingIntroState] = useState(true);
   const [showIntroAnimation, setShowIntroAnimation] = useState(true);
   const [introAnimationFinished, setIntroAnimationFinished] = useState(false);
@@ -211,184 +286,19 @@ export default function ClientLayout({
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [isOnline, setIsOnline] = useState(true);
 
-  // The one-time cleanup script has been moved to layout.tsx for earlier execution.
-
-  // --- OneSignal SDK Initialization and User Identification ---
-  const initializeAndIdentifyOneSignal = useCallback(async (user: any) => {
-    // STEP 2 of 2 ("THE RE-ACTIVATION"): OneSignal logic is now re-enabled.
-    // The cleanup script in layout.tsx has cleared out any corrupt data.
-
-    // Guard to ensure this only runs on the client
-    if (typeof window === 'undefined' || !window.OneSignal) {
-        // First, load the script if it doesn't exist
-        if (!document.getElementById('onesignal-sdk-script')) {
-            console.log('[OneSignal] Loading SDK script...');
-            const script = document.createElement('script');
-            script.id = 'onesignal-sdk-script';
-            script.src = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
-            script.async = true;
-            document.head.appendChild(script);
-
-            script.onload = () => {
-                console.log('[OneSignal] SDK script loaded. Re-running identification.');
-                initializeAndIdentifyOneSignal(user); // Re-run this function once the script is loaded
-            };
-            return; // Exit for now, the onload will trigger the logic again
-        }
-        // If the script is there but window.OneSignal isn't ready, wait a bit and retry.
-        // This can happen due to race conditions.
-        setTimeout(() => initializeAndIdentifyOneSignal(user), 1000);
-        return;
-    }
-
-    window.OneSignal.push(async () => {
-        console.log('[OneSignal] Pushing initialization and identification logic to the queue...');
-        
-        // The SDK is designed to handle multiple init calls safely.
-        // The first one will initialize; subsequent calls are ignored.
-        // This removes the need for the faulty 'isInitialized' check.
-        await window.OneSignal.init({
-            appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID!,
-            subdomainName: process.env.NEXT_PUBLIC_ONESIGNAL_SUBDOMAIN_NAME,
-            allowLocalhostAsSecureOrigin: true,
-        });
-
-        console.log(`[OneSignal] SDK is ready. Now processing user: ${user ? user.uid : 'Logged Out'}`);
-
-        if (user && user.uid) {
-            const externalId = await window.OneSignal.getExternalUserId();
-            if (externalId !== user.uid) {
-                console.log(`[OneSignal] User detected. Identifying as ${user.uid}`);
-                await window.OneSignal.setExternalUserId(user.uid);
-                
-                const profile = await getOrCreateUserDocument(user);
-                if (profile) {
-                    const tags = {
-                        name: profile.displayName || '',
-                        mobile: profile.phoneNumber || '',
-                        user_type: profile.role === 'member' ? 'member' : 'non-member',
-                    };
-                    await window.OneSignal.sendTags(tags);
-                    console.log('[OneSignal] User tags sent:', tags);
-                }
-            } else {
-                console.log(`[OneSignal] User ${user.uid} is already identified.`);
-            }
-        } else {
-            const externalId = await window.OneSignal.getExternalUserId();
-            if (externalId) {
-                console.log('[OneSignal] User logged out. Removing external user ID.');
-                await window.OneSignal.removeExternalUserId();
-            }
-        }
-    });
-  }, []);
-
-
-  // --- USER AUTHENTICATION LISTENER ---
-  // This now also handles OneSignal identification.
+  // --- Start: New UseEffect for Push Subscription ---
   useEffect(() => {
-    let userId: string | null = null;
-    let activityTimeout: NodeJS.Timeout | null = null;
-    let isOnline = false;
-
-    // Throttle activity updates to once every 30 seconds
-    const ACTIVITY_THROTTLE_MS = 30000;
-    const safeUpdateUserActivity = () => {
-      if (!userId) return;
-      if (activityTimeout) return;
-      updateUserActivity(userId).catch(() => {});
-      activityTimeout = setTimeout(() => {
-        activityTimeout = null;
-      }, ACTIVITY_THROTTLE_MS);
-    };
-
-    const handleOnline = () => {
-      if (userId && !isOnline) {
-        setUserOnlineStatus(userId).catch(() => {});
-        isOnline = true;
-      }
-    };
-    const handleOffline = () => {
-      if (userId && isOnline) {
-        setUserOfflineStatus(userId).catch(() => {});
-        isOnline = false;
-      }
-    };
-
-    const setupActivityListeners = () => {
-      window.addEventListener('mousemove', safeUpdateUserActivity);
-      window.addEventListener('keydown', safeUpdateUserActivity);
-      window.addEventListener('scroll', safeUpdateUserActivity);
-      window.addEventListener('click', safeUpdateUserActivity);
-    };
-    const removeActivityListeners = () => {
-      window.removeEventListener('mousemove', safeUpdateUserActivity);
-      window.removeEventListener('keydown', safeUpdateUserActivity);
-      window.removeEventListener('scroll', safeUpdateUserActivity);
-      window.removeEventListener('click', safeUpdateUserActivity);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') handleOffline();
-      if (document.visibilityState === 'visible') handleOnline();
-    };
-
-    const handleBeforeUnload = () => {
-      handleOffline();
-    };
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // Initialize or identify the user with OneSignal
-      initializeAndIdentifyOneSignal(user); // Re-enabled for the "Re-activation" deployment.
-
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        userId = user.uid;
-        setUserOnlineStatus(userId).catch(() => {});
-        incrementUserLoginCount(userId).catch(() => {});
-        isOnline = true;
-        setupActivityListeners();
-        safeUpdateUserActivity(); // Initial update
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        // Fetch user document for logging
-        try {
-          const userDoc = await getOrCreateUserDocument(user);
-          console.log('[DEBUG] Profile received from Firestore:', userDoc); // Debug log
-          logUserActivity(
-            user.uid,
-            'session_start',
-            { userAgent: navigator.userAgent },
-            user.displayName ?? undefined,
-            user.email ?? undefined
-          );
-        } catch (error) {
-          console.error('[DEBUG] Failed to process user for logging:', error);
-        }
-      } else {
-        if (userId) {
-          setUserOfflineStatus(userId).catch(() => {});
-        }
-        userId = null;
-        isOnline = false;
-        removeActivityListeners();
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
+        // User is logged in, try to subscribe them to push notifications.
+        // The cleaner script in layout.tsx should have already run.
+        setTimeout(() => subscribeToPushNotifications(user), 5000); 
       }
     });
 
-    return () => {
-      unsubscribe();
-      if (userId) setUserOfflineStatus(userId).catch(() => {});
-      removeActivityListeners();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (activityTimeout) clearTimeout(activityTimeout);
-    };
-  }, [initializeAndIdentifyOneSignal]); // Added dependency
+    return () => unsubscribe(); // Cleanup on unmount
+  }, []);
+  // --- End: New UseEffect for Push Subscription ---
 
   // --- PAGE VIEW LOGGING ---
   useEffect(() => {
@@ -460,7 +370,7 @@ export default function ClientLayout({
           <footer className="w-full bg-gray-50 border-t text-xs text-gray-500 py-3 px-2 text-center">
             © 2024 SBHS. Smart Bharat Health Services (SBHS) is an independent health service platform. <a href="/disclaimer" className="underline hover:text-blue-600 transition">Disclaimer</a>
           </footer>
-          <ForegroundNotificationHandler />
+          {/* ForegroundNotificationHandler has been removed */}
         </div>
         <Toaster />
 

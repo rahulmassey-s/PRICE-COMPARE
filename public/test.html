@@ -7,13 +7,14 @@
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; }
         #log { border: 1px solid #ccc; padding: 10px; margin-top: 20px; background-color: #fff; min-height: 100px; white-space: pre-wrap; }
-        button { font-size: 16px; padding: 10px 15px; cursor: pointer; }
+        button { font-size: 16px; padding: 10px 15px; cursor: pointer; margin-right: 10px; }
     </style>
 </head>
 <body>
     <h1>Push Notification Test Page</h1>
     <p>Open the developer console (F12) to see detailed logs.</p>
-    <button id="subscribeButton">Subscribe to Notifications</button>
+    <button id="subscribeButton">1. Subscribe to Notifications</button>
+    <button id="sendPushButton">2. Send Test Push</button>
     <h3>Log:</h3>
     <div id="log"></div>
 
@@ -85,7 +86,37 @@
             }
         }
 
+        async function sendTestPush() {
+            log('Sending test push notification...');
+            try {
+                // This URL must match your Render backend URL
+                const RENDER_SERVER_URL = 'https://sbhs-notification-backend.onrender.com';
+                
+                await fetch(`${RENDER_SERVER_URL}/send-push-to-user`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: MOCK_USER_ID,
+                        payload: {
+                            title: 'Hello from Server!',
+                            body: 'This is a test notification.',
+                            icon: 'https://cdn-icons-png.flaticon.com/512/1055/1055663.png',
+                            url: '/offers' // The page to open on click
+                        }
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                log('Test push request sent successfully!');
+                log('You should receive a notification shortly.');
+
+            } catch (error) {
+                log('Error sending test push: ' + error.message);
+            }
+        }
+
         document.getElementById('subscribeButton').addEventListener('click', subscribe);
+        document.getElementById('sendPushButton').addEventListener('click', sendTestPush);
     </script>
 </body>
 </html> 

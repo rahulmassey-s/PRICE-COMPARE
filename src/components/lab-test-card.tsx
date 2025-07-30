@@ -23,6 +23,7 @@ import { logUserActivity } from '@/lib/firebase/firestoreService';
 import { auth } from '@/lib/firebase/client';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
+import { subscribeToLabsRealtime } from '@/lib/firebase/firestoreService';
 
 interface LabTestCardProps {
   test: LabTest;
@@ -50,6 +51,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
   const [showSwipeHintDesktop, setShowSwipeHintDesktop] = useState(false);
   const [openLabLocation, setOpenLabLocation] = useState<string | null>(null);
   const [labLocations, setLabLocations] = useState<Record<string, string>>({});
+  const [labsMap, setLabsMap] = useState<{ [id: string]: string }>({});
   
   const { toast } = useToast();
   const { addToCart, items: cartItems, removeFromCart } = useCart();
@@ -134,12 +136,18 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     return `https://wa.me/${contactDetails.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(testSpecificMessage)}`;
   }, [contactDetails.whatsapp, contactDetails.whatsappMessage, test.name]);
 
+  const getDisplayLabName = useCallback((priceInfo: LabPriceType) => {
+    // Always use the real-time lab data from labsMap if available, fallback to stored labName
+    return labsMap[priceInfo.labId] || priceInfo.labName || '';
+  }, [labsMap]);
+
   const handleAddToCart = useCallback((priceInfo: LabPriceType) => {
+    const displayLabName = getDisplayLabName(priceInfo);
     const itemToAdd = {
       testDocId: test.docId,
       testName: test.name,
       testImageUrl: test.imageUrl,
-      labName: priceInfo.labName,
+      labName: displayLabName,
       price: priceInfo.price,
       nonMemberPrice: priceInfo.price,
       originalPrice: priceInfo.originalPrice,
@@ -157,7 +165,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     addToCart(itemToAdd);
     toast({
       title: "Added to Cart",
-      description: `${test.name} from ${priceInfo.labName} added to your cart.`,
+      description: `${test.name} from ${displayLabName} added to your cart.`,
     });
 
     // Robust best price notification logic
@@ -168,7 +176,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
 
     if (isMember && currentMemberPrice !== undefined && bestMemberPrice !== undefined && currentMemberPrice > bestMemberPrice) {
       // Show member best price notification
-      const bestLabs = test.prices.filter(p => typeof p.memberPrice === 'number' && p.memberPrice === bestMemberPrice).map(p => p.labName);
+      const bestLabs = test.prices.filter(p => typeof p.memberPrice === 'number' && p.memberPrice === bestMemberPrice).map(p => getDisplayLabName(p));
       toast({
         title: "Best Price Available!",
         description: `Get ${test.name} for ₹${bestMemberPrice.toFixed(2)} at ${bestLabs.join('/')}. Consider adding it.`,
@@ -177,7 +185,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
       });
     } else if (!isMember && bestNonMemberPrice !== undefined && priceInfo.price > bestNonMemberPrice) {
       // Show non-member best price notification
-      const bestLabs = test.prices.filter(p => p.price === bestNonMemberPrice).map(p => p.labName);
+      const bestLabs = test.prices.filter(p => p.price === bestNonMemberPrice).map(p => getDisplayLabName(p));
       toast({
         title: "Best Price Available!",
         description: `Get ${test.name} for ₹${bestNonMemberPrice.toFixed(2)} at ${bestLabs.join('/')}. Consider adding it.`,
@@ -185,16 +193,17 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
         variant: "default",
       });
     }
-  }, [addToCart, test, userRole, minMemberPrice, minNonMemberPrice, toast, onAddToCartRequest]);
+  }, [addToCart, test, userRole, minMemberPrice, minNonMemberPrice, toast, onAddToCartRequest, getDisplayLabName]);
 
   const handleRemoveFromCart = useCallback((priceInfo: LabPriceType) => {
-    removeFromCart(test.docId, priceInfo.labName);
+    const displayLabName = getDisplayLabName(priceInfo);
+    removeFromCart(test.docId, displayLabName);
     toast({
       title: "Removed from Cart",
-      description: `${test.name} from ${priceInfo.labName} removed from your cart.`,
+      description: `${test.name} from ${displayLabName} removed from your cart.`,
       variant: "default"
     });
-  }, [removeFromCart, test.docId, test.name, toast]);
+  }, [removeFromCart, test.docId, test.name, toast, getDisplayLabName]);
 
   const handleCartAction = useCallback((e: React.MouseEvent, priceInfo: LabPriceType, inCart: boolean) => {
     e.stopPropagation();
@@ -205,9 +214,10 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     }
   }, [handleAddToCart, handleRemoveFromCart]);
 
-  const isItemInCart = useCallback((labName: string) => {
-    return cartItems.some(item => item.testDocId === test.docId && item.labName === labName);
-  }, [cartItems, test.docId]);
+  const isItemInCart = useCallback((priceInfo: LabPriceType) => {
+    const displayLabName = getDisplayLabName(priceInfo);
+    return cartItems.some(item => item.testDocId === test.docId && item.labName === displayLabName);
+  }, [cartItems, test.docId, getDisplayLabName]);
 
   const isValidHttpUrl = (url: string | undefined | null): boolean => {
     if (typeof url !== 'string' || url.trim() === '') return false;
@@ -232,24 +242,21 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
     } catch (e) {}
   };
 
-  // Fetch lab locations on mount (one-time)
+  // Subscribe to labs in real-time to update labsMap and labLocations
   useEffect(() => {
-    async function fetchLabLocations() {
-      try {
-        const labsSnapshot = await getDocs(collection(db, 'labs'));
-        const locations: Record<string, string> = {};
-        labsSnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.name) {
-            locations[data.name] = data.location || '';
-          }
-        });
-        setLabLocations(locations);
-      } catch (e) {
-        // ignore
-      }
-    }
-    fetchLabLocations();
+    const unsubscribe = subscribeToLabsRealtime((labs) => {
+      const map: { [id: string]: string } = {};
+      const locations: Record<string, string> = {};
+      labs.forEach(lab => {
+        map[lab.id] = lab.name;
+        if (lab.name) {
+          locations[lab.name] = lab.location || '';
+        }
+      });
+      setLabsMap(map);
+      setLabLocations(locations);
+    });
+    return () => unsubscribe();
   }, []);
 
   // --- FINAL TABLE STYLES FOR HORIZONTAL WIDE COLUMNS, NO VERTICAL STRETCH ---
@@ -516,7 +523,10 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
               <tbody>
                 {test.prices && test.prices.length > 0 ? (
                   test.prices.map((priceInfo, idx) => {
-                    const mainLabName = priceInfo.labName.replace(/\s*lab$/i, '');
+                    // Always use the real-time lab data from labsMap if available, fallback to stored labName
+                    const realTimeLabName = labsMap[priceInfo.labId];
+                    const mainLabName = (realTimeLabName || priceInfo.labName || '').replace(/\s*lab$/i, '');
+                    const displayLabName = realTimeLabName || priceInfo.labName || '';
             return (
                       <tr key={priceInfo.labName + idx} className={idx % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
                         <td className="py-2.5 px-2 text-left align-middle font-bold text-blue-700 text-[11px] rounded-l-xl min-w-[110px]" style={{ lineHeight: 1.2 }}>
@@ -528,7 +538,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                                 type="button"
                                 className="ml-0.5 p-0.5 rounded-full hover:bg-blue-100 focus:outline-none"
                                 style={{ lineHeight: 0, height: 16, width: 16 }}
-                                onClick={e => { e.stopPropagation(); setOpenLabLocation(priceInfo.labName); }}
+                                onClick={e => { e.stopPropagation(); setOpenLabLocation(displayLabName); }}
                                 tabIndex={0}
                                 aria-label={`Show location for ${mainLabName}`}
                               >
@@ -583,11 +593,11 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                         <td className="py-2.5 px-2 text-center align-middle rounded-r-xl">
                           <div className="flex flex-col justify-center gap-1">
                             <Button
-                              onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, isItemInCart(priceInfo.labName)); }}
-                              variant={isItemInCart(priceInfo.labName) ? 'outline' : 'default'}
+                              onClick={e => { e.stopPropagation(); handleCartAction(e, priceInfo, isItemInCart(priceInfo)); }}
+                              variant={isItemInCart(priceInfo) ? 'outline' : 'default'}
                               className={cn(
                                 "bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold text-[11px] w-full max-w-[80px] py-2 rounded-xl shadow transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 book-btn-animated flex items-center justify-center gap-1",
-                                isItemInCart(priceInfo.labName) && "border-destructive text-destructive hover:bg-destructive/10"
+                                isItemInCart(priceInfo) && "border-destructive text-destructive hover:bg-destructive/10"
                               )}
                               type="button"
                             >

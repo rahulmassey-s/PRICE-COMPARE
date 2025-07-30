@@ -108,6 +108,7 @@ export default function LabTestsPage() {
                 }
                 const currentPrices = labPricesMap.get(priceData.testId) || [];
                 currentPrices.push({
+                    labId: priceData.labId || '',
                     labName: priceData.labName,
                     price: priceData.price,
                     originalPrice: typeof priceData.originalPrice === 'number' ? priceData.originalPrice : undefined,

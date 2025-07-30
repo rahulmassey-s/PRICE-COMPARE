@@ -275,18 +275,18 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
             {/* Notification Bell - Enhanced */}
             <DropdownMenu onOpenChange={setNotifDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+              <Button
+                variant="ghost"
+                size="icon"
                   className="group text-foreground relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-amber-200 dark:border-amber-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-amber-100 hover:to-yellow-100 dark:hover:from-amber-900 dark:hover:to-yellow-900 transition-all duration-200 focus:ring-2 focus:ring-amber-400"
-                >
+              >
                   <Bell size={28} className="text-amber-600 group-hover:scale-110 group-hover:text-yellow-500 transition-all duration-200 drop-shadow" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-blue-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </Button>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-blue-500 text-white text-xs font-bold animate-bounce shadow-xl border-2 border-white dark:border-[#23232b]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-80" align="end">
                 <DropdownMenuLabel className="flex justify-between items-center">
@@ -308,7 +308,7 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
                         <p className="text-xs text-gray-400 mt-1">
                           {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleString() : new Date(notif.createdAt).toLocaleString()}
                         </p>
-                      </div>
+                          </div>
                     </DropdownMenuItem>
                   ))
                 ) : (
@@ -318,8 +318,8 @@ export default function AppHeader({ isCartOpen, onCartOpenChange: onCartOpenChan
             </DropdownMenu>
 
             {/* Language Switcher - Enhanced */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="group text-foreground h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white/60 dark:bg-[#23232b]/60 shadow-lg backdrop-blur-md border border-green-200 dark:border-green-800 hover:scale-110 hover:shadow-2xl hover:bg-gradient-to-br hover:from-green-100 hover:to-teal-100 dark:hover:from-green-900 dark:hover:to-teal-900 transition-all duration-200 focus:ring-2 focus:ring-green-400">
                         <Languages size={28} className="text-green-600 group-hover:text-teal-500 transition-all duration-200 drop-shadow" />
                         <span className="sr-only">Change language</span>

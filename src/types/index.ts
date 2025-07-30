@@ -1,6 +1,7 @@
 import { type Timestamp } from 'firebase/firestore'; // Import Timestamp type
 
 export interface LabPrice {
+  labId: string; // Foreign key to 'labs' collection document ID
   labName: string;
   price: number; // This is the selling/discounted price
   originalPrice?: number; // Optional: For showing strike-through original price (MRP)
