@@ -32,7 +32,9 @@ type AuthOnboardingData = {
 };
 
 // --- Start: Custom Push Notification Logic ---
-const VAPID_SERVER_URL = process.env.NEXT_PUBLIC_VAPID_SERVER_URL || 'http://localhost:4000';
+const VAPID_SERVER_URL = process.env.NEXT_PUBLIC_VAPID_SERVER_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+  ? 'http://localhost:4000' 
+  : 'https://sbhs-notification-backend.onrender.com');
 
 async function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);

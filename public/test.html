@@ -24,7 +24,9 @@
             document.getElementById('log').textContent += message + '\n';
         };
 
-        const SERVER_URL = 'http://localhost:4000';
+        const SERVER_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? 'http://localhost:4000' 
+  : 'https://sbhs-notification-backend.onrender.com';
         // IMPORTANT: For a real app, get this from your authentication system (e.g., Firebase Auth)
         const MOCK_USER_ID = 'test_user_123'; 
 

@@ -1183,7 +1183,7 @@ async function loadCrmDashboardData() {
         // Call backend to update testLabPrices labName
         if (oldLabName && name && oldLabName !== name) {
           try {
-            const resp = await fetch('http://localhost:4000/update-lab-name', {
+            const resp = await fetch(`${BACKEND_BASE_URL}/update-lab-name`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ oldLabName, newLabName: name })

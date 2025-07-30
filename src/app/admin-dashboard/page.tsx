@@ -26,6 +26,14 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 const drawerWidth = 240;
 
+// Helper function to get backend URL
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:4000';
+  }
+  return 'https://sbhs-notification-backend.onrender.com';
+};
+
 const daysOfWeekList = [
   { key: 'sun', label: 'Sun' },
   { key: 'mon', label: 'Mon' },
@@ -221,7 +229,7 @@ export default function AdminDashboard() {
           };
           if (sendMode === 'schedule') {
             // Schedule for later: save to Firestore, do not send now
-            const res = await fetch('http://localhost:4000/schedule-notification', {
+            const res = await fetch(`${getBackendUrl()}/schedule-notification`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
@@ -233,7 +241,7 @@ export default function AdminDashboard() {
               showSnackbar(data.message || 'Failed to schedule notification.', 'error');
             }
           } else {
-            const res = await fetch("http://localhost:4000/send-notification", {
+            const res = await fetch(`${getBackendUrl()}/send-notification`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
@@ -289,7 +297,7 @@ export default function AdminDashboard() {
         };
         if (sendMode === 'schedule') {
           // Schedule for later: save to Firestore, do not send now
-          const res = await fetch('http://localhost:4000/schedule-notification', {
+          const res = await fetch(`${getBackendUrl()}/schedule-notification`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -301,7 +309,7 @@ export default function AdminDashboard() {
             showSnackbar(data.message || 'Failed to schedule notification.', 'error');
           }
         } else {
-          const res = await fetch("http://localhost:4000/send-to-all", {
+          const res = await fetch(`${getBackendUrl()}/send-to-all`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -356,7 +364,7 @@ export default function AdminDashboard() {
         };
         if (sendMode === 'schedule') {
           // Schedule for later: save to Firestore, do not send now
-          const res = await fetch('http://localhost:4000/schedule-notification', {
+                      const res = await fetch(`${getBackendUrl()}/schedule-notification`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -368,7 +376,7 @@ export default function AdminDashboard() {
             showSnackbar(data.message || 'Failed to schedule notification.', 'error');
           }
         } else {
-          const res = await fetch("http://localhost:4000/send-notification", {
+                      const res = await fetch(`${getBackendUrl()}/send-notification`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -711,7 +719,7 @@ export default function AdminDashboard() {
       };
     });
     try {
-      const res = await fetch('http://localhost:4000/schedule-journey', {
+              const res = await fetch(`${getBackendUrl()}/schedule-journey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: journeyName, steps: stepsWithTime }),
@@ -838,7 +846,7 @@ export default function AdminDashboard() {
   async function handleInactiveSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:4000/schedule-inactive-campaign', {
+              const res = await fetch(`${getBackendUrl()}/schedule-inactive-campaign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
