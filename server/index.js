@@ -50,7 +50,7 @@ try {
     process.exit(1); // Exit if Firebase can't init
 }
 
-const db = admin.firestore();
+const db = firebaseApp.firestore();
 
 // --- WEB PUSH INITIALIZATION ---
 // IMPORTANT: Requires VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY environment variables.

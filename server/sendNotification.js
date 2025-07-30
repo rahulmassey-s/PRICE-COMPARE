@@ -80,7 +80,7 @@ app.post('/api/send-notification', async (req, res) => {
   }
   
   console.log(`Processing notification request for target: '${target}', userId: '${userId || 'N/A'}'`);
-  const db = admin.firestore();
+  const db = app.firestore();
 
   try {
     const userTokenPairs = await getTokensForTargetGroup(target, userId);

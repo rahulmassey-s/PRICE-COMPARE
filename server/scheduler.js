@@ -19,7 +19,7 @@ try {
   console.log('Firebase Admin SDK initialized successfully in scheduler with unique name.');
 }
 
-const db = admin.firestore();
+const db = firebaseApp.firestore();
 const messaging = admin.messaging();
 
 const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
