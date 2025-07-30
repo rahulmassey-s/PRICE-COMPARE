@@ -18,7 +18,19 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 // --- MIDDLEWARE ---
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:9002',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:9002',
+    'https://labpricecompare.netlify.app',
+    'https://sbhs-notification-backend.onrender.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(bodyParser.json());
 
 // --- FIREBASE ADMIN INITIALIZATION ---

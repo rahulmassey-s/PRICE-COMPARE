@@ -670,7 +670,9 @@ async function loadAllBookings() {
                 await firebaseFirestoreFunctions.updateDoc(firebaseFirestoreFunctions.doc(dbInstance, 'bookings', booking.id), { status: newStatus });
                 showToast('Booking status updated!', 'success');
                 // Send notification to user
-                const BACKEND_BASE_URL = 'http://localhost:4000';
+                const BACKEND_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                  ? 'http://localhost:4000' 
+                  : 'https://sbhs-notification-backend.onrender.com';
                 await fetch(`${BACKEND_BASE_URL}/update-booking-status`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
