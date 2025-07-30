@@ -601,7 +601,7 @@ function LabTestCardComponent({ test, contactDetails, onCardClick, userRole = 'n
                               )}
                               type="button"
                             >
-                              {isItemInCart(priceInfo.labName) ? (
+                              {isItemInCart(priceInfo) ? (
                                 <>
                                   <MinusCircle className="mr-1 h-3.5 w-3.5" /> Remove
                                 </>
