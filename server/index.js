@@ -181,6 +181,85 @@ app.post("/send-push-to-user", async (req, res) => {
     }
 });
 
+// Endpoint to send notification to all users
+app.post("/send-to-all", async (req, res) => {
+    const { title, body, icon, url, image, actions } = req.body;
+
+    if (!title || !body) {
+        return res.status(400).json({ error: "Missing title or body." });
+    }
+
+    try {
+        // Get all users with push subscriptions
+        const usersSnapshot = await db.collection("users").get();
+        let totalUsers = 0;
+        let successfulSends = 0;
+        let failedSends = 0;
+
+        for (const userDoc of usersSnapshot.docs) {
+            const user = userDoc.data();
+            if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+                continue;
+            }
+
+            totalUsers++;
+            const payload = JSON.stringify({ 
+                title, 
+                body, 
+                icon: icon || '', 
+                image: image || '', 
+                actions: actions || [],
+                data: { url: url || '/', actions: actions || [] }
+            });
+
+            // Send to all subscriptions for this user
+            const pushResults = await Promise.allSettled(
+                user.pushSubscriptions.map(sub => webpush.sendNotification(sub, payload))
+            );
+
+            const validSubscriptions = [];
+            let userHadFailures = false;
+
+            pushResults.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    validSubscriptions.push(user.pushSubscriptions[index]);
+                } else {
+                    userHadFailures = true;
+                    const error = result.reason;
+                    console.error(`Failed to send to subscription for user ${userDoc.id}:`, error.body || error.message);
+                    if (error.statusCode !== 410) {
+                        validSubscriptions.push(user.pushSubscriptions[index]);
+                    }
+                }
+            });
+
+            // Update user's subscriptions if any were expired
+            if (validSubscriptions.length < user.pushSubscriptions.length) {
+                await db.collection("users").doc(userDoc.id).update({
+                    pushSubscriptions: validSubscriptions
+                });
+            }
+
+            if (userHadFailures && validSubscriptions.length === user.pushSubscriptions.length) {
+                failedSends++;
+            } else {
+                successfulSends++;
+            }
+        }
+
+        res.status(200).json({ 
+            message: "Bulk notification sent successfully.",
+            totalUsers,
+            successfulSends,
+            failedSends
+        });
+
+    } catch (error) {
+        console.error("Error in send-to-all endpoint:", error);
+        res.status(500).json({ error: "Failed to send bulk notification." });
+    }
+});
+
 
 // Endpoint to start a journey
 app.post("/start-journey", async (req, res) => {
