@@ -4,13 +4,21 @@ if (!fetch) {
   const nf = require('node-fetch');
   fetch = nf.default || nf;
 }
-require('dotenv').config();
 
 const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// Try to get existing app or create a new one with unique name
+let firebaseApp;
+try {
+  firebaseApp = admin.app();
+  console.log('Firebase Admin SDK already initialized in refreshDeliveryStats, using existing app.');
+} catch (e) {
+  // No existing app, create a new one
+  firebaseApp = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  }, 'refreshDeliveryStatsApp');
+  console.log('Firebase Admin SDK initialized successfully in refreshDeliveryStats with unique name.');
+}
 
 const db = admin.firestore();
 

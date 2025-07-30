@@ -1,18 +1,5 @@
-const path = require('path');
-const fs = require('fs'); // Import the file system module
-
-const envPath = path.resolve(__dirname, '.env');
-
-// --- Start of Diagnostic Code ---
-console.log(`[DIAGNOSTIC] Looking for .env file at: ${envPath}`);
-if (fs.existsSync(envPath)) {
-    console.log('[DIAGNOSTIC] .env file FOUND.');
-} else {
-    console.error('[DIAGNOSTIC] CRITICAL ERROR: .env file NOT FOUND at the expected path.');
-}
-// --- End of Diagnostic Code ---
-
-require('dotenv').config({ path: envPath });
+// Environment variables are set by Render deployment
+// No need to load .env file in production
 
 // --- Start of Diagnostic Code ---
 console.log(`[DIAGNOSTIC] Is VAPID_PUBLIC_KEY set? ${!!process.env.VAPID_PUBLIC_KEY}`);
@@ -46,10 +33,18 @@ try {
     const formattedString = serviceAccountString.replace(/\\n/g, '\\n');
     const serviceAccount = JSON.parse(formattedString);
 
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("Firebase Admin SDK initialized successfully.");
+    // Try to get existing app or create a new one with unique name
+    let firebaseApp;
+    try {
+        firebaseApp = admin.app();
+        console.log("Firebase Admin SDK already initialized, using existing app.");
+    } catch (e) {
+        // No existing app, create a new one
+        firebaseApp = admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        }, 'mainServerApp');
+        console.log("Firebase Admin SDK initialized successfully with unique name.");
+    }
 } catch (error) {
     console.error("Firebase Admin SDK initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY is set correctly.", error);
     process.exit(1); // Exit if Firebase can't init

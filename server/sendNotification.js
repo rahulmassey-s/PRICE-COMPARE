@@ -8,12 +8,19 @@ const { getTokensForTargetGroup, sendNotification } = require('./notification-en
 
 // --- Firebase Admin Initialization ---
 try {
-  // Standardize to use the same variable name as the rest of the app
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-  console.log('Firebase Admin SDK initialized successfully.');
+  // Try to get existing app or create a new one with unique name
+  let app;
+  try {
+    app = admin.app();
+    console.log('Firebase Admin SDK already initialized, using existing app.');
+  } catch (e) {
+    // No existing app, create a new one
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    }, 'sendNotificationApp');
+    console.log('Firebase Admin SDK initialized successfully with unique name.');
+  }
 } catch (error) {
   console.error('Firebase Admin SDK initialization failed:', error);
   // Exit if Firebase can't initialize, as the app is useless without it.

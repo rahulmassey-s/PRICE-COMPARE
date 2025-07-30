@@ -3,30 +3,25 @@ const bodyParser = require('body-parser');
 const webpush = require('web-push');
 const admin = require('firebase-admin');
 const cors = require('cors');
-require('dotenv').config();
-require('dotenv').config(); // Automatically find .env.local in the root
 
 console.log("PUBLIC_VAPID_KEY:", process.env.PUBLIC_VAPID_KEY);
-console.log("PRIVATE_VAPID_KEY:", process.env.PRIVATE_VAPID_KEY); // Automatically find .env.local in the root
+console.log("PRIVATE_VAPID_KEY:", process.env.PRIVATE_VAPID_KEY);
 
-// --- Correct Initialization using Environment Variable ---
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    } catch (e) {
-        console.error('CRITICAL: Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Check your .env.local file. It must be a valid JSON string.', e);
-        process.exit(1);
-    }
-} else {
-    console.error('CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY is not defined in .env.local file.');
-    process.exit(1);
+// Firebase initialization is handled by the main file that requires this module
+// This module assumes Firebase is already initialized
+// Try to get existing app or create a new one with unique name
+let firebaseApp;
+try {
+  firebaseApp = admin.app();
+  console.log('Firebase Admin SDK already initialized in notification-engine, using existing app.');
+} catch (e) {
+  // No existing app, create a new one
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+  firebaseApp = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  }, 'notificationEngineApp');
+  console.log('Firebase Admin SDK initialized successfully in notification-engine with unique name.');
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
 const db = admin.firestore();
 const app = express();
 
@@ -391,6 +386,97 @@ app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 }); 
 
+// Function to get tokens for target group
+async function getTokensForTargetGroup(target, userId) {
+  const tokens = [];
+  try {
+    if (!target || target === 'All') {
+      console.log("Fetching tokens for 'All' users.");
+      const usersSnapshot = await db.collection('users').get();
+      usersSnapshot.forEach(userDoc => {
+        const userData = userDoc.data();
+        if (userData.fcmToken) tokens.push({ userId: userDoc.id, token: userData.fcmToken });
+        if (Array.isArray(userData.fcmTokens)) {
+          userData.fcmTokens.forEach(token => {
+            tokens.push({ userId: userDoc.id, token });
+          });
+        }
+      });
+    } else if (target === 'Members') {
+      console.log("Fetching tokens for 'Members'.");
+      const usersSnapshot = await db.collection('users').where('role', '==', 'member').get();
+      usersSnapshot.forEach(userDoc => {
+        const userData = userDoc.data();
+        if (userData.fcmToken) tokens.push({ userId: userDoc.id, token: userData.fcmToken });
+        if (Array.isArray(userData.fcmTokens)) {
+          userData.fcmTokens.forEach(token => {
+            tokens.push({ userId: userDoc.id, token });
+          });
+        }
+      });
+    } else if (target === 'User' && userId) {
+      console.log(`Fetching token for user: ${userId}`);
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        if (userData.fcmToken) tokens.push({ userId: userDoc.id, token: userData.fcmToken });
+        if (Array.isArray(userData.fcmTokens)) {
+          userData.fcmTokens.forEach(token => {
+            tokens.push({ userId: userDoc.id, token });
+          });
+        }
+      }
+    }
+  } catch(err) {
+    console.error(`Error fetching tokens for target ${target}:`, err);
+  }
+  return tokens;
+}
+
+// Function to send notification
+async function sendNotification(tokens, payload) {
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, responses: [] };
+  }
+  
+  const message = {
+    tokens: tokens.map(t => t.token),
+    webpush: {
+      fcm_options: {
+        link: payload.link || 'https://price-compare-liart.vercel.app/',
+      },
+    },
+    data: {
+      title: payload.title || 'New Notification',
+      body: payload.body || '',
+      link: payload.link || '',
+      type: payload.type || 'info',
+      imageUrl: payload.imageUrl || '',
+      actions: payload.actions && payload.actions.length > 0 ? JSON.stringify(payload.actions) : '[]',
+    },
+  };
+  
+  try {
+    console.log(`Sending notification to ${tokens.length} token(s).`);
+    const messaging = admin.messaging();
+    const response = await messaging.sendEachForMulticast(message);
+    const successCount = response.successCount;
+    const failureCount = response.failureCount;
+    
+    const responses = response.responses.map((resp, idx) => ({
+      success: resp.success,
+      error: resp.success ? null : resp.error
+    }));
+    
+    return { successCount, failureCount, responses };
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    return { successCount: 0, failureCount: tokens.length, responses: tokens.map(() => ({ success: false, error })) };
+  }
+}
+
 module.exports = {
     sendUnifiedNotification,
+    getTokensForTargetGroup,
+    sendNotification
   };

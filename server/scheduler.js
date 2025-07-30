@@ -6,13 +6,17 @@ const cron = require('node-cron');
 // Correct path: Load the key from the same directory
 const serviceAccount = require('./serviceAccountKey.json'); 
 
-// Initialize Firebase Admin SDK
-
-if (!admin.apps.length) {
-  admin.initializeApp({
+// Try to get existing app or create a new one with unique name
+let firebaseApp;
+try {
+  firebaseApp = admin.app();
+  console.log('Firebase Admin SDK already initialized in scheduler, using existing app.');
+} catch (e) {
+  // No existing app, create a new one
+  firebaseApp = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    // ...other config
-  });
+  }, 'schedulerApp');
+  console.log('Firebase Admin SDK initialized successfully in scheduler with unique name.');
 }
 
 const db = admin.firestore();
