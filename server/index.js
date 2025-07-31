@@ -39,7 +39,7 @@ app.use(bodyParser.json());
 // IMPORTANT: This requires a FIREBASE_SERVICE_ACCOUNT_KEY environment variable.
 // The value should be the full JSON string of your service account key.
 try {
-    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    let serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     if (!serviceAccountString || serviceAccountString.trim() === '') {
         throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is not set or is empty in the .env file.");
     }

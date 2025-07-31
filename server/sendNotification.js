@@ -15,7 +15,9 @@ try {
     console.log('Firebase Admin SDK already initialized, using existing app.');
   } catch (e) {
     // No existing app, create a new one
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const formattedString = serviceAccountString.replace(/\\n/g, '\n');
+    const serviceAccount = JSON.parse(formattedString);
     app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     }, 'sendNotificationApp');
