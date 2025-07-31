@@ -17,6 +17,8 @@ const cron = require("node-cron");
 const app = express();
 const port = process.env.PORT || 4000;
 
+let firebaseApp; // <-- Add this at the top-level scope
+
 // --- MIDDLEWARE ---
 app.use(cors({
   origin: [
@@ -42,11 +44,10 @@ try {
         throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is not set or is empty in the .env file.");
     }
     // The following line is the fix: It ensures the private_key is correctly formatted.
-    const formattedString = serviceAccountString.replace(/\\n/g, '\\n');
+    const formattedString = serviceAccountString.replace(/\\n/g, '\n');
     const serviceAccount = JSON.parse(formattedString);
 
     // Try to get existing app or create a new one with unique name
-    let firebaseApp;
     try {
         firebaseApp = admin.app();
         console.log("Firebase Admin SDK already initialized, using existing app.");
